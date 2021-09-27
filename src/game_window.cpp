@@ -8,20 +8,35 @@
 #include <cstring>
 #include <chrono>
 
+#include <agb_boot.h>
+#include <sgb_boot.h>
+#include <cgb_boot.h>
+#include <dmg_boot.h>
+#include <sgb2_boot.h>
+
 static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) {
-    // from sameboy
-    static constexpr const char *const names[] = {
-        [GB_BOOT_ROM_DMG0] = "dmg0_boot.bin",
-        [GB_BOOT_ROM_DMG] = "dmg_boot.bin",
-        [GB_BOOT_ROM_MGB] = "mgb_boot.bin",
-        [GB_BOOT_ROM_SGB] = "sgb_boot.bin",
-        [GB_BOOT_ROM_SGB2] = "sgb2_boot.bin",
-        [GB_BOOT_ROM_CGB0] = "cgb0_boot.bin",
-        [GB_BOOT_ROM_CGB] = "cgb_boot.bin",
-        [GB_BOOT_ROM_AGB] = "agb_boot.bin",
-    };
-    
-    GB_load_boot_rom(gb, names[type]);
+    switch(type) {
+        case GB_BOOT_ROM_DMG0:
+        case GB_BOOT_ROM_DMG:
+            GB_load_boot_rom_from_buffer(gb, dmg_boot, sizeof(dmg_boot));
+            break;
+        case GB_BOOT_ROM_SGB2:
+            GB_load_boot_rom_from_buffer(gb, sgb2_boot, sizeof(sgb2_boot));
+            break;
+        case GB_BOOT_ROM_SGB:
+            GB_load_boot_rom_from_buffer(gb, sgb_boot, sizeof(sgb_boot));
+            break;
+        case GB_BOOT_ROM_AGB:
+            GB_load_boot_rom_from_buffer(gb, agb_boot, sizeof(agb_boot));
+            break;
+        case GB_BOOT_ROM_CGB0:
+        case GB_BOOT_ROM_CGB:
+            GB_load_boot_rom_from_buffer(gb, cgb_boot, sizeof(cgb_boot));
+            break;
+        default:
+            std::fprintf(stderr, "cannot find a suitable boot rom\n");
+            break;
+    }
 }
 
 static std::uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b) {
