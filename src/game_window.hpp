@@ -1,5 +1,5 @@
-#ifndef SB_QT_GAME_WINDOW_CPP
-#define SB_QT_GAME_WINDOW_CPP
+#ifndef SB_QT_GAME_WINDOW_HPP
+#define SB_QT_GAME_WINDOW_HPP
 
 extern "C" {
 #include <Core/gb.h>
@@ -16,11 +16,15 @@ extern "C" {
 #include <chrono>
 #include <string>
 
+#include "game_debugger.hpp"
+
 class QAudioOutput;
 class QIODevice;
 class QGamepad;
 
 class GameWindow : public QMainWindow {
+    friend GameDebugger;
+    
     Q_OBJECT
     
 public:
@@ -97,6 +101,11 @@ private:
     // Save path
     std::string save_path;
     void save_if_loaded() noexcept;
+    
+    // Debugging
+    GameDebugger *debugger_window;
+    
+    void closeEvent(QCloseEvent *) override;
     
 private slots:
     void action_set_scaling() noexcept;

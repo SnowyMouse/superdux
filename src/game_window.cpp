@@ -12,6 +12,7 @@
 #include <QGamepad>
 #include <QKeyEvent>
 #include <QGamepadManager>
+#include <QApplication>
 #include <chrono>
 
 #include <agb_boot.h>
@@ -60,6 +61,7 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
 GameWindow::GameWindow() {
     QMenuBar *bar = new QMenuBar(this);
     this->setMenuBar(bar);
+    this->debugger_window = new GameDebugger();
     
     // File menu
     auto *file_menu = bar->addMenu("File");
@@ -242,6 +244,16 @@ GameWindow::GameWindow() {
         print_debug_message("Could not get an audio device. Audio will be disabled.\n");
     }
     
+    // Tools menu
+    auto *tools_menu = bar->addMenu("Tools");
+    connect(tools_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(tools_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    
+    auto *show_debugger = tools_menu->addAction("Show debugger");
+    connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
+    
+    
+    // Detect gamepads changing
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
     this->action_gamepads_changed();
     
@@ -397,6 +409,7 @@ void GameWindow::on_vblank(GB_gameboy_s *gb) {
 
 void GameWindow::game_loop() {
     auto now = clock::now();
+    this->debugger_window->refresh_view();
     
     if(this->status_text != nullptr && now > this->status_text_deletion) {
         delete this->status_text;
@@ -509,6 +522,8 @@ void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
     GB_set_boot_rom_load_callback(&this->gameboy, load_boot_rom);
     GB_set_rgb_encode_callback(&this->gameboy, rgb_encode);
     GB_set_vblank_callback(&this->gameboy, GameWindow::on_vblank);
+    
+    this->debugger_window->set_gameboy(&this->gameboy);
     
     // Update/clear our pixel buffer
     int width = GB_get_screen_width(&this->gameboy), height = GB_get_screen_height(&this->gameboy);
@@ -644,4 +659,8 @@ void GameWindow::action_save_battery() noexcept {
 
 GameWindow::~GameWindow() {
     this->save_if_loaded();
+}
+
+void GameWindow::closeEvent(QCloseEvent *) {
+    QApplication::quit();
 }
