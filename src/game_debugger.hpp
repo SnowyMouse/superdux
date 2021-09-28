@@ -34,6 +34,8 @@ private:
     std::string retained_logs;
     GB_gameboy_s *gameboy = nullptr;
     static GameDebugger *resolve_debugger(GB_gameboy_s *gb) noexcept;
+    static char *input_callback(GB_gameboy_s *) noexcept;
+    bool debug_breakpoint_pause = false;
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
     void refresh_view();

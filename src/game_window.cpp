@@ -410,8 +410,12 @@ void GameWindow::on_vblank(GB_gameboy_s *gb) {
 }
 
 void GameWindow::game_loop() {
-    auto now = clock::now();
     this->debugger_window->refresh_view();
+    if(this->debugger_window->debug_breakpoint_pause) {
+        return;
+    }
+    
+    auto now = clock::now();
     
     if(this->status_text != nullptr && now > this->status_text_deletion) {
         delete this->status_text;
@@ -671,5 +675,6 @@ GameWindow::~GameWindow() {
 }
 
 void GameWindow::closeEvent(QCloseEvent *) {
+    this->debugger_window->debug_breakpoint_pause = false;
     QApplication::quit();
 }

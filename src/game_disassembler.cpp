@@ -75,6 +75,12 @@ void GameDisassembler::follow_address() {
     }
 }
 
+void GameDisassembler::add_breakpoint() {
+    char command[512];
+    std::snprintf(command, sizeof(command), "breakpoint $%04X", *this->last_disassembly->address);
+    GB_debugger_execute_command(this->debugger->gameboy, command);
+}
+
 void GameDisassembler::show_context_menu(const QPoint &point) {
     this->last_disassembly = std::nullopt;
     
@@ -95,8 +101,6 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
     // Get the item at the point
     auto *item = this->itemAt(point);
     if(item) {
-        menu.addSeparator();
-    
         auto index = item->data(Qt::UserRole).toUInt();
         if(index <= this->disassembly.size()) {
             this->last_disassembly = this->disassembly[index];
@@ -106,6 +110,17 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
             if(follow_address.length() > 0) {
                 auto *jump_to_option = menu.addAction(QString("Follow to ") + follow_address);
                 connect(jump_to_option, &QAction::triggered, this, &GameDisassembler::follow_address);
+            }
+            
+            menu.addSeparator();
+            
+            // TODO: add a delete breakpoint maybe?
+            auto &address = this->last_disassembly->address;
+            if(address.has_value()) {
+                char breakpoint_text[512];
+                std::snprintf(breakpoint_text, sizeof(breakpoint_text), "Create breakpoint at $%04X", *address);
+                auto *create_breakpoint = menu.addAction(breakpoint_text);
+                connect(create_breakpoint, &QAction::triggered, this, &GameDisassembler::add_breakpoint);
             }
         }
     }

@@ -46,6 +46,7 @@ public:
     void show_context_menu(const QPoint &point);
     void jump_to_address_window();
     void follow_address();
+    void add_breakpoint();
     void refresh_view();
     
     void wheelEvent(QWheelEvent *event) override;
