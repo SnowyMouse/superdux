@@ -150,6 +150,7 @@ GameWindow::GameWindow() {
     auto *layout = new QHBoxLayout(central_widget);
     
     this->pixel_buffer_view = new QGraphicsView(central_widget);
+    this->pixel_buffer_view->setEnabled(false);
     this->pixel_buffer_scene = new QGraphicsScene(central_widget);
     this->pixel_buffer_pixmap_item = this->pixel_buffer_scene->addPixmap(this->pixel_buffer_pixmap);
     this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
@@ -207,8 +208,6 @@ GameWindow::GameWindow() {
     
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
     this->action_gamepads_changed();
-    
-    this->grabKeyboard();
     
     // Fire game_loop as often as possible
     QTimer *timer = new QTimer(this);
