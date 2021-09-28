@@ -43,6 +43,10 @@ private:
     bool rom_loaded = false;
     void game_loop();
     
+    // Pause if menu is open?
+    bool menu_open = false;
+    bool pause_on_menu = false;
+    
     // Video
     int scaling = 2;
     std::vector<QAction *> scaling_options;
@@ -89,6 +93,7 @@ private slots:
     void action_set_scaling() noexcept;
     void action_toggle_showing_fps() noexcept;
     void action_toggle_pause() noexcept;
+    void action_toggle_pause_in_menu() noexcept;
     void action_open_rom() noexcept;
     void action_reset() noexcept;
     void action_toggle_audio() noexcept;
@@ -109,6 +114,8 @@ private slots:
     void action_gamepad_axis_x(double) noexcept;
     void action_gamepad_axis_y(double) noexcept;
     
+    void action_showing_menu() noexcept;
+    void action_hiding_menu() noexcept;
 };
 
 #endif

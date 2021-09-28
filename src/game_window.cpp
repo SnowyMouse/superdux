@@ -56,23 +56,41 @@ GameWindow::GameWindow() {
     
     // File menu
     auto *file_menu = bar->addMenu("File");
+    connect(file_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(file_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    
     auto *open = file_menu->addAction("Open ROM...");
     open->setShortcut(QKeySequence::Open);
     open->setIcon(GET_ICON("document-open"));
     connect(open, &QAction::triggered, this, &GameWindow::action_open_rom);
     
+    
     // Emulation menu
     auto *emulation_menu = bar->addMenu("Emulation");
+    connect(emulation_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(emulation_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    
     auto *pause = emulation_menu->addAction("Pause");
     connect(pause, &QAction::triggered, this, &GameWindow::action_toggle_pause);
     pause->setIcon(GET_ICON("media-playback-pause"));
     pause->setCheckable(true);
+    pause->setChecked(this->paused);
     auto *reset = emulation_menu->addAction("Reset");
     connect(reset, &QAction::triggered, this, &GameWindow::action_reset);
     reset->setIcon(GET_ICON("view-refresh"));
     
+    emulation_menu->addSeparator();
+    auto *pause_on_menu = emulation_menu->addAction("Pause if menu is open");
+    connect(pause_on_menu, &QAction::triggered, this, &GameWindow::action_toggle_pause_in_menu);
+    pause_on_menu->setIcon(GET_ICON("media-playback-pause"));
+    pause_on_menu->setCheckable(true);
+    pause_on_menu->setChecked(this->pause_on_menu);
+    
     // Audio menu
     auto *audio_menu = bar->addMenu("Audio");
+    connect(audio_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(audio_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    
     auto *volume = audio_menu->addMenu("Volume");
     
     auto *raise_volume = volume->addAction("Increase volume");
@@ -105,6 +123,8 @@ GameWindow::GameWindow() {
     
     // Video menu
     auto *video_menu = bar->addMenu("Video");
+    connect(video_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(video_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
 
     // Add scaling options
     auto *scaling = video_menu->addMenu("Scaling");
@@ -123,6 +143,7 @@ GameWindow::GameWindow() {
     auto *toggle_fps = video_menu->addAction("Show FPS");
     connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
     toggle_fps->setCheckable(true);
+    toggle_fps->setShortcut(static_cast<int>(Qt::Key_F3));
     
     
     auto *central_widget = new QWidget(this);
@@ -325,7 +346,7 @@ void GameWindow::game_loop() {
         this->status_text_shadow = nullptr;
     }
     
-    if(!this->rom_loaded || this->paused) {
+    if(!this->rom_loaded || this->paused || (this->pause_on_menu && this->menu_open)) {
         return;
     }
     
@@ -455,7 +476,6 @@ void GameWindow::action_gamepads_changed() {
         connect(this->gamepad, &QGamepad::axisRightXChanged, this, &GameWindow::action_gamepad_axis_x);
         connect(this->gamepad, &QGamepad::axisLeftYChanged, this, &GameWindow::action_gamepad_axis_y);
         connect(this->gamepad, &QGamepad::axisRightYChanged, this, &GameWindow::action_gamepad_axis_y);
-        
     }
 }
 
@@ -531,6 +551,8 @@ void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
         default:
             break;
     }
+    
+    event->ignore();
 }
 
 void GameWindow::keyPressEvent(QKeyEvent *event) {
@@ -545,4 +567,15 @@ void GameWindow::keyReleaseEvent(QKeyEvent *event) {
         return;
     }
     handle_keyboard_key(event, false);
+}
+
+void GameWindow::action_showing_menu() noexcept {
+    this->menu_open = true;
+}
+void GameWindow::action_hiding_menu() noexcept {
+    this->menu_open = false;
+}
+
+void GameWindow::action_toggle_pause_in_menu() noexcept {
+    this->pause_on_menu = !this->pause_on_menu;
 }
