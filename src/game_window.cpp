@@ -167,7 +167,7 @@ GameWindow::GameWindow() {
         }
         format.setSampleRate(best_sample_rate);
         
-        this->audio_output = new QAudioOutput(format, this);
+        this->audio_output = new QAudioOutput(format /*, this */); // TODO: FIGURE OUT WHY UNCOMMENTING THIS CRASHES WHEN YOU CLOSE THE WINDOW
         this->audio_output->setNotifyInterval(1);
         connect(this->audio_output, &QAudioOutput::notify, this, &GameWindow::play_audio_buffer); // play the audio buffer whenever possible
         this->audio_device = this->audio_output->start();
