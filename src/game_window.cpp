@@ -59,6 +59,8 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
+    this->setWindowTitle("Game Window");
+    
     QMenuBar *bar = new QMenuBar(this);
     this->setMenuBar(bar);
     this->debugger_window = new GameDebugger();
@@ -451,11 +453,14 @@ void GameWindow::action_toggle_showing_fps() noexcept {
         this->fps_denominator = 0;
         this->last_frame_time = clock::now();
         
-        this->fps_text_shadow = this->pixel_buffer_scene->addText("FPS: --", QFontDatabase::systemFont(QFontDatabase::FixedFont));
+        auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+        font.setPixelSize(9);
+        
+        this->fps_text_shadow = this->pixel_buffer_scene->addText("FPS: --", font);
         fps_text_shadow->setDefaultTextColor(QColor::fromRgb(0,0,0));
         fps_text_shadow->setPos(1, 1);
         
-        this->fps_text = this->pixel_buffer_scene->addText("FPS: --", QFontDatabase::systemFont(QFontDatabase::FixedFont));
+        this->fps_text = this->pixel_buffer_scene->addText("FPS: --", font);
         fps_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
         fps_text->setPos(0, 0);
     }
@@ -504,13 +509,17 @@ void GameWindow::show_status_text(const char *text) {
         delete this->status_text_shadow;
     }
     
-    this->status_text_shadow = this->pixel_buffer_scene->addText(text, QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    status_text_shadow->setDefaultTextColor(QColor::fromRgb(0,0,0));
-    status_text_shadow->setPos(1, 16);
+        
+    auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    font.setPixelSize(9);
     
-    this->status_text = this->pixel_buffer_scene->addText(text, QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    this->status_text_shadow = this->pixel_buffer_scene->addText(text, font);
+    status_text_shadow->setDefaultTextColor(QColor::fromRgb(0,0,0));
+    status_text_shadow->setPos(1, 13);
+    
+    this->status_text = this->pixel_buffer_scene->addText(text, font);
     status_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
-    status_text->setPos(0, 15);
+    status_text->setPos(0, 12);
     
     this->status_text_deletion = clock::now() + std::chrono::seconds(3);
 }
