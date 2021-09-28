@@ -88,9 +88,11 @@ GameWindow::GameWindow() {
     pause->setIcon(GET_ICON("media-playback-pause"));
     pause->setCheckable(true);
     pause->setChecked(this->paused);
+    
     auto *reset = emulation_menu->addAction("Reset");
     connect(reset, &QAction::triggered, this, &GameWindow::action_reset);
     reset->setIcon(GET_ICON("view-refresh"));
+    
     
     emulation_menu->addSeparator();
     auto *pause_on_menu = emulation_menu->addAction("Pause if menu is open");
@@ -540,36 +542,25 @@ ACTION_GAMEPAD(action_gamepad_b, GB_KEY_B)
 ACTION_GAMEPAD(action_gamepad_start, GB_KEY_START)
 ACTION_GAMEPAD(action_gamepad_select, GB_KEY_SELECT)
 
-#define ACTION_GAMEPAD_DPAD(fn, KEY_ON, KEY_OFF) void GameWindow::fn(bool button) noexcept {\
-    GB_set_key_state(&this->gameboy, GB_key_t::KEY_ON, button);\
-    if(button) {\
-        GB_set_key_state(&this->gameboy, GB_key_t::KEY_OFF, false); /*prevent impossible inputs*/\
-    }\
-}
-
-ACTION_GAMEPAD_DPAD(action_gamepad_up, GB_KEY_UP, GB_KEY_DOWN)
-ACTION_GAMEPAD_DPAD(action_gamepad_down, GB_KEY_DOWN, GB_KEY_UP)
-ACTION_GAMEPAD_DPAD(action_gamepad_left, GB_KEY_LEFT, GB_KEY_RIGHT)
-ACTION_GAMEPAD_DPAD(action_gamepad_right, GB_KEY_RIGHT, GB_KEY_LEFT)
+ACTION_GAMEPAD(action_gamepad_up, GB_KEY_UP)
+ACTION_GAMEPAD(action_gamepad_down, GB_KEY_DOWN)
+ACTION_GAMEPAD(action_gamepad_left, GB_KEY_LEFT)
+ACTION_GAMEPAD(action_gamepad_right, GB_KEY_RIGHT)
 
 void GameWindow::action_gamepad_axis_x(double axis) noexcept {
     if(axis < 0.0) {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, false); // prevent impossible inputs
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, axis < -0.5);
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, axis < -0.35);
     }
     else {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, axis > 0.5);
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, false);
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, axis > 0.35);
     }
 }
 void GameWindow::action_gamepad_axis_y(double axis) noexcept {
     if(axis < 0.0) {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, false);
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, axis < -0.5);
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, axis < -0.35);
     }
     else {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, axis > 0.5);
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, false);
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, axis > 0.35);
     }
 }
 
