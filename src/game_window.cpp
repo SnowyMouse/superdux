@@ -8,6 +8,8 @@
 #include <cstring>
 #include <QAudioDeviceInfo>
 #include <QAudioOutput>
+#include <QGamepad>
+#include <QGamepadManager>
 #include <chrono>
 
 #include <agb_boot.h>
@@ -180,6 +182,9 @@ GameWindow::GameWindow() {
     else {
         std::fprintf(stderr, "Could not get an audio device. Audio will be disabled.\n");
     }
+    
+    connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
+    this->action_gamepads_changed();
     
     // Fire game_loop as often as possible
     QTimer *timer = new QTimer(this);
@@ -429,4 +434,67 @@ void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
     this->pixel_buffer.fill(0);
     GB_set_pixels_output(&this->gameboy, reinterpret_cast<std::uint32_t *>(this->pixel_buffer.bits()));
     this->set_pixel_view_scaling(this->scaling);
+}
+
+void GameWindow::action_gamepads_changed() {
+    delete this->gamepad;
+    this->gamepad = nullptr;
+    for(auto &i : QGamepadManager::instance()->connectedGamepads()) {
+        this->gamepad = new QGamepad(i);
+        connect(this->gamepad, &QGamepad::buttonAChanged, this, &GameWindow::action_gamepad_a);
+        connect(this->gamepad, &QGamepad::buttonBChanged, this, &GameWindow::action_gamepad_b);
+        connect(this->gamepad, &QGamepad::buttonStartChanged, this, &GameWindow::action_gamepad_start);
+        connect(this->gamepad, &QGamepad::buttonSelectChanged, this, &GameWindow::action_gamepad_select);
+        connect(this->gamepad, &QGamepad::buttonUpChanged, this, &GameWindow::action_gamepad_up);
+        connect(this->gamepad, &QGamepad::buttonDownChanged, this, &GameWindow::action_gamepad_down);
+        connect(this->gamepad, &QGamepad::buttonLeftChanged, this, &GameWindow::action_gamepad_left);
+        connect(this->gamepad, &QGamepad::buttonRightChanged, this, &GameWindow::action_gamepad_right);
+        connect(this->gamepad, &QGamepad::axisLeftXChanged, this, &GameWindow::action_gamepad_axis_x);
+        connect(this->gamepad, &QGamepad::axisRightXChanged, this, &GameWindow::action_gamepad_axis_x);
+        connect(this->gamepad, &QGamepad::axisLeftYChanged, this, &GameWindow::action_gamepad_axis_y);
+        connect(this->gamepad, &QGamepad::axisRightYChanged, this, &GameWindow::action_gamepad_axis_y);
+        
+    }
+}
+
+#define ACTION_GAMEPAD(fn, KEY) void GameWindow::fn(bool button) noexcept {\
+    GB_set_key_state(&this->gameboy, GB_key_t::KEY, button);\
+}
+
+ACTION_GAMEPAD(action_gamepad_a, GB_KEY_A)
+ACTION_GAMEPAD(action_gamepad_b, GB_KEY_B)
+ACTION_GAMEPAD(action_gamepad_start, GB_KEY_START)
+ACTION_GAMEPAD(action_gamepad_select, GB_KEY_SELECT)
+
+#define ACTION_GAMEPAD_DPAD(fn, KEY_ON, KEY_OFF) void GameWindow::fn(bool button) noexcept {\
+    GB_set_key_state(&this->gameboy, GB_key_t::KEY_ON, button);\
+    if(button) {\
+        GB_set_key_state(&this->gameboy, GB_key_t::KEY_OFF, false); /*prevent impossible inputs*/\
+    }\
+}
+
+ACTION_GAMEPAD_DPAD(action_gamepad_up, GB_KEY_UP, GB_KEY_DOWN)
+ACTION_GAMEPAD_DPAD(action_gamepad_down, GB_KEY_DOWN, GB_KEY_UP)
+ACTION_GAMEPAD_DPAD(action_gamepad_left, GB_KEY_LEFT, GB_KEY_RIGHT)
+ACTION_GAMEPAD_DPAD(action_gamepad_right, GB_KEY_RIGHT, GB_KEY_LEFT)
+
+void GameWindow::action_gamepad_axis_x(double axis) noexcept {
+    if(axis < 0.0) {
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, false); // prevent impossible inputs
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, axis < -0.5);
+    }
+    else {
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, axis > 0.5);
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, false);
+    }
+}
+void GameWindow::action_gamepad_axis_y(double axis) noexcept {
+    if(axis < 0.0) {
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, false);
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, axis < -0.5);
+    }
+    else {
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, axis > 0.5);
+        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, false);
+    }
 }

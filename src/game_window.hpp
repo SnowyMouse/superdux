@@ -17,6 +17,7 @@ extern "C" {
 
 class QAudioOutput;
 class QIODevice;
+class QGamepad;
 
 class GameWindow : public QMainWindow {
     Q_OBJECT
@@ -77,6 +78,8 @@ private:
     clock::time_point status_text_deletion;
     std::vector<QAction *> volume_options;
     
+    QGamepad *gamepad = nullptr;
+    
     void show_new_volume_text();
     
 private slots:
@@ -89,6 +92,20 @@ private slots:
     
     void action_set_volume();
     void action_add_volume();
+    
+    void action_gamepads_changed();
+    
+    void action_gamepad_a(bool) noexcept;
+    void action_gamepad_b(bool) noexcept;
+    void action_gamepad_start(bool) noexcept;
+    void action_gamepad_select(bool) noexcept;
+    void action_gamepad_up(bool) noexcept;
+    void action_gamepad_down(bool) noexcept;
+    void action_gamepad_left(bool) noexcept;
+    void action_gamepad_right(bool) noexcept;
+    void action_gamepad_axis_x(double) noexcept;
+    void action_gamepad_axis_y(double) noexcept;
+    
 };
 
 #endif
