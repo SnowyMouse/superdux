@@ -77,10 +77,15 @@ void GameDisassembler::jump_to_address_window() {
     QInputDialog dialog;
     dialog.setLabelText("Enter an address to go to...");
     
-    if(this->last_disassembly.has_value() && this->last_disassembly->address.has_value()) {
-        char text_value[6];
-        std::snprintf(text_value, sizeof(text_value), "$%04x", *this->last_disassembly->address);
-        dialog.setTextValue(text_value);
+    if(this->last_disassembly.has_value()) {
+        if(this->last_disassembly->address.has_value()) {
+            char text_value[6];
+            std::snprintf(text_value, sizeof(text_value), "$%04x", *this->last_disassembly->address);
+            dialog.setTextValue(text_value);
+        }
+        else if(this->last_disassembly->is_marker) {
+            dialog.setTextValue(this->last_disassembly->instruction);
+        }
     }
     
     if(dialog.exec() == QInputDialog::Accepted) {
