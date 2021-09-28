@@ -106,7 +106,7 @@ GameWindow::GameWindow() {
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
     
     layout->addWidget(this->pixel_buffer_view);
-    layout->setMargin(0);
+    layout->setContentsMargins(0,0,0,0);
     central_widget->setLayout(layout);
     this->setCentralWidget(central_widget);
     

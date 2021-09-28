@@ -41,9 +41,7 @@ private:
     QGraphicsTextItem *fps_text_shadow = nullptr;
     
     void set_pixel_view_scaling(int scaling);
-    void update_pixel_buffer_dimensions();
     void redraw_pixel_buffer();
-    
     void game_loop();
     
     static void on_vblank(GB_gameboy_s *);
