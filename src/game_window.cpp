@@ -135,6 +135,20 @@ GameWindow::GameWindow() {
         this->volume_options.emplace_back(action);
     }
     
+    // Channel count
+    auto *channel_count = audio_menu->addMenu("Channel count");
+    auto *mono = channel_count->addAction("Mono");
+    mono->setData(1);
+    mono->setCheckable(true);
+    mono->setChecked(this->mono);
+    connect(mono, &QAction::triggered, this, &GameWindow::action_set_channel_count);
+    auto *stereo = channel_count->addAction("Stereo");
+    stereo->setData(2);
+    stereo->setCheckable(true);
+    stereo->setChecked(!this->mono);
+    connect(stereo, &QAction::triggered, this, &GameWindow::action_set_channel_count);
+    this->channel_count_options = { mono, stereo };
+    
     // Video menu
     auto *video_menu = bar->addMenu("Video");
     connect(video_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
@@ -237,6 +251,17 @@ void GameWindow::action_set_volume() {
     this->show_new_volume_text();
 }
 
+void GameWindow::action_set_channel_count() noexcept {
+    // Uses the user data from the sender to get volume
+    auto *action = qobject_cast<QAction *>(sender());
+    int channel_count = action->data().toInt(); 
+    this->mono = channel_count == 1;
+    
+    for(auto &i : this->channel_count_options) {
+        i->setChecked(i->data().toInt() == channel_count);
+    }
+}
+
 void GameWindow::action_add_volume() {
     // Uses the user data from the sender to get volume delta
     auto *action = qobject_cast<QAction *>(sender());
@@ -265,17 +290,26 @@ void GameWindow::on_sample(GB_gameboy_s *gb, GB_sample_t *sample) {
     
     auto &buffer = window->sample_buffer;
     
-    if(window->volume == 100) {
-        // If volume is 100, do not scale anything
-        buffer.emplace_back(sample->left);
-        buffer.emplace_back(sample->right);
+    // Get our samples
+    int left = sample->left;
+    int right = sample->right;
+    
+    // Convert to mono if we want
+    if(window->mono) {
+        left = (left + right) / 2;
+        right = left;
     }
-    else {
-        // Scale samples
+    
+    // Scale samples
+    if(window->volume < 100 && window->volume >= 0) {
         double scale = QAudio::convertVolume(window->volume / 100.0, QAudio::VolumeScale::LogarithmicVolumeScale, QAudio::VolumeScale::LinearVolumeScale);
-        buffer.emplace_back(sample->left * scale);
-        buffer.emplace_back(sample->right * scale);
+        left *= scale;
+        right *= scale;
     }
+    
+    // Play
+    buffer.emplace_back(left);
+    buffer.emplace_back(right);
     
     window->play_audio_buffer();
 }

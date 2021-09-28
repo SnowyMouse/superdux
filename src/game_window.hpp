@@ -39,7 +39,9 @@ private:
     
     // Audio
     bool muted = false;
+    bool mono = false;
     char volume = 100;
+    std::vector<QAction *> channel_count_options;
     
     // Emulation
     bool paused = false;
@@ -102,10 +104,11 @@ private slots:
     void action_toggle_pause_in_menu() noexcept;
     void action_open_rom() noexcept;
     void action_reset() noexcept;
-    void action_toggle_audio() noexcept;
     
+    void action_toggle_audio() noexcept;
     void action_set_volume();
     void action_add_volume();
+    void action_set_channel_count() noexcept;
     
     void action_gamepads_changed();
     
