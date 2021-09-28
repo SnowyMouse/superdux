@@ -14,6 +14,7 @@ extern "C" {
 #include <QAudio>
 #include <vector>
 #include <chrono>
+#include <string>
 
 class QAudioOutput;
 class QIODevice;
@@ -26,6 +27,8 @@ public:
     GameWindow();
     
     void load_rom(const char *rom_path) noexcept;
+    
+    ~GameWindow();
     
 private:
     using clock = std::chrono::steady_clock;
@@ -89,6 +92,9 @@ private:
     void keyReleaseEvent(QKeyEvent *) override;
     void handle_keyboard_key(QKeyEvent *event, bool press);
     
+    // Save path
+    std::string save_path;
+    
 private slots:
     void action_set_scaling() noexcept;
     void action_toggle_showing_fps() noexcept;
@@ -116,6 +122,8 @@ private slots:
     
     void action_showing_menu() noexcept;
     void action_hiding_menu() noexcept;
+    
+    void action_save_battery() noexcept;
 };
 
 #endif

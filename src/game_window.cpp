@@ -3,6 +3,7 @@
 #include <QTimer>
 #include <QMenuBar>
 #include <QGraphicsTextItem>
+#include <filesystem>
 #include <QFontDatabase>
 #include <QFileDialog>
 #include <cstring>
@@ -63,6 +64,11 @@ GameWindow::GameWindow() {
     open->setShortcut(QKeySequence::Open);
     open->setIcon(GET_ICON("document-open"));
     connect(open, &QAction::triggered, this, &GameWindow::action_open_rom);
+    
+    auto *save = file_menu->addAction("Save battery");
+    save->setShortcut(QKeySequence::Save);
+    save->setIcon(GET_ICON("document-save"));
+    connect(save, &QAction::triggered, this, &GameWindow::action_save_battery);
     
     file_menu->addSeparator();
     
@@ -292,6 +298,8 @@ void GameWindow::play_audio_buffer() {
 void GameWindow::load_rom(const char *rom_path) noexcept {
     this->rom_loaded = true;
     GB_load_rom(&this->gameboy, rom_path);
+    save_path = std::filesystem::path(rom_path).replace_extension(".sav").string();
+    GB_load_battery(&this->gameboy, save_path.c_str());
     GB_reset(&this->gameboy);
 }
 
@@ -585,4 +593,15 @@ void GameWindow::action_hiding_menu() noexcept {
 
 void GameWindow::action_toggle_pause_in_menu() noexcept {
     this->pause_on_menu = !this->pause_on_menu;
+}
+
+void GameWindow::action_save_battery() noexcept {
+    if(this->rom_loaded) {
+        GB_save_battery(&this->gameboy, save_path.c_str());
+        this->show_status_text("Saved cartridge RAM");
+    }
+}
+
+GameWindow::~GameWindow() {
+    this->action_save_battery();
 }
