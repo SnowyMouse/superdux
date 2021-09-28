@@ -20,6 +20,12 @@
 #include <dmg_boot.h>
 #include <sgb2_boot.h>
 
+#ifdef DEBUG
+#define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
+#else
+#define print_debug_message(...) (void(0))
+#endif
+
 static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) {
     switch(type) {
         case GB_BOOT_ROM_DMG0:
@@ -626,6 +632,10 @@ void GameWindow::action_toggle_pause_in_menu() noexcept {
 void GameWindow::save_if_loaded() noexcept {
     if(this->rom_loaded) {
         GB_save_battery(&this->gameboy, save_path.c_str());
+        print_debug_message("Saved cartridge RAM to %s\n", save_path.c_str());
+    }
+    else {
+        print_debug_message("Save cancelled since no ROM was loaded\n");
     }
 }
     

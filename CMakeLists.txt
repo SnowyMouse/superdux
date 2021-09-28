@@ -30,4 +30,12 @@ target_include_directories(sameboy-qt
     PRIVATE "${SAMEBOY_DIR}"
     PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
+
+string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
+if(CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
+    target_compile_definitions(sameboy-qt
+        PRIVATE DEBUG
+    )
+endif()
+
 target_link_libraries(sameboy-qt sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets Qt5::Multimedia Qt5::Gamepad)
