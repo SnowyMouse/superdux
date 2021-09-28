@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project("gamechu"
+project("sameboy-qt"
     LANGUAGES C CXX
 )
 
@@ -21,10 +21,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # And lastly our executable
-add_executable(gamechu
+add_executable(sameboy-qt
     ${QT_FILES}
     ${BOOT_ROMS_HEADER}
 )
 
-target_include_directories(gamechu PRIVATE "${SAMEBOY_DIR}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(gamechu sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets)
+target_include_directories(sameboy-qt PRIVATE "${SAMEBOY_DIR}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(sameboy-qt sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets)
