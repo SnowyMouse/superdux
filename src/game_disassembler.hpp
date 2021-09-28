@@ -14,7 +14,15 @@ public:
     
     ~GameDisassembler() override;
     
+    // Used for navigation
+    
+    // If last_address is not equal to current_address, clear the table when refresh_view() is called
+    std::uint16_t last_address = 0;
+    
+    // Address to inspect
     std::uint16_t current_address = 0x150;
+    
+    // Next address(es) depending on if we use arrow keys, page down, or scroll wheel
     std::uint16_t next_address_short = 0;
     std::uint16_t next_address_medium = 0;
     std::uint16_t next_address_far = 0;

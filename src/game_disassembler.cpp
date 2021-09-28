@@ -146,6 +146,12 @@ void GameDisassembler::keyPressEvent(QKeyEvent *event) {
 }
 
 void GameDisassembler::refresh_view() {
+    // Clear the table if we changed addresses
+    if(this->current_address != this->last_address) {
+        this->last_address = this->current_address;
+        this->clear();
+    }
+    
     this->setRowCount(127);
     this->disassembly = this->disassemble_at_address(this->current_address, this->rowCount());
     this->next_address_short = this->current_address;
