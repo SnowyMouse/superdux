@@ -64,6 +64,13 @@ GameWindow::GameWindow() {
     open->setIcon(GET_ICON("document-open"));
     connect(open, &QAction::triggered, this, &GameWindow::action_open_rom);
     
+    file_menu->addSeparator();
+    
+    auto *quit = file_menu->addAction("Quit");
+    quit->setShortcut(QKeySequence::Quit);
+    quit->setIcon(GET_ICON("application-exit"));
+    connect(quit, &QAction::triggered, this, &GameWindow::close);
+    
     
     // Emulation menu
     auto *emulation_menu = bar->addMenu("Emulation");
@@ -91,6 +98,11 @@ GameWindow::GameWindow() {
     connect(audio_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(audio_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
+    auto *mute = audio_menu->addAction("Mute");
+    connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
+    mute->setIcon(GET_ICON("audio-volume-muted"));
+    mute->setCheckable(true);
+    
     auto *volume = audio_menu->addMenu("Volume");
     
     auto *raise_volume = volume->addAction("Increase volume");
@@ -116,15 +128,16 @@ GameWindow::GameWindow() {
         action->setChecked(i == this->volume);
         this->volume_options.emplace_back(action);
     }
-    auto *mute = audio_menu->addAction("Mute");
-    connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
-    mute->setIcon(GET_ICON("audio-volume-muted"));
-    mute->setCheckable(true);
     
     // Video menu
     auto *video_menu = bar->addMenu("Video");
     connect(video_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(video_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    
+    auto *toggle_fps = video_menu->addAction("Show FPS");
+    connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
+    toggle_fps->setCheckable(true);
+    toggle_fps->setShortcut(static_cast<int>(Qt::Key_F3));
 
     // Add scaling options
     auto *scaling = video_menu->addMenu("Scaling");
@@ -139,11 +152,6 @@ GameWindow::GameWindow() {
         
         scaling_options.emplace_back(action);
     }
-    
-    auto *toggle_fps = video_menu->addAction("Show FPS");
-    connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
-    toggle_fps->setCheckable(true);
-    toggle_fps->setShortcut(static_cast<int>(Qt::Key_F3));
     
     
     auto *central_widget = new QWidget(this);
