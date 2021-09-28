@@ -22,6 +22,8 @@ GameDebugger::GameDebugger() {
     this->setCentralWidget(central_widget);
     this->setMinimumHeight(600);
     this->setMinimumWidth(800);
+    
+    this->setWindowTitle("Debugger");
 }
 
 void GameDebugger::set_gameboy(GB_gameboy_s *gb) {

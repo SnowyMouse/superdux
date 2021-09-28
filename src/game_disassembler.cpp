@@ -67,6 +67,13 @@ void GameDisassembler::go_back() {
     this->refresh_view();
 }
 
+void GameDisassembler::follow_address() {
+    auto where = this->evaluate_expression(this->last_disassembly->follow_address.toUtf8().data());
+    if(where.has_value()) {
+        this->go_to(*where);
+    }
+}
+
 void GameDisassembler::show_context_menu(const QPoint &point) {
     this->last_disassembly = std::nullopt;
     
@@ -87,9 +94,18 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
     // Get the item at the point
     auto *item = this->itemAt(point);
     if(item) {
+        menu.addSeparator();
+    
         auto index = item->data(Qt::UserRole).toUInt();
         if(index <= this->disassembly.size()) {
             this->last_disassembly = this->disassembly[index];
+            
+            // Add a follow option if possible
+            auto &follow_address = this->last_disassembly->follow_address;
+            if(follow_address.length() > 0) {
+                auto *jump_to_option = menu.addAction(QString("Follow to ") + follow_address);
+                connect(jump_to_option, &QAction::triggered, this, &GameDisassembler::follow_address);
+            }
         }
     }
     
@@ -98,7 +114,8 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
 
 void GameDisassembler::jump_to_address_window() {
     QInputDialog dialog;
-    dialog.setLabelText("Enter an address to go to...");
+    dialog.setLabelText("Enter an address or expression to go to...");
+    dialog.setWindowTitle("Enter an expression");
     
     // Ask for the address
     if(this->last_disassembly.has_value()) {
@@ -233,6 +250,29 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
             else {
                 instruction.instruction = l.mid(colon_offset + 1).trimmed();
             }
+            
+            // Handle following
+            auto add_follow = [&instruction](const QString &prefix, bool use_after_comma) {
+                auto &instruction_str = instruction.instruction;
+                if(instruction_str.startsWith(prefix)) {
+                    int start = prefix.length();
+                    int ending = instruction_str.indexOf(',');
+                    if(ending != -1) {
+                        if(use_after_comma) {
+                            start = ending + 1;
+                            ending = -1;
+                        }
+                        else {
+                            ending = instruction_str.length() - ending - prefix.length();
+                        }
+                    }
+                    instruction.follow_address = instruction.instruction.mid(start, ending).trimmed();
+                    return true;
+                }
+                return false;
+            };
+            
+            add_follow("CALL ", false) || add_follow("JP ", true) || add_follow("JR ", true);
         }
         else {
             instruction.is_marker = true;

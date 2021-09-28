@@ -29,7 +29,7 @@ public:
     
     struct Disassembly {
         std::optional<std::uint16_t> address;
-        std::optional<std::uint16_t> follow_address;
+        QString follow_address;
         QString raw_result;
         QString instruction;
         QString comment;
@@ -45,9 +45,11 @@ public:
     void go_back();
     void show_context_menu(const QPoint &point);
     void jump_to_address_window();
+    void follow_address();
+    void refresh_view();
+    
     void wheelEvent(QWheelEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
-    void refresh_view();
 
     std::vector<Disassembly> disassemble_at_address(std::uint16_t address, std::uint8_t count);
     std::optional<std::uint16_t> evaluate_expression(const char *expression);
