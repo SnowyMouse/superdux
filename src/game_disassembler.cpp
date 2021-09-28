@@ -29,6 +29,29 @@ GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent),
 
 GameDisassembler::~GameDisassembler() {}
 
+std::optional<std::uint16_t> GameDisassembler::evaluate_expression(const char *expression) {
+    std::optional<std::uint16_t> result;
+    std::uint16_t result_maybe;
+    
+    this->debugger->retain_logs = true;
+    if(GB_debugger_evaluate(this->debugger->gameboy, expression, &result_maybe, nullptr)) {
+        auto &logs = this->debugger->retained_logs;
+        if(!logs.empty()) {
+            QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", logs.c_str()).exec();
+            logs.clear();
+        }
+        else {
+            QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", QString("Could not evaulate expression ") + expression).exec();
+        }
+    }
+    else {
+        result = result_maybe;
+    }
+    this->debugger->retain_logs = false;
+    
+    return result;
+}
+
 void GameDisassembler::go_to(std::uint16_t where) {
     this->history.emplace_back(this->current_address);
     this->clearSelection();
@@ -77,6 +100,7 @@ void GameDisassembler::jump_to_address_window() {
     QInputDialog dialog;
     dialog.setLabelText("Enter an address to go to...");
     
+    // Ask for the address
     if(this->last_disassembly.has_value()) {
         if(this->last_disassembly->address.has_value()) {
             char text_value[6];
@@ -88,26 +112,12 @@ void GameDisassembler::jump_to_address_window() {
         }
     }
     
+    // Go to the address
     if(dialog.exec() == QInputDialog::Accepted) {
-        auto where_to = dialog.textValue();
-        std::uint16_t result;
-        std::uint16_t bank;
-        
-        this->debugger->retain_logs = true;
-        if(GB_debugger_evaluate(this->debugger->gameboy, where_to.toUtf8().data(), &result, nullptr)) {
-            auto &logs = this->debugger->retained_logs;
-            if(!logs.empty()) {
-                QMessageBox qmb(QMessageBox::Icon::Critical, "Error", logs.c_str());
-                logs.clear();
-            }
-            else {
-                QMessageBox qmb(QMessageBox::Icon::Critical, "Error", QString("Could not go to address ") + where_to);
-            }
+        auto where_to = this->evaluate_expression(dialog.textValue().toUtf8().data());
+        if(where_to.has_value()) {
+            this->go_to(*where_to);
         }
-        else {
-            this->go_to(result);
-        }
-        this->debugger->retain_logs = false;
     }
 }
 

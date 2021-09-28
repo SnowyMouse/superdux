@@ -50,6 +50,7 @@ public:
     void refresh_view();
 
     std::vector<Disassembly> disassemble_at_address(std::uint16_t address, std::uint8_t count);
+    std::optional<std::uint16_t> evaluate_expression(const char *expression);
     
 private:
     GameDebugger *debugger;
