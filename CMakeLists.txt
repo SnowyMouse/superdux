@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Multimedia REQUIRED)
 find_package(Python3 COMPONENTS Interpreter)
 
 include("sameboy.cmake")
@@ -26,5 +26,8 @@ add_executable(sameboy-qt
     ${BOOT_ROMS_HEADER}
 )
 
-target_include_directories(sameboy-qt PRIVATE "${SAMEBOY_DIR}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(sameboy-qt sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets)
+target_include_directories(sameboy-qt
+    PRIVATE "${SAMEBOY_DIR}"
+    PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
+)
+target_link_libraries(sameboy-qt sameboy-core ${SDL2_LIBRARIES} pthread  Qt5::Widgets Qt5::Multimedia)

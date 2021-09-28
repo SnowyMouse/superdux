@@ -10,8 +10,13 @@ extern "C" {
 #include <QPixmap>
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QIODevice>
+#include <QAudio>
 #include <vector>
 #include <chrono>
+
+class QAudioOutput;
+class QIODevice;
 
 class GameWindow : public QMainWindow {
     Q_OBJECT
@@ -24,13 +29,22 @@ public:
 private:
     using clock = std::chrono::steady_clock;
     
+    // Gameboy itself
     GB_gameboy_s gameboy;
+    void initialize_gameboy(GB_model_t model) noexcept;
+    
+    // Audio
+    bool muted = false;
+    char volume = 100;
+    
+    // Emulation
     bool paused = false;
     bool rom_loaded = false;
+    void game_loop();
     
+    // Video
     int scaling = 2;
     std::vector<QAction *> scaling_options;
-    
     bool vblank = false;
     QPixmap pixel_buffer_pixmap;
     QGraphicsPixmapItem *pixel_buffer_pixmap_item;
@@ -39,12 +53,9 @@ private:
     QGraphicsScene *pixel_buffer_scene;
     QGraphicsTextItem *fps_text = nullptr;
     QGraphicsTextItem *fps_text_shadow = nullptr;
-    
+    static void on_vblank(GB_gameboy_s *);
     void set_pixel_view_scaling(int scaling);
     void redraw_pixel_buffer();
-    void game_loop();
-    
-    static void on_vblank(GB_gameboy_s *);
     
     // For showing FPS
     bool show_fps = false;
@@ -53,7 +64,20 @@ private:
     int fps_numerator; // fps count
     void calculate_frame_rate() noexcept;
     
-    void initialize_gameboy(GB_model_t model) noexcept;
+    // Audio
+    QAudioOutput *audio_output;
+    QIODevice *audio_device;
+    static void on_sample(GB_gameboy_s *, GB_sample_t *);
+    std::vector<std::int16_t> sample_buffer;
+    void play_audio_buffer();
+    
+    void show_status_text(const char *text);
+    QGraphicsTextItem *status_text = nullptr;
+    QGraphicsTextItem *status_text_shadow = nullptr;
+    clock::time_point status_text_deletion;
+    std::vector<QAction *> volume_options;
+    
+    void show_new_volume_text();
     
 private slots:
     void action_set_scaling() noexcept;
@@ -61,6 +85,10 @@ private slots:
     void action_toggle_pause() noexcept;
     void action_open_rom() noexcept;
     void action_reset() noexcept;
+    void action_toggle_audio() noexcept;
+    
+    void action_set_volume();
+    void action_add_volume();
 };
 
 #endif

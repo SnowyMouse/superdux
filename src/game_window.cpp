@@ -6,6 +6,8 @@
 #include <QFontDatabase>
 #include <QFileDialog>
 #include <cstring>
+#include <QAudioDeviceInfo>
+#include <QAudioOutput>
 #include <chrono>
 
 #include <agb_boot.h>
@@ -66,17 +68,48 @@ GameWindow::GameWindow() {
     connect(reset, &QAction::triggered, this, &GameWindow::action_reset);
     reset->setIcon(GET_ICON("view-refresh"));
     
-    // View menu
-    auto *view_menu = bar->addMenu("View");
+    // Audio menu
+    auto *audio_menu = bar->addMenu("Audio");
+    auto *volume = audio_menu->addMenu("Volume");
+    
+    auto *raise_volume = volume->addAction("Increase volume");
+    raise_volume->setIcon(GET_ICON("audio-volume-high"));
+    raise_volume->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::Key_Up));
+    raise_volume->setData(10);
+    connect(raise_volume, &QAction::triggered, this, &GameWindow::action_add_volume);
+    
+    auto *reduce_volume = volume->addAction("Decrease volume");
+    reduce_volume->setIcon(GET_ICON("audio-volume-low"));
+    reduce_volume->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::Key_Down));
+    reduce_volume->setData(-10);
+    connect(reduce_volume, &QAction::triggered, this, &GameWindow::action_add_volume);
+    
+    volume->addSeparator();
+    for(int i = 100; i >= 0; i-=10) {
+        char text[5];
+        std::snprintf(text, sizeof(text), "%i%%", i);
+        auto *action = volume->addAction(text);
+        action->setData(i);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_volume);
+        action->setCheckable(true);
+        action->setChecked(i == this->volume);
+        this->volume_options.emplace_back(action);
+    }
+    auto *mute = audio_menu->addAction("Mute");
+    connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
+    mute->setIcon(GET_ICON("audio-volume-muted"));
+    mute->setCheckable(true);
+    
+    // Video menu
+    auto *video_menu = bar->addMenu("Video");
 
     // Add scaling options
-    auto *scaling = view_menu->addMenu("Scaling");
+    auto *scaling = video_menu->addMenu("Scaling");
     for(int i = 1; i <= 8; i *= 2) {
         char text[4];
         std::snprintf(text, sizeof(text), "%ix", i);
-        auto *action = new QAction(text, scaling);
+        auto *action = scaling->addAction(text);
         action->setData(i);
-        scaling->addAction(action);
         connect(action, &QAction::triggered, this, &GameWindow::action_set_scaling);
         action->setCheckable(true);
         action->setChecked(i == this->scaling);
@@ -84,9 +117,10 @@ GameWindow::GameWindow() {
         scaling_options.emplace_back(action);
     }
     
-    auto *toggle_fps = view_menu->addAction("Show FPS");
+    auto *toggle_fps = video_menu->addAction("Show FPS");
     connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
     toggle_fps->setCheckable(true);
+    
     
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
@@ -110,11 +144,114 @@ GameWindow::GameWindow() {
     central_widget->setLayout(layout);
     this->setCentralWidget(central_widget);
     
+    // Remove any garbage pixels
     this->redraw_pixel_buffer();
     
+    // Get the audio
+    QAudioFormat format = {};
+    format.setChannelCount(2);
+    format.setSampleRate(44100);
+    format.setSampleSize(16);
+    format.setCodec("audio/pcm");
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setSampleType(QAudioFormat::SignedInt);
+
+    // Check if it works
+    QAudioDeviceInfo info = QAudioDeviceInfo::defaultOutputDevice();
+    if(info.isFormatSupported(format)) {
+        int best_sample_rate = 0;
+        for(auto &i : info.supportedSampleRates()) {
+            if(i > best_sample_rate && i <= 96000) {
+                best_sample_rate = i;
+            }
+        }
+        format.setSampleRate(best_sample_rate);
+        
+        this->audio_output = new QAudioOutput(format, this);
+        this->audio_output->setNotifyInterval(1);
+        connect(this->audio_output, &QAudioOutput::notify, this, &GameWindow::play_audio_buffer); // play the audio buffer whenever possible
+        this->audio_device = this->audio_output->start();
+        
+        GB_set_sample_rate(&this->gameboy, best_sample_rate);
+        GB_apu_set_sample_callback(&this->gameboy, GameWindow::on_sample);
+        
+        sample_buffer.reserve(1024);
+    }
+    else {
+        std::fprintf(stderr, "Could not get an audio device. Audio will be disabled.\n");
+    }
+    
+    // Fire game_loop as often as possible
     QTimer *timer = new QTimer(this);
     timer->callOnTimeout(this, &GameWindow::game_loop);
     timer->start();
+}
+
+void GameWindow::action_set_volume() {
+    // Uses the user data from the sender to get volume
+    auto *action = qobject_cast<QAction *>(sender());
+    int volume = action->data().toInt(); 
+    this->volume = volume;
+    this->show_new_volume_text();
+}
+
+void GameWindow::action_add_volume() {
+    // Uses the user data from the sender to get volume delta
+    auto *action = qobject_cast<QAction *>(sender());
+    int volume = this->volume + action->data().toInt(); 
+    this->volume = std::max(std::min(volume, 100), 0);
+    this->show_new_volume_text();
+}
+
+void GameWindow::show_new_volume_text() {
+    char volume_text[256];
+    std::snprintf(volume_text, sizeof(volume_text), "Volume: %i%%", volume);
+    
+    this->show_status_text(volume_text);
+    
+    for(auto *i : this->volume_options) {
+        i->setChecked(volume == i->data().toInt());
+    }
+}
+
+
+void GameWindow::on_sample(GB_gameboy_s *gb, GB_sample_t *sample) {
+    auto *window = reinterpret_cast<GameWindow *>(GB_get_user_data(gb));
+    
+    if(window->muted) {
+        return;
+    }
+    
+    auto &buffer = window->sample_buffer;
+    
+    if(window->volume == 100) {
+        // If volume is 100, do not scale anything
+        buffer.emplace_back(sample->left);
+        buffer.emplace_back(sample->right);
+    }
+    else {
+        // Scale samples
+        double scale = QAudio::convertVolume(window->volume / 100.0, QAudio::VolumeScale::LogarithmicVolumeScale, QAudio::VolumeScale::LinearVolumeScale);
+        buffer.emplace_back(sample->left * scale);
+        buffer.emplace_back(sample->right * scale);
+    }
+    
+    window->play_audio_buffer();
+}
+
+void GameWindow::play_audio_buffer() {
+    auto &buffer = this->sample_buffer;
+    
+    std::size_t sample_count = buffer.size();
+    auto *sample_data = buffer.data();
+    
+    std::size_t bytes_available = sample_count * sizeof(*sample_data);
+    std::size_t period_size = this->audio_output->periodSize() * sizeof(*sample_data);
+    
+    if(bytes_available > period_size) {
+        this->audio_device->write(reinterpret_cast<const char *>(sample_data), period_size);
+        buffer.erase(buffer.begin(), buffer.begin() + period_size / sizeof(*sample_data));
+    }
 }
 
 void GameWindow::load_rom(const char *rom_path) noexcept {
@@ -171,12 +308,22 @@ void GameWindow::on_vblank(GB_gameboy_s *gb) {
 }
 
 void GameWindow::game_loop() {
+    auto now = clock::now();
+    
+    if(this->status_text != nullptr && now > this->status_text_deletion) {
+        delete this->status_text;
+        delete this->status_text_shadow;
+        
+        this->status_text = nullptr;
+        this->status_text_shadow = nullptr;
+    }
+    
     if(!this->rom_loaded || this->paused) {
         return;
     }
     
     // Run until vblank occurs or we take waaaay too long (e.g. 50 ms)
-    auto timeout = clock::now() + std::chrono::milliseconds(50);
+    auto timeout = now + std::chrono::milliseconds(50);
     
     while(!this->vblank && clock::now() < timeout) {
         GB_run(&this->gameboy);
@@ -237,6 +384,35 @@ void GameWindow::action_open_rom() noexcept {
 
 void GameWindow::action_reset() noexcept {
     GB_reset(&this->gameboy);
+}
+
+void GameWindow::action_toggle_audio() noexcept {
+    this->muted = !this->muted;
+    this->sample_buffer.clear();
+    
+    if(this->muted) {
+        this->show_status_text("Muted");
+    }
+    else {
+        this->show_status_text("Unmuted");
+    }
+}
+
+void GameWindow::show_status_text(const char *text) {
+    if(this->status_text) {
+        delete this->status_text;
+        delete this->status_text_shadow;
+    }
+    
+    this->status_text_shadow = this->pixel_buffer_scene->addText(text, QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    status_text_shadow->setDefaultTextColor(QColor::fromRgb(0,0,0));
+    status_text_shadow->setPos(1, 16);
+    
+    this->status_text = this->pixel_buffer_scene->addText(text, QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    status_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
+    status_text->setPos(0, 15);
+    
+    this->status_text_deletion = clock::now() + std::chrono::seconds(3);
 }
 
 void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
