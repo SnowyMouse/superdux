@@ -330,6 +330,8 @@ void GameWindow::play_audio_buffer() {
 }
 
 void GameWindow::load_rom(const char *rom_path) noexcept {
+    this->save_if_loaded();
+    
     this->rom_loaded = true;
     GB_load_rom(&this->gameboy, rom_path);
     save_path = std::filesystem::path(rom_path).replace_extension(".sav").string();
@@ -460,6 +462,7 @@ void GameWindow::action_open_rom() noexcept {
 }
 
 void GameWindow::action_reset() noexcept {
+    this->save_if_loaded();
     GB_reset(&this->gameboy);
 }
 
@@ -629,13 +632,16 @@ void GameWindow::action_toggle_pause_in_menu() noexcept {
     this->pause_on_menu = !this->pause_on_menu;
 }
 
-void GameWindow::action_save_battery() noexcept {
+void GameWindow::save_if_loaded() noexcept {
     if(this->rom_loaded) {
         GB_save_battery(&this->gameboy, save_path.c_str());
-        this->show_status_text("Saved cartridge RAM");
     }
+}
+    
+void GameWindow::action_save_battery() noexcept {
+    this->save_if_loaded();
 }
 
 GameWindow::~GameWindow() {
-    this->action_save_battery();
+    this->save_if_loaded();
 }

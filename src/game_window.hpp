@@ -96,6 +96,7 @@ private:
     
     // Save path
     std::string save_path;
+    void save_if_loaded() noexcept;
     
 private slots:
     void action_set_scaling() noexcept;
