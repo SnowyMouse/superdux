@@ -8,14 +8,23 @@
 #include <QCoreApplication>
 #include <QHBoxLayout>
 #include <QMenuBar>
+#include <QToolBar>
 #include <QTimer>
 
 GameDebugger::GameDebugger() {
-    QMenuBar *bar = new QMenuBar(this);
-    this->setMenuBar(bar);
+    QToolBar *bar = new QToolBar(this);
+    bar->setMovable(false);
+    this->addToolBar(bar);
+    
+    this->break_button = bar->addAction("Break");
+    this->break_button->setEnabled(true);
+    connect(this->break_button, &QAction::triggered, this, &GameDebugger::break_now);
+    
+    this->continue_button = bar->addAction("Continue");
+    this->continue_button->setEnabled(false);
+    connect(this->continue_button, &QAction::triggered, this, &GameDebugger::continue_break);
     
     auto *central_widget = new QWidget(this);
-    
     auto *layout = new QHBoxLayout(central_widget);
     layout->addWidget((this->disassembler = new GameDisassembler(this)));
     
@@ -26,16 +35,37 @@ GameDebugger::GameDebugger() {
     this->setWindowTitle("Debugger");
 }
 
+void GameDebugger::break_now() {
+    GB_debugger_break(this->gameboy);
+}
+
+void GameDebugger::continue_break() {
+    char *cmd = nullptr;
+    asprintf(&cmd, "continue");
+    GB_debugger_execute_command(this->gameboy, cmd);
+    this->debug_breakpoint_pause = false;
+}
+
 char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     // TODO: don't do this messy thing
     auto *debugger = resolve_debugger(gb);
     auto &pause = debugger->debug_breakpoint_pause;
     pause = true;
+    debugger->break_button->setEnabled(false);
+    
+    // Figure out the address
+    std::uint16_t first_address;
+    debugger->disassembler->disassemble_at_address(std::nullopt, 5, first_address);
     
     while(pause) {
         QCoreApplication::processEvents();
+        debugger->disassembler->current_address = first_address;
         debugger->refresh_view();
+        debugger->continue_button->setEnabled(true);
     }
+    
+    debugger->break_button->setEnabled(true);
+    debugger->continue_button->setEnabled(false);
     
     return nullptr;
 }

@@ -49,11 +49,15 @@ public:
     void add_breakpoint();
     void refresh_view();
     
+    
+    
     void wheelEvent(QWheelEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
 
-    std::vector<Disassembly> disassemble_at_address(std::uint16_t address, std::uint8_t count);
+    std::vector<Disassembly> disassemble_at_address(std::optional<std::uint16_t> address, std::uint8_t count, std::uint16_t &first_address);
     std::optional<std::uint16_t> evaluate_expression(const char *expression);
+    
+    
     
 private:
     GameDebugger *debugger;

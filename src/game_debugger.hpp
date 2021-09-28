@@ -37,6 +37,12 @@ private:
     static char *input_callback(GB_gameboy_s *) noexcept;
     bool debug_breakpoint_pause = false;
     
+    void break_now();
+    void continue_break();
+    
+    QAction *break_button;
+    QAction *continue_button;
+    
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
     void refresh_view();
     
