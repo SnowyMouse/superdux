@@ -344,6 +344,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     GB_load_rom(&this->gameboy, rom_path);
     save_path = std::filesystem::path(rom_path).replace_extension(".sav").string();
     GB_load_battery(&this->gameboy, save_path.c_str());
+    GB_debugger_load_symbol_file(&this->gameboy, std::filesystem::path(rom_path).replace_extension(".sym").string().c_str());
     GB_reset(&this->gameboy);
 }
 
