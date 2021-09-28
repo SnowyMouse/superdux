@@ -77,10 +77,13 @@ private:
     QGraphicsTextItem *status_text_shadow = nullptr;
     clock::time_point status_text_deletion;
     std::vector<QAction *> volume_options;
-    
-    QGamepad *gamepad = nullptr;
-    
     void show_new_volume_text();
+    
+    // Input
+    QGamepad *gamepad = nullptr;
+    void keyPressEvent(QKeyEvent *) override;
+    void keyReleaseEvent(QKeyEvent *) override;
+    void handle_keyboard_key(QKeyEvent *event, bool press);
     
 private slots:
     void action_set_scaling() noexcept;

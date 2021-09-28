@@ -9,6 +9,7 @@
 #include <QAudioDeviceInfo>
 #include <QAudioOutput>
 #include <QGamepad>
+#include <QKeyEvent>
 #include <QGamepadManager>
 #include <chrono>
 
@@ -186,6 +187,8 @@ GameWindow::GameWindow() {
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
     this->action_gamepads_changed();
     
+    this->grabKeyboard();
+    
     // Fire game_loop as often as possible
     QTimer *timer = new QTimer(this);
     timer->callOnTimeout(this, &GameWindow::game_loop);
@@ -218,7 +221,6 @@ void GameWindow::show_new_volume_text() {
         i->setChecked(volume == i->data().toInt());
     }
 }
-
 
 void GameWindow::on_sample(GB_gameboy_s *gb, GB_sample_t *sample) {
     auto *window = reinterpret_cast<GameWindow *>(GB_get_user_data(gb));
@@ -497,4 +499,50 @@ void GameWindow::action_gamepad_axis_y(double axis) noexcept {
         GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, axis > 0.5);
         GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, false);
     }
+}
+
+// TODO: Add configuration. 
+void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
+    switch(event->key()) {
+        case Qt::Key::Key_Up:
+            action_gamepad_up(press);
+            break;
+        case Qt::Key::Key_Down:
+            action_gamepad_down(press);
+            break;
+        case Qt::Key::Key_Left:
+            action_gamepad_left(press);
+            break;
+        case Qt::Key::Key_Right:
+            action_gamepad_right(press);
+            break;
+        case Qt::Key::Key_X:
+            action_gamepad_a(press);
+            break;
+        case Qt::Key::Key_Z:
+            action_gamepad_b(press);
+            break;
+        case Qt::Key::Key_Return:
+            action_gamepad_start(press);
+            break;
+        case Qt::Key::Key_Shift:
+            action_gamepad_select(press);
+            break;
+        default:
+            break;
+    }
+}
+
+void GameWindow::keyPressEvent(QKeyEvent *event) {
+    if(event->isAutoRepeat()) {
+        return;
+    }
+    handle_keyboard_key(event, true);
+}
+
+void GameWindow::keyReleaseEvent(QKeyEvent *event) {
+    if(event->isAutoRepeat()) {
+        return;
+    }
+    handle_keyboard_key(event, false);
 }
