@@ -33,7 +33,8 @@ std::optional<std::uint16_t> GameDisassembler::evaluate_expression(const char *e
     std::optional<std::uint16_t> result;
     std::uint16_t result_maybe;
     
-    this->debugger->retain_logs = true;
+    this->debugger->push_retain_logs();
+    
     if(GB_debugger_evaluate(this->debugger->gameboy, expression, &result_maybe, nullptr)) {
         auto &logs = this->debugger->retained_logs;
         if(!logs.empty()) {
@@ -47,7 +48,7 @@ std::optional<std::uint16_t> GameDisassembler::evaluate_expression(const char *e
     else {
         result = result_maybe;
     }
-    this->debugger->retain_logs = false;
+    this->debugger->pop_retain_logs();
     
     return result;
 }
@@ -225,7 +226,7 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
     
     // Tell sameboy to disassemble at the address and capture its output.
     // Doing it this way is horrible. Let's do it anyway.
-    this->debugger->retain_logs = true;
+    this->debugger->push_retain_logs();
     GB_cpu_disassemble(this->debugger->gameboy, address, count);
     auto lines = QString::fromStdString(this->debugger->retained_logs).split("\n");
     this->debugger->retained_logs.clear();
@@ -282,7 +283,7 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
         instruction.raw_result = l;
     }
     
-    this->debugger->retain_logs = false;
+    this->debugger->pop_retain_logs();
     
     return returned_instructions;
 }

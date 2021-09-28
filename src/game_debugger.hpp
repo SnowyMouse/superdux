@@ -28,7 +28,9 @@ public:
 private:
     GameDisassembler *disassembler;
     
-    bool retain_logs = false;
+    void push_retain_logs() { this->retain_logs++; }
+    void pop_retain_logs() { this->retain_logs--; }
+    int retain_logs = 0;
     std::string retained_logs;
     GB_gameboy_s *gameboy = nullptr;
     static GameDebugger *resolve_debugger(GB_gameboy_s *gb) noexcept;

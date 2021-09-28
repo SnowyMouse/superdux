@@ -14,10 +14,10 @@ GameDebugger::GameDebugger() {
     this->setMenuBar(bar);
     
     auto *central_widget = new QWidget(this);
-    auto *layout = new QHBoxLayout(central_widget);
     
-    this->disassembler = new GameDisassembler(this);
-    layout->addWidget(this->disassembler);
+    auto *layout = new QHBoxLayout(central_widget);
+    layout->addWidget((this->disassembler = new GameDisassembler(this)));
+    
     
     this->setCentralWidget(central_widget);
     this->setMinimumHeight(600);
@@ -48,7 +48,7 @@ GameDebugger *GameDebugger::resolve_debugger(GB_gameboy_s *gb) noexcept {
 
 void GameDebugger::log_callback(GB_gameboy_s *gb, const char *text, GB_log_attributes) {
     auto *debugger_window = resolve_debugger(gb);
-    if(debugger_window->retain_logs) {
+    if(debugger_window->retain_logs > 0) {
         debugger_window->retained_logs += text;
         return;
     }
