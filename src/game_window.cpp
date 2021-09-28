@@ -46,12 +46,12 @@ static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) {
             GB_load_boot_rom_from_buffer(gb, cgb_boot, sizeof(cgb_boot));
             break;
         default:
-            std::fprintf(stderr, "cannot find a suitable boot rom\n");
+            print_debug_message("Unable to find a suitable boot ROM for GB_boot_rom_t type %i\n", type);
             break;
     }
 }
 
-static std::uint32_t rgb_encode(GB_gameboy_t *gb, uint8_t r, uint8_t g, uint8_t b) {
+static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b) {
     return 0xFF000000 | (r << 16) | (g << 8) | (b << 0);
 }
 
@@ -239,7 +239,7 @@ GameWindow::GameWindow() {
         sample_buffer.reserve(1024);
     }
     else {
-        std::fprintf(stderr, "Could not get an audio device. Audio will be disabled.\n");
+        print_debug_message("Could not get an audio device. Audio will be disabled.\n");
     }
     
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
@@ -425,8 +425,6 @@ void GameWindow::game_loop() {
 void GameWindow::action_set_scaling() noexcept {
     // Uses the user data from the sender to get scaling
     auto *action = qobject_cast<QAction *>(sender());
-        
-    int rescale = action->data().toInt(); 
     this->set_pixel_view_scaling(action->data().toInt());
 }
 
