@@ -137,16 +137,16 @@ GameWindow::GameWindow() {
     
     // Channel count
     auto *channel_count = audio_menu->addMenu("Channel count");
-    auto *mono = channel_count->addAction("Mono");
-    mono->setData(1);
-    mono->setCheckable(true);
-    mono->setChecked(this->mono);
-    connect(mono, &QAction::triggered, this, &GameWindow::action_set_channel_count);
     auto *stereo = channel_count->addAction("Stereo");
     stereo->setData(2);
     stereo->setCheckable(true);
     stereo->setChecked(!this->mono);
     connect(stereo, &QAction::triggered, this, &GameWindow::action_set_channel_count);
+    auto *mono = channel_count->addAction("Mono");
+    mono->setData(1);
+    mono->setCheckable(true);
+    mono->setChecked(this->mono);
+    connect(mono, &QAction::triggered, this, &GameWindow::action_set_channel_count);
     this->channel_count_options = { mono, stereo };
     
     // Video menu
@@ -161,7 +161,7 @@ GameWindow::GameWindow() {
 
     // Add scaling options
     auto *scaling = video_menu->addMenu("Scaling");
-    for(int i = 1; i <= 8; i *= 2) {
+    for(int i = 8; i >= 1; i /= 2) {
         char text[4];
         std::snprintf(text, sizeof(text), "%ix", i);
         auto *action = scaling->addAction(text);
