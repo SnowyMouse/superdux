@@ -1,7 +1,7 @@
-gamechu (c) Snowy Mouse
+Super SameBoy (c) Snowy Mouse
 
-gamechu is licensed under version 3.0 of the GNU GPL as published by the Free
-Software Foundation.
+Super SameBoy is licensed under version 3.0 of the GNU GPL as published by the
+Free Software Foundation.
 
 See COPYING for more info.
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project("sameboy-qt"
+project("super-sameboy"
     LANGUAGES C CXX
 )
 
@@ -21,21 +21,21 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # And lastly our executable
-add_executable(sameboy-qt
+add_executable(super-sameboy
     ${QT_FILES}
     ${BOOT_ROMS_HEADER}
 )
 
-target_include_directories(sameboy-qt
+target_include_directories(super-sameboy
     PRIVATE "${SAMEBOY_DIR}"
     PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
 if(CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
-    target_compile_definitions(sameboy-qt
+    target_compile_definitions(super-sameboy
         PRIVATE DEBUG
     )
 endif()
 
-target_link_libraries(sameboy-qt sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets Qt5::Multimedia Qt5::Gamepad)
+target_link_libraries(super-sameboy sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets Qt5::Multimedia Qt5::Gamepad)

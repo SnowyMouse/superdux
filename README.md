@@ -1,7 +1,7 @@
-# gamechu
+# Super SameBoy
 
-GameChu is a Qt-based interface of SameBoy, a free, highly accurate Game Boy and
-Game Boy Color emulator.
+Super SameBoy is a Qt-based interface of SameBoy, a free, highly accurate Game
+Boy and Game Boy Color emulator.
 
 SameBoy can be found at https://github.com/LIJI32/SameBoy
 
