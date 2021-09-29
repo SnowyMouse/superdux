@@ -8,12 +8,21 @@ extern "C" {
 
 
 int main() {
-    if(get_gb_struct_size_c() != get_gb_struct_size_cxx()) {
-        std::fprintf(stderr, "Struct size is different!\n");
-        std::fprintf(stderr, "C (0x%08zX bytes) vs C++ (0x%08zX bytes)\n", get_gb_struct_size_c(), get_gb_struct_size_cxx());
-        return EXIT_FAILURE;
+    auto c = get_gb_struct_size_c();
+    auto cxx = get_gb_struct_size_cxx();
+    
+    if(cxx >= c) {
+        return EXIT_SUCCESS;
+    }
+    
+    std::fprintf(stderr, "Difference found: C (0x%08zX bytes) vs C++ (0x%08zX bytes)\n", get_gb_struct_size_c(), get_gb_struct_size_cxx());
+    
+    if(cxx > c) {
+        std::fprintf(stderr, "The CXX struct is larger, so it is most likely still fine.\n");
+        return EXIT_SUCCESS;
     }
     else {
-        return EXIT_SUCCESS;
+        std::fprintf(stderr, "The CXX struct is smaller which will not work.\n");
+        return EXIT_FAILURE;
     }
 }

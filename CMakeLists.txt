@@ -40,3 +40,23 @@ if(CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
 endif()
 
 target_link_libraries(super-sameboy sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets Qt5::Multimedia Qt5::Gamepad)
+
+
+
+# Test struct size - struct size for GB seems different on C vs C++ on GCC (not
+# clang). This is fine provided the struct is large enough on C++ vs C, but if
+# it's smaller, then we risk SameBoy accessing data outside of the allocated
+# data.
+add_executable(gb-struct-size-test
+    test/gb_struct_size/main.cpp
+    test/gb_struct_size/test.cpp
+    test/gb_struct_size/test.c
+)
+
+add_custom_target(gb-struct-size-do ALL gb-struct-size-test
+    COMMENT "Test if GB struct is large enough on C++"
+)
+
+target_include_directories(gb-struct-size-test
+    PRIVATE "${SAMEBOY_DIR}"
+)
