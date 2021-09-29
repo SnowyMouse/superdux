@@ -27,6 +27,14 @@
 #define print_debug_message(...) (void(0))
 #endif
 
+class GamePixelBufferView : public QGraphicsView {
+public:
+    GamePixelBufferView(QWidget *parent) : QGraphicsView(parent) {}
+    void keyPressEvent(QKeyEvent *event) override {
+        event->ignore();
+    }
+};
+
 static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) {
     switch(type) {
         case GB_BOOT_ROM_DMG0:
@@ -189,8 +197,7 @@ GameWindow::GameWindow() {
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
     
-    this->pixel_buffer_view = new QGraphicsView(central_widget);
-    this->pixel_buffer_view->setFocusPolicy(Qt::FocusPolicy::NoFocus);
+    this->pixel_buffer_view = new GamePixelBufferView(central_widget);
     this->pixel_buffer_scene = new QGraphicsScene(central_widget);
     this->pixel_buffer_pixmap_item = this->pixel_buffer_scene->addPixmap(this->pixel_buffer_pixmap);
     this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
