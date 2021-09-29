@@ -140,9 +140,9 @@ GameDebugger::GameDebugger() {
     
     // Done
     layout->addWidget(this->right_view);
-    this->right_view->setVisible(false);
     this->right_view->setMaximumWidth(300);
     this->right_view->setMinimumWidth(300);
+    this->right_view->setEnabled(false);
     
     this->setWindowTitle("Debugger");
 }
@@ -181,7 +181,7 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     
     // Figure out the address
     debugger->disassembler->set_address_to_current_breakpoint();
-    debugger->right_view->setVisible(true);
+    debugger->right_view->setEnabled(true);
     
     // Enable these
     debugger->continue_button->setEnabled(true);
@@ -194,7 +194,7 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
         debugger->refresh_view();
     }
     
-    debugger->right_view->setVisible(false);
+    debugger->right_view->setEnabled(false);
     debugger->break_button->setEnabled(true);
     debugger->continue_button->setEnabled(false);
     debugger->step_button->setEnabled(false);
