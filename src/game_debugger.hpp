@@ -12,6 +12,7 @@ extern "C" {
 
 class GameDisassembler;
 class GameWindow;
+class QLineEdit;
 
 class GameDebugger : public QMainWindow {
     friend GameDisassembler;
@@ -27,6 +28,9 @@ public:
     
 private:
     GameDisassembler *disassembler;
+    
+    // Set the preferred font for the debugger
+    QFont table_font;
     
     void push_retain_logs() { this->retain_logs++; }
     void pop_retain_logs() { this->retain_logs--; }
@@ -44,14 +48,23 @@ private:
     void action_step();
     void action_step_over();
     void action_finish();
+    void action_update_registers() noexcept;
     
     std::string command_to_execute_on_unbreak;
+    
+    QWidget *register_view;
+    QWidget *right_view;
     
     QAction *break_button;
     QAction *continue_button;
     QAction *step_button;
     QAction *step_over_button;
     QAction *finish_fn_button;
+    
+    QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_pc;
+    void refresh_registers();
+    
+    std::optional<std::uint16_t> evaluate_expression(const char *expression);
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
     void refresh_view();

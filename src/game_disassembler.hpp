@@ -3,6 +3,7 @@
 
 #include <QTableWidget>
 #include <optional>
+#include <QFont>
 
 class GameDebugger;
 
@@ -26,10 +27,6 @@ public:
     std::uint16_t next_address_short = 0;
     std::uint16_t next_address_medium = 0;
     std::uint16_t next_address_far = 0;
-    
-    // Font of the disassembler text
-    QFont text_font;
-    QFont text_font_bold;
     
     struct Disassembly {
         std::optional<std::uint16_t> address;
@@ -58,7 +55,6 @@ public:
     void keyPressEvent(QKeyEvent *event) override;
 
     std::vector<Disassembly> disassemble_at_address(std::optional<std::uint16_t> address, std::uint8_t count, std::uint16_t &first_address);
-    std::optional<std::uint16_t> evaluate_expression(const char *expression);
     
     
     

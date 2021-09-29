@@ -1,3 +1,5 @@
+#define GB_INTERNAL // Required to get the PC register since registers aren't yet exposed by SameBoy
+
 #include <QMenu>
 #include <QAction>
 #include <QInputDialog>
@@ -6,26 +8,18 @@
 #include <QHeaderView>
 #include <QScrollBar>
 #include <QKeyEvent>
-#include <QFontDatabase>
 
 #include "game_disassembler.hpp"
 #include "game_debugger.hpp"
 
 GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent), debugger(parent) {
-    this->text_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    this->text_font.setPixelSize(14);
-    
-    this->text_font_bold = this->text_font;
-    this->text_font_bold.setBold(true);
-    this->text_font_bold.setWeight(700);
-    
     this->setColumnCount(1);
     this->horizontalHeader()->setStretchLastSection(true);
     this->horizontalHeader()->hide();
     this->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    this->verticalHeader()->setMaximumSectionSize(this->text_font.pixelSize() + 4);
-    this->verticalHeader()->setMinimumSectionSize(this->text_font.pixelSize() + 4);
-    this->verticalHeader()->setDefaultSectionSize(this->text_font.pixelSize() + 4);
+    this->verticalHeader()->setMaximumSectionSize(this->debugger->table_font.pixelSize() + 4);
+    this->verticalHeader()->setMinimumSectionSize(this->debugger->table_font.pixelSize() + 4);
+    this->verticalHeader()->setDefaultSectionSize(this->debugger->table_font.pixelSize() + 4);
     this->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     this->verticalHeader()->hide();
     this->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -33,7 +27,7 @@ GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent),
     this->setAlternatingRowColors(true);
     this->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     this->setShowGrid(false);
-    this->setFont(this->text_font);
+    this->setFont(this->debugger->table_font);
     
     this->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &GameDisassembler::customContextMenuRequested, this, &GameDisassembler::show_context_menu);
@@ -41,30 +35,6 @@ GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent),
 }
 
 GameDisassembler::~GameDisassembler() {}
-
-std::optional<std::uint16_t> GameDisassembler::evaluate_expression(const char *expression) {
-    std::optional<std::uint16_t> result;
-    std::uint16_t result_maybe;
-    
-    this->debugger->push_retain_logs();
-    
-    if(GB_debugger_evaluate(this->debugger->gameboy, expression, &result_maybe, nullptr)) {
-        auto &logs = this->debugger->retained_logs;
-        if(!logs.empty()) {
-            QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", logs.c_str()).exec();
-            logs.clear();
-        }
-        else {
-            QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", QString("Could not evaulate expression ") + expression).exec();
-        }
-    }
-    else {
-        result = result_maybe;
-    }
-    this->debugger->pop_retain_logs();
-    
-    return result;
-}
 
 void GameDisassembler::go_to(std::uint16_t where) {
     this->history.emplace_back(this->current_address);
@@ -82,17 +52,14 @@ void GameDisassembler::go_back() {
 }
 
 void GameDisassembler::follow_address() {
-    auto where = this->evaluate_expression(this->last_disassembly->follow_address.toUtf8().data());
+    auto where = this->debugger->evaluate_expression(this->last_disassembly->follow_address.toUtf8().data());
     if(where.has_value()) {
         this->go_to(*where);
     }
 }
 
 void GameDisassembler::set_address_to_current_breakpoint() {
-    std::uint16_t first_address;
-    if(this->disassemble_at_address(std::nullopt, 5, first_address).size() > 0) {
-        this->current_address = first_address;
-    }
+    this->current_address = this->debugger->gameboy->pc;
 }
 
 void GameDisassembler::add_breakpoint() {
@@ -167,7 +134,7 @@ void GameDisassembler::jump_to_address_window() {
     
     // Go to the address
     if(dialog.exec() == QInputDialog::Accepted) {
-        auto where_to = this->evaluate_expression(dialog.textValue().toUtf8().data());
+        auto where_to = this->debugger->evaluate_expression(dialog.textValue().toUtf8().data());
         if(where_to.has_value()) {
             this->go_to(*where_to);
         }
@@ -220,7 +187,7 @@ void GameDisassembler::refresh_view() {
         this->clear();
     }
     
-    auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->text_font.pixelSize() + 1));
+    auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->debugger->table_font.pixelSize() + 1));
     this->setRowCount(query_rows);
     std::uint16_t first_address;
     this->disassembly = this->disassemble_at_address(this->current_address, query_rows, first_address);
@@ -249,12 +216,6 @@ void GameDisassembler::refresh_view() {
     for(std::size_t row = 0; row < disassembly_count; row++) {
         auto &d = this->disassembly[row];
         auto *item = new QTableWidgetItem(d.raw_result);
-        if(d.is_marker) {
-            item->setFont(this->text_font_bold);
-        }
-        else {
-            item->setFont(this->text_font);
-        }
         item->setData(Qt::UserRole, static_cast<unsigned int>(row));
         item->setFlags(item->flags() & ~Qt::ItemIsEditable);
         this->setItem(row, 0, item);
