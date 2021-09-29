@@ -34,11 +34,11 @@ private:
     // Set the preferred font for the debugger
     QFont table_font;
     
+    GB_gameboy_s *gameboy = nullptr;
     void push_retain_logs() { this->retain_logs++; }
     void pop_retain_logs() { this->retain_logs--; }
     int retain_logs = 0;
     std::string retained_logs;
-    GB_gameboy_s *gameboy = nullptr;
     static GameDebugger *resolve_debugger(GB_gameboy_s *gb) noexcept;
     static char *input_callback(GB_gameboy_s *) noexcept;
     bool debug_breakpoint_pause = false;

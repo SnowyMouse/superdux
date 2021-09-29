@@ -19,7 +19,7 @@
 #include <QScrollBar>
 #include <QMouseEvent>
 
-static_assert(sizeof(GB_gameboy_internal_s) == 0x0012688);
+#include "gb_proxy.h"
 
 class GameDebuggerTable : public QTableWidget {
 public:
@@ -30,17 +30,18 @@ public:
         auto *item = this->itemAt(event->pos());
         if(item) {
             int r = item->data(Qt::UserRole).toInt();
-            auto *gb = reinterpret_cast<GB_gameboy_internal_s *>(this->window->gameboy);
-            auto bt_size = gb->backtrace_size;
+            auto bt_size = get_gb_backtrace_size(this->window->gameboy);
             
             // Go there
             if(r >= 0 && r <= bt_size) {
-                auto addr = gb->backtrace_returns[bt_size - r].addr;
-                std::printf("%04X\n", addr);
+                std::uint16_t addr;
                 
                 // Topmost should just be the current instruction since that's what is shown
                 if(r == 0) {
-                    addr = gb->pc;
+                    addr = get_16_bit_gb_register(this->window->gameboy, gbz80_register::GBZ80_REG_PC);
+                }
+                else {
+                    addr = get_gb_backtrace_address(this->window->gameboy, bt_size - r);
                 }
                 
                 this->window->disassembler->go_to(addr);
@@ -234,22 +235,22 @@ void GameDebugger::refresh_view() {
     this->disassembler->refresh_view();
     
     if(this->right_view->isVisible()) {
-        #define PROCESS_REGISTER_FIELD(name, field, fmt) {\
+        #define PROCESS_REGISTER_FIELD(name, size, field, fmt) {\
             char str[8]; \
-            std::snprintf(str, sizeof(str), fmt, reinterpret_cast<GB_gameboy_internal_s *>(this->gameboy)->name); \
+            std::snprintf(str, sizeof(str), fmt, get_##size##_bit_gb_register(this->gameboy, gbz80_register::GBZ80_REG_##name)); \
             this->field->blockSignals(true); \
             this->field->setText(str); \
             this->field->blockSignals(false); \
         }
 
-        PROCESS_REGISTER_FIELD(a, register_a, "$%02x");
-        PROCESS_REGISTER_FIELD(b, register_b, "$%02x");
-        PROCESS_REGISTER_FIELD(c, register_c, "$%02x");
-        PROCESS_REGISTER_FIELD(d, register_d, "$%02x");
-        PROCESS_REGISTER_FIELD(e, register_e, "$%02x");
-        PROCESS_REGISTER_FIELD(f, register_f, "$%02x");
-        PROCESS_REGISTER_FIELD(hl, register_hl, "$%04x");
-        PROCESS_REGISTER_FIELD(pc, register_pc, "$%04x");
+        PROCESS_REGISTER_FIELD(A, 8, register_a, "$%02x");
+        PROCESS_REGISTER_FIELD(B, 8, register_b, "$%02x");
+        PROCESS_REGISTER_FIELD(C, 8, register_c, "$%02x");
+        PROCESS_REGISTER_FIELD(D, 8, register_d, "$%02x");
+        PROCESS_REGISTER_FIELD(E, 8, register_e, "$%02x");
+        PROCESS_REGISTER_FIELD(F, 8, register_f, "$%02x");
+        PROCESS_REGISTER_FIELD(HL, 16, register_hl, "$%04x");
+        PROCESS_REGISTER_FIELD(PC, 16, register_pc, "$%04x");
         
         #undef PROCESS_REGISTER_FIELD
         
@@ -282,20 +283,20 @@ void GameDebugger::action_update_registers() noexcept {
         return;
     }
     
-    #define PROCESS_REGISTER_FIELD(name, field) {\
+    #define PROCESS_REGISTER_FIELD(name, size, field) {\
         auto value = this->evaluate_expression(this->field->text().toUtf8().data());\
         if(value.has_value()) {\
-            reinterpret_cast<GB_gameboy_internal_s *>(this->gameboy)->name = *value;\
+            set_##size##_bit_gb_register(this->gameboy, gbz80_register::GBZ80_REG_##name, *value);\
         }\
     }
 
-    PROCESS_REGISTER_FIELD(a, register_a);
-    PROCESS_REGISTER_FIELD(b, register_b);
-    PROCESS_REGISTER_FIELD(c, register_c);
-    PROCESS_REGISTER_FIELD(d, register_d);
-    PROCESS_REGISTER_FIELD(e, register_e);
-    PROCESS_REGISTER_FIELD(f, register_f);
-    PROCESS_REGISTER_FIELD(hl, register_hl);
+    PROCESS_REGISTER_FIELD(A, 8, register_a);
+    PROCESS_REGISTER_FIELD(B, 8, register_b);
+    PROCESS_REGISTER_FIELD(C, 8, register_c);
+    PROCESS_REGISTER_FIELD(D, 8, register_d);
+    PROCESS_REGISTER_FIELD(E, 8, register_e);
+    PROCESS_REGISTER_FIELD(F, 16, register_f);
+    PROCESS_REGISTER_FIELD(HL, 16, register_hl);
     //PROCESS_REGISTER_FIELD(pc, register_pc); // changing this is very bad
     
     #undef PROCESS_REGISTER_FIELD

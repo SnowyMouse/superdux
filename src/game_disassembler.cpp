@@ -7,6 +7,7 @@
 #include <QScrollBar>
 #include <QKeyEvent>
 
+#include "gb_proxy.h"
 #include "game_disassembler.hpp"
 #include "game_debugger.hpp"
 
@@ -43,7 +44,7 @@ void GameDisassembler::follow_address() {
 }
 
 void GameDisassembler::set_address_to_current_breakpoint() {
-    this->current_address = reinterpret_cast<GB_gameboy_internal_s *>(this->debugger->gameboy)->pc;
+    this->current_address = get_16_bit_gb_register(this->debugger->gameboy, gbz80_register::GBZ80_REG_PC);
 }
 
 void GameDisassembler::add_breakpoint() {

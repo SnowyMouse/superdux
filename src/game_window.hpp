@@ -114,7 +114,6 @@ private:
     QMenu *recent_roms_menu;
     
     void update_recent_roms_list();
-    
     void closeEvent(QCloseEvent *) override;
     
 private slots:
