@@ -663,18 +663,38 @@ void GameWindow::action_toggle_pause_in_menu() noexcept {
     this->pause_on_menu = !this->pause_on_menu;
 }
 
-void GameWindow::save_if_loaded() noexcept {
+bool GameWindow::save_if_loaded() noexcept {
     if(this->rom_loaded) {
-        GB_save_battery(&this->gameboy, save_path.c_str());
-        print_debug_message("Saved cartridge RAM to %s\n", save_path.c_str());
+        if(!GB_save_battery(&this->gameboy, this->save_path.c_str())) {
+            print_debug_message("Saved cartridge RAM to %s\n", save_path.c_str());
+            return true;
+        }
+        else {
+            print_debug_message("Failed to save %s\n", save_path.c_str());
+            return false;
+        }
     }
     else {
         print_debug_message("Save cancelled since no ROM was loaded\n");
+        return false;
     }
 }
     
 void GameWindow::action_save_battery() noexcept {
-    this->save_if_loaded();
+    auto filename = std::filesystem::path(this->save_path).filename().string();
+    if(!this->save_if_loaded()) {
+        if(this->rom_loaded) {
+            char message[256];
+            std::snprintf(message, sizeof(message), "Failed to save %s", filename.c_str());
+            this->show_status_text(message);
+        }
+        else {
+            this->show_status_text("Can't save - no ROM loaded");
+        }
+    }
+    else {
+        this->show_status_text("Battery saved");
+    }
 }
 
 GameWindow::~GameWindow() {

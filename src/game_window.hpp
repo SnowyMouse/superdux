@@ -100,7 +100,7 @@ private:
     
     // Save path
     std::string save_path;
-    void save_if_loaded() noexcept;
+    bool save_if_loaded() noexcept;
     
     // Debugging
     GameDebugger *debugger_window;
