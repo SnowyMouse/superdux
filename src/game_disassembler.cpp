@@ -85,6 +85,13 @@ void GameDisassembler::follow_address() {
     }
 }
 
+void GameDisassembler::set_address_to_current_breakpoint() {
+    std::uint16_t first_address;
+    if(this->disassemble_at_address(std::nullopt, 5, first_address).size() > 0) {
+        this->current_address = first_address;
+    }
+}
+
 void GameDisassembler::add_breakpoint() {
     char command[512];
     std::snprintf(command, sizeof(command), "breakpoint $%04X", *this->last_disassembly->address);

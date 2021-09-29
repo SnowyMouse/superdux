@@ -54,12 +54,10 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     debugger->break_button->setEnabled(false);
     
     // Figure out the address
-    std::uint16_t first_address;
-    debugger->disassembler->disassemble_at_address(std::nullopt, 5, first_address);
+    debugger->disassembler->set_address_to_current_breakpoint();
     
     while(pause) {
         QCoreApplication::processEvents();
-        debugger->disassembler->current_address = first_address;
         debugger->refresh_view();
         debugger->continue_button->setEnabled(true);
     }

@@ -52,8 +52,7 @@ public:
     void follow_address();
     void add_breakpoint();
     void refresh_view();
-    
-    
+    void set_address_to_current_breakpoint();
     
     void wheelEvent(QWheelEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
