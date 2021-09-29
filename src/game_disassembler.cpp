@@ -22,8 +22,11 @@ GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent),
     this->setColumnCount(1);
     this->horizontalHeader()->setStretchLastSection(true);
     this->horizontalHeader()->hide();
+    this->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     this->verticalHeader()->setMaximumSectionSize(this->text_font.pixelSize() + 4);
-    this->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    this->verticalHeader()->setMinimumSectionSize(this->text_font.pixelSize() + 4);
+    this->verticalHeader()->setDefaultSectionSize(this->text_font.pixelSize() + 4);
+    this->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     this->verticalHeader()->hide();
     this->setSelectionMode(QAbstractItemView::SingleSelection);
     this->verticalScrollBar()->hide();
@@ -217,9 +220,10 @@ void GameDisassembler::refresh_view() {
         this->clear();
     }
     
-    this->setRowCount(this->height() / this->text_font.pixelSize() + 1);
+    auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->text_font.pixelSize() + 1));
+    this->setRowCount(query_rows);
     std::uint16_t first_address;
-    this->disassembly = this->disassemble_at_address(this->current_address, this->rowCount(), first_address);
+    this->disassembly = this->disassemble_at_address(this->current_address, query_rows, first_address);
     this->next_address_short = this->current_address;
     this->next_address_medium = this->current_address;
     this->next_address_far = this->current_address;
@@ -287,7 +291,8 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
         }
         
         auto &instruction = returned_instructions.emplace_back();
-        if(l[0] == ' ' || l[0] == '-') {
+        
+        if(l[0] == ' ') {
             instruction.address = l.mid(4, 4).toUInt(nullptr, 16);
             instruction.current_location = l[0] == '-';
             

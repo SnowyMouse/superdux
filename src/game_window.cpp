@@ -197,7 +197,7 @@ GameWindow::GameWindow() {
 
     // Add scaling options
     auto *scaling = video_menu->addMenu("Scaling");
-    for(int i = 8; i >= 1; i /= 2) {
+    for(int i = 8; i >= 1; i--) {
         char text[4];
         std::snprintf(text, sizeof(text), "%ix", i);
         auto *action = scaling->addAction(text);
