@@ -70,7 +70,6 @@ private:
     QGraphicsView *pixel_buffer_view;
     QGraphicsScene *pixel_buffer_scene;
     QGraphicsTextItem *fps_text = nullptr;
-    QGraphicsTextItem *fps_text_shadow = nullptr;
     static void on_vblank(GB_gameboy_s *);
     void set_pixel_view_scaling(int scaling);
     void redraw_pixel_buffer();
@@ -91,7 +90,6 @@ private:
     
     void show_status_text(const char *text);
     QGraphicsTextItem *status_text = nullptr;
-    QGraphicsTextItem *status_text_shadow = nullptr;
     clock::time_point status_text_deletion;
     std::vector<QAction *> volume_options;
     void show_new_volume_text();

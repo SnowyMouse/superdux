@@ -13,6 +13,7 @@
 #include <QKeyEvent>
 #include <QGamepadManager>
 #include <QApplication>
+#include <QGraphicsDropShadowEffect>
 #include <chrono>
 
 #include <agb_boot.h>
@@ -462,7 +463,6 @@ void GameWindow::calculate_frame_rate() noexcept {
             char fps_text_str[64];
             std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: %.01f", fps_shown);
             QString fps_text_qstr = fps_text_str;
-            this->fps_text_shadow->setPlainText(fps_text_str);
             this->fps_text->setPlainText(fps_text_str);
         }
     }
@@ -481,10 +481,7 @@ void GameWindow::game_loop() {
     if(this->status_text != nullptr) {
         if(now > this->status_text_deletion) {
             delete this->status_text;
-            delete this->status_text_shadow;
-            
             this->status_text = nullptr;
-            this->status_text_shadow = nullptr;
         }
         else {
             // Fade out in the last 500 ms
@@ -492,12 +489,8 @@ void GameWindow::game_loop() {
             static constexpr const double fade_ms = 500.0;
             if(ms_left < fade_ms) {
                 float opacity = ms_left / fade_ms;
-                auto default_text_color_status = this->status_text->defaultTextColor();
-                default_text_color_status.setAlphaF(opacity);
-                this->status_text->setDefaultTextColor(default_text_color_status);
-                auto default_text_color_shadow = this->status_text_shadow->defaultTextColor();
-                default_text_color_shadow.setAlphaF(opacity);
-                this->status_text_shadow->setDefaultTextColor(default_text_color_shadow);
+                this->status_text->setOpacity(opacity);
+                qobject_cast<QGraphicsDropShadowEffect *>(this->status_text->graphicsEffect())->setColor(QColor::fromRgbF(0,0,0,opacity * opacity));
             }
         }
     }
@@ -529,6 +522,16 @@ void GameWindow::action_set_scaling() noexcept {
     this->set_pixel_view_scaling(action->data().toInt());
 }
 
+
+static void make_shadow(QGraphicsTextItem *object) {
+    auto *effect = new QGraphicsDropShadowEffect(object);
+    effect->setColor(QColor::fromRgb(0,0,0));
+    effect->setXOffset(1);
+    effect->setYOffset(1);
+    effect->setBlurRadius(0);
+    object->setGraphicsEffect(effect);
+}
+
 void GameWindow::action_toggle_showing_fps() noexcept {
     this->show_fps = !this->show_fps;
     
@@ -541,19 +544,13 @@ void GameWindow::action_toggle_showing_fps() noexcept {
         auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
         font.setPixelSize(9);
         
-        this->fps_text_shadow = this->pixel_buffer_scene->addText("FPS: --", font);
-        fps_text_shadow->setDefaultTextColor(QColor::fromRgb(0,0,0));
-        fps_text_shadow->setPos(1, 1);
-        
         this->fps_text = this->pixel_buffer_scene->addText("FPS: --", font);
         fps_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
         fps_text->setPos(0, 0);
+        make_shadow(this->fps_text);
     }
     else {
-        delete this->fps_text_shadow;
         delete this->fps_text;
-        
-        this->fps_text_shadow = nullptr;
         this->fps_text = nullptr;
     }
 }
@@ -591,20 +588,15 @@ void GameWindow::action_toggle_audio() noexcept {
 void GameWindow::show_status_text(const char *text) {
     if(this->status_text) {
         delete this->status_text;
-        delete this->status_text_shadow;
     }
     
-        
     auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     font.setPixelSize(9);
-    
-    this->status_text_shadow = this->pixel_buffer_scene->addText(text, font);
-    status_text_shadow->setDefaultTextColor(QColor::fromRgb(0,0,0));
-    status_text_shadow->setPos(1, 13);
     
     this->status_text = this->pixel_buffer_scene->addText(text, font);
     status_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
     status_text->setPos(0, 12);
+    make_shadow(this->status_text);
     
     this->status_text_deletion = clock::now() + std::chrono::seconds(3);
 }
