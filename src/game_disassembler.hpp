@@ -27,6 +27,10 @@ public:
     std::uint16_t next_address_medium = 0;
     std::uint16_t next_address_far = 0;
     
+    // Font of the disassembler text
+    QFont text_font;
+    QFont text_font_bold;
+    
     struct Disassembly {
         std::optional<std::uint16_t> address;
         QString follow_address;

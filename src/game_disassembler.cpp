@@ -12,15 +12,25 @@
 #include "game_debugger.hpp"
 
 GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent), debugger(parent) {
+    this->text_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    this->text_font.setPixelSize(14);
+    
+    this->text_font_bold = this->text_font;
+    this->text_font_bold.setBold(true);
+    this->text_font_bold.setWeight(700);
+    
     this->setColumnCount(1);
     this->horizontalHeader()->setStretchLastSection(true);
     this->horizontalHeader()->hide();
+    this->verticalHeader()->setMaximumSectionSize(this->text_font.pixelSize() + 4);
+    this->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     this->verticalHeader()->hide();
     this->setSelectionMode(QAbstractItemView::SingleSelection);
     this->verticalScrollBar()->hide();
+    this->setAlternatingRowColors(true);
     this->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    this->setFont(font);
+    this->setShowGrid(false);
+    this->setFont(this->text_font);
     
     this->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &GameDisassembler::customContextMenuRequested, this, &GameDisassembler::show_context_menu);
@@ -200,7 +210,7 @@ void GameDisassembler::refresh_view() {
         this->clear();
     }
     
-    this->setRowCount(127);
+    this->setRowCount(this->height() / this->text_font.pixelSize() + 1);
     std::uint16_t first_address;
     this->disassembly = this->disassemble_at_address(this->current_address, this->rowCount(), first_address);
     this->next_address_short = this->current_address;
@@ -228,6 +238,12 @@ void GameDisassembler::refresh_view() {
     for(std::size_t row = 0; row < disassembly_count; row++) {
         auto &d = this->disassembly[row];
         auto *item = new QTableWidgetItem(d.raw_result);
+        if(d.is_marker) {
+            item->setFont(this->text_font_bold);
+        }
+        else {
+            item->setFont(this->text_font);
+        }
         item->setData(Qt::UserRole, static_cast<unsigned int>(row));
         item->setFlags(item->flags() & ~Qt::ItemIsEditable);
         this->setItem(row, 0, item);
