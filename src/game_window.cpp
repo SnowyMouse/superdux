@@ -418,18 +418,35 @@ void GameWindow::on_vblank(GB_gameboy_s *gb) {
 
 void GameWindow::game_loop() {
     this->debugger_window->refresh_view();
-    if(this->debugger_window->debug_breakpoint_pause) {
-        return;
-    }
     
     auto now = clock::now();
     
-    if(this->status_text != nullptr && now > this->status_text_deletion) {
-        delete this->status_text;
-        delete this->status_text_shadow;
-        
-        this->status_text = nullptr;
-        this->status_text_shadow = nullptr;
+    if(this->status_text != nullptr) {
+        if(now > this->status_text_deletion) {
+            delete this->status_text;
+            delete this->status_text_shadow;
+            
+            this->status_text = nullptr;
+            this->status_text_shadow = nullptr;
+        }
+        else {
+            // Fade out in the last 500 ms
+            auto ms_left = std::chrono::duration_cast<std::chrono::milliseconds>(this->status_text_deletion - now).count();
+            static constexpr const double fade_ms = 500.0;
+            if(ms_left < fade_ms) {
+                float opacity = ms_left / fade_ms;
+                auto default_text_color_status = this->status_text->defaultTextColor();
+                default_text_color_status.setAlphaF(opacity);
+                this->status_text->setDefaultTextColor(default_text_color_status);
+                auto default_text_color_shadow = this->status_text_shadow->defaultTextColor();
+                default_text_color_shadow.setAlphaF(opacity);
+                this->status_text_shadow->setDefaultTextColor(default_text_color_shadow);
+            }
+        }
+    }
+    
+    if(this->debugger_window->debug_breakpoint_pause) {
+        return;
     }
     
     if(!this->rom_loaded || this->paused || (this->pause_on_menu && this->menu_open)) {
