@@ -70,7 +70,7 @@ GameDebugger::GameDebugger() {
     this->continue_button->setEnabled(false);
     connect(this->continue_button, &QAction::triggered, this, &GameDebugger::action_continue);
     
-    this->step_button = bar->addAction("Step");
+    this->step_button = bar->addAction("Step into");
     this->step_button->setEnabled(false);
     connect(this->step_button, &QAction::triggered, this, &GameDebugger::action_step);
     

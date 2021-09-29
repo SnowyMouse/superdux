@@ -437,6 +437,9 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     this->pixel_buffer_view->setTransform(QTransform::fromScale(scaling, scaling));
     this->redraw_pixel_buffer();
     
+    
+    this->setFixedSize(this->pixel_buffer_view->maximumWidth(), this->pixel_buffer_view->maximumHeight() + this->menuBar()->height());
+    
     // Go through all scaling options. Uncheck/check whatever applies.
     for(auto *option : this->scaling_options) {
         option->setChecked(option->data().toInt() == scaling);
