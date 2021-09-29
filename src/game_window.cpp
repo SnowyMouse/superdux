@@ -27,6 +27,7 @@
 #define SETTINGS_MONO "mono"
 #define SETTINGS_PAUSE_ON_MENU "pause_on_menu"
 #define SETTINGS_MUTE "mute"
+#define SETTINGS_RECENT_ROMS "recent_roms"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -81,6 +82,7 @@ GameWindow::GameWindow() {
     this->mono = settings.value(SETTINGS_MONO, false).toBool();
     this->pause_on_menu = settings.value(SETTINGS_PAUSE_ON_MENU, false).toBool();
     this->muted = settings.value(SETTINGS_MUTE, false).toBool();
+    this->recent_roms = settings.value(SETTINGS_RECENT_ROMS).toStringList();
     
     this->setWindowTitle("Super SameBoy");
     
@@ -97,6 +99,9 @@ GameWindow::GameWindow() {
     open->setShortcut(QKeySequence::Open);
     open->setIcon(GET_ICON("document-open"));
     connect(open, &QAction::triggered, this, &GameWindow::action_open_rom);
+    
+    this->recent_roms_menu = file_menu->addMenu("Recent ROMs");
+    this->update_recent_roms_list();
     
     auto *save = file_menu->addAction("Save battery");
     save->setShortcut(QKeySequence::Save);
@@ -382,7 +387,19 @@ void GameWindow::play_audio_buffer() {
 }
 
 void GameWindow::load_rom(const char *rom_path) noexcept {
+    if(!std::filesystem::exists(rom_path)) {
+        this->show_status_text("ROM not found");
+        print_debug_message("Could not find %s\n", rom_path);
+        return;
+    }
+    
     this->save_if_loaded();
+    
+    recent_roms.removeAll(rom_path);
+    recent_roms.push_front(rom_path);
+    recent_roms = recent_roms.mid(0, 5);
+    
+    this->update_recent_roms_list();
     
     this->rom_loaded = true;
     GB_load_rom(&this->gameboy, rom_path);
@@ -390,6 +407,20 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     GB_load_battery(&this->gameboy, save_path.c_str());
     GB_debugger_load_symbol_file(&this->gameboy, std::filesystem::path(rom_path).replace_extension(".sym").string().c_str());
     GB_reset(&this->gameboy);
+}
+
+void GameWindow::update_recent_roms_list() {
+    recent_roms_menu->clear();
+    for(auto &i : this->recent_roms) {
+        auto *recent = recent_roms_menu->addAction(i);
+        recent->setData(i);
+        connect(recent, &QAction::triggered, this, &GameWindow::action_open_recent_rom);
+    }
+}
+
+void GameWindow::action_open_recent_rom() {
+    auto *action = qobject_cast<QAction *>(sender());
+    this->load_rom(action->data().toString().toUtf8().data());
 }
 
 void GameWindow::redraw_pixel_buffer() {
@@ -751,6 +782,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_MONO, this->mono);
     settings.setValue(SETTINGS_PAUSE_ON_MENU, this->pause_on_menu);
     settings.setValue(SETTINGS_MUTE, this->muted);
+    settings.setValue(SETTINGS_RECENT_ROMS, this->recent_roms);
     
     QApplication::quit();
 }

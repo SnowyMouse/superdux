@@ -15,6 +15,7 @@ extern "C" {
 #include <vector>
 #include <chrono>
 #include <string>
+#include <QStringList>
 #include <QSettings>
 
 #include "game_debugger.hpp"
@@ -108,6 +109,12 @@ private:
     // Debugging
     GameDebugger *debugger_window;
     
+    // Recent ROMs
+    QStringList recent_roms;
+    QMenu *recent_roms_menu;
+    
+    void update_recent_roms_list();
+    
     void closeEvent(QCloseEvent *) override;
     
 private slots:
@@ -116,6 +123,7 @@ private slots:
     void action_toggle_pause() noexcept;
     void action_toggle_pause_in_menu() noexcept;
     void action_open_rom() noexcept;
+    void action_open_recent_rom();
     void action_reset() noexcept;
     
     void action_toggle_audio() noexcept;
