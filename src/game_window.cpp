@@ -21,6 +21,13 @@
 #include <dmg_boot.h>
 #include <sgb2_boot.h>
 
+#define SETTINGS_VOLUME "volume"
+#define SETTINGS_SCALE "scale"
+#define SETTINGS_SHOW_FPS "show_fps"
+#define SETTINGS_MONO "mono"
+#define SETTINGS_PAUSE_ON_MENU "pause_on_menu"
+#define SETTINGS_MUTE "mute"
+
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
 #else
@@ -67,6 +74,14 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
+    QSettings settings;
+    this->volume = settings.value(SETTINGS_VOLUME, 100).toInt();
+    this->scaling = settings.value(SETTINGS_SCALE, 2).toInt();
+    this->show_fps = settings.value(SETTINGS_SHOW_FPS, false).toBool();
+    this->mono = settings.value(SETTINGS_MONO, false).toBool();
+    this->pause_on_menu = settings.value(SETTINGS_PAUSE_ON_MENU, false).toBool();
+    this->muted = settings.value(SETTINGS_MUTE, false).toBool();
+    
     this->setWindowTitle("Super SameBoy");
     
     QMenuBar *bar = new QMenuBar(this);
@@ -127,6 +142,7 @@ GameWindow::GameWindow() {
     auto *mute = audio_menu->addAction("Mute");
     connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
     mute->setIcon(GET_ICON("audio-volume-muted"));
+    mute->setChecked(this->muted);
     mute->setCheckable(true);
     
     auto *volume = audio_menu->addMenu("Volume");
@@ -210,6 +226,13 @@ GameWindow::GameWindow() {
     this->pixel_buffer_view->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+    
+    // If showing FPS, trigger it
+    if(this->show_fps) {
+        this->show_fps = false;
+        this->action_toggle_showing_fps();
+        toggle_fps->setChecked(true);
+    }
     
     layout->addWidget(this->pixel_buffer_view);
     layout->setContentsMargins(0,0,0,0);
@@ -720,5 +743,14 @@ GameWindow::~GameWindow() {
 
 void GameWindow::closeEvent(QCloseEvent *) {
     this->debugger_window->debug_breakpoint_pause = false;
+    
+    QSettings settings;
+    settings.setValue(SETTINGS_VOLUME, this->volume);
+    settings.setValue(SETTINGS_SCALE, this->scaling);
+    settings.setValue(SETTINGS_SHOW_FPS, this->show_fps);
+    settings.setValue(SETTINGS_MONO, this->mono);
+    settings.setValue(SETTINGS_PAUSE_ON_MENU, this->pause_on_menu);
+    settings.setValue(SETTINGS_MUTE, this->muted);
+    
     QApplication::quit();
 }

@@ -4,7 +4,11 @@
 int main(int argc, char **argv) {
     auto *app = new QApplication(argc, argv);
     
+    QCoreApplication::setApplicationName("super-sameboy");
+    
     GameWindow window;
+    
+    QSettings settings;
     
     window.show();
     

@@ -15,6 +15,7 @@ extern "C" {
 #include <vector>
 #include <chrono>
 #include <string>
+#include <QSettings>
 
 #include "game_debugger.hpp"
 
@@ -31,6 +32,8 @@ public:
     GameWindow();
     
     void load_rom(const char *rom_path) noexcept;
+    
+    const QSettings &settings();
     
     ~GameWindow();
     
