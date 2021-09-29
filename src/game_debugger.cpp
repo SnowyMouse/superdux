@@ -18,11 +18,23 @@ GameDebugger::GameDebugger() {
     
     this->break_button = bar->addAction("Break");
     this->break_button->setEnabled(true);
-    connect(this->break_button, &QAction::triggered, this, &GameDebugger::break_now);
+    connect(this->break_button, &QAction::triggered, this, &GameDebugger::action_break);
     
     this->continue_button = bar->addAction("Continue");
     this->continue_button->setEnabled(false);
-    connect(this->continue_button, &QAction::triggered, this, &GameDebugger::continue_break);
+    connect(this->continue_button, &QAction::triggered, this, &GameDebugger::action_continue);
+    
+    this->step_button = bar->addAction("Step");
+    this->step_button->setEnabled(false);
+    connect(this->step_button, &QAction::triggered, this, &GameDebugger::action_step);
+    
+    this->step_over_button = bar->addAction("Step over");
+    this->step_over_button->setEnabled(false);
+    connect(this->step_over_button, &QAction::triggered, this, &GameDebugger::action_step_over);
+    
+    this->finish_fn_button = bar->addAction("Finish function");
+    this->finish_fn_button->setEnabled(false);
+    connect(this->finish_fn_button, &QAction::triggered, this, &GameDebugger::action_finish);
     
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
@@ -35,15 +47,29 @@ GameDebugger::GameDebugger() {
     this->setWindowTitle("Debugger");
 }
 
-void GameDebugger::break_now() {
+void GameDebugger::action_break() {
     GB_debugger_break(this->gameboy);
 }
 
-void GameDebugger::continue_break() {
-    char *cmd = nullptr;
-    asprintf(&cmd, "continue");
-    GB_debugger_execute_command(this->gameboy, cmd);
+void GameDebugger::action_continue() {
+    this->continue_break("continue");
+}
+
+void GameDebugger::action_step() {
+    this->continue_break("step");
+}
+
+void GameDebugger::action_step_over() {
+    this->continue_break("next");
+}
+
+void GameDebugger::action_finish() {
+    this->continue_break("finish");
+}
+
+void GameDebugger::continue_break(const char *command_to_execute) {
     this->debug_breakpoint_pause = false;
+    this->command_to_execute_on_unbreak = command_to_execute ? command_to_execute : "continue";
 }
 
 char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
@@ -56,16 +82,39 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     // Figure out the address
     debugger->disassembler->set_address_to_current_breakpoint();
     
+    // Enable these
+    debugger->continue_button->setEnabled(true);
+    debugger->step_button->setEnabled(true);
+    debugger->step_over_button->setEnabled(true);
+    debugger->finish_fn_button->setEnabled(true);
+    
     while(pause) {
         QCoreApplication::processEvents();
         debugger->refresh_view();
-        debugger->continue_button->setEnabled(true);
     }
     
     debugger->break_button->setEnabled(true);
     debugger->continue_button->setEnabled(false);
+    debugger->step_button->setEnabled(false);
+    debugger->step_over_button->setEnabled(false);
+    debugger->finish_fn_button->setEnabled(false);
     
-    return nullptr;
+    // If the command we want to execute is empty, simply continue
+    if(debugger->command_to_execute_on_unbreak.empty()) {
+        return nullptr;
+    }
+    
+    // Otherwise, execute it
+    char *cmd;
+    asprintf(&cmd, "%s", debugger->command_to_execute_on_unbreak.c_str());
+    debugger->command_to_execute_on_unbreak.clear();
+    return cmd;
+}
+
+void GameDebugger::execute_debugger_command(const char *command) {
+    char *cmd = nullptr;
+    asprintf(&cmd, "%s", command);
+    GB_debugger_execute_command(this->gameboy, cmd);
 }
 
 void GameDebugger::set_gameboy(GB_gameboy_s *gb) {
