@@ -89,7 +89,7 @@ GameWindow::GameWindow() {
     
     QMenuBar *bar = new QMenuBar(this);
     this->setMenuBar(bar);
-    this->debugger_window = new GameDebugger();
+    this->debugger_window = new GameDebugger(this);
     
     // File menu
     auto *file_menu = bar->addMenu("File");
@@ -448,6 +448,16 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     }
 }
 
+void GameWindow::reset_fps_counter(bool update_text) noexcept {
+    this->fps_numerator = 0;
+    this->fps_denominator = 0;
+    this->last_frame_time = clock::now();
+    
+    if(this->fps_text && update_text) {
+        this->fps_text->setPlainText("FPS: --");
+    }
+}
+
 void GameWindow::calculate_frame_rate() noexcept {
     if(this->show_fps) {
         auto now = clock::now();
@@ -457,14 +467,11 @@ void GameWindow::calculate_frame_rate() noexcept {
         
         // Once we reach critical mass (30 frames), show the frame rate
         if(this->fps_numerator++ > 30) {
-            float fps_shown = this->fps_numerator / this->fps_denominator;
-            this->fps_numerator = 0;
-            this->fps_denominator = 0;
-            
             char fps_text_str[64];
-            std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: %.01f", fps_shown);
+            std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: %.01f", this->fps_numerator / this->fps_denominator);
             QString fps_text_qstr = fps_text_str;
             this->fps_text->setPlainText(fps_text_str);
+            this->reset_fps_counter(false);
         }
     }
 }
@@ -496,11 +503,9 @@ void GameWindow::game_loop() {
         }
     }
     
-    if(this->debugger_window->debug_breakpoint_pause) {
-        return;
-    }
-    
-    if(!this->rom_loaded || this->paused || (this->pause_on_menu && this->menu_open)) {
+    // If paused, reset the FPS counter
+    if(this->debugger_window->debug_breakpoint_pause || !this->rom_loaded || this->paused || (this->pause_on_menu && this->menu_open)) {
+        this->reset_fps_counter(true);
         return;
     }
     
@@ -542,17 +547,14 @@ void GameWindow::action_toggle_showing_fps() noexcept {
     
     // If showing frame rate, create text objects and initialize the FPS counter
     if(this->show_fps) {
-        this->fps_numerator = 0;
-        this->fps_denominator = 0;
-        this->last_frame_time = clock::now();
-        
         auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
         font.setPixelSize(9);
         
-        this->fps_text = this->pixel_buffer_scene->addText("FPS: --", font);
+        this->fps_text = this->pixel_buffer_scene->addText("", font);
         fps_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
         fps_text->setPos(0, 0);
         this->make_shadow(this->fps_text);
+        this->reset_fps_counter(true);
     }
     else {
         delete this->fps_text;

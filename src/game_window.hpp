@@ -80,6 +80,7 @@ private:
     float fps_denominator; // fps time
     int fps_numerator; // fps count
     void calculate_frame_rate() noexcept;
+    void reset_fps_counter(bool update_text) noexcept;
     
     // Audio
     QAudioOutput *audio_output;

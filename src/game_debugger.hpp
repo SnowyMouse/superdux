@@ -23,7 +23,7 @@ class GameDebugger : public QMainWindow {
     Q_OBJECT
     
 public:
-    GameDebugger();
+    GameDebugger(GameWindow *window);
     ~GameDebugger() override;
     
     void set_gameboy(GB_gameboy_s *);
@@ -68,6 +68,8 @@ private:
     QTableWidget *backtrace;
     
     std::optional<std::uint16_t> evaluate_expression(const char *expression);
+    
+    GameWindow *game_window;
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
     void refresh_view();

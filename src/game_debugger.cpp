@@ -53,7 +53,7 @@ private:
     GameDebugger *window;
 };
 
-GameDebugger::GameDebugger() {
+GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     // Set the preferred font for the debugger
     this->table_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     this->table_font.setPixelSize(14);
@@ -194,6 +194,10 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     debugger->step_button->setEnabled(true);
     debugger->step_over_button->setEnabled(true);
     debugger->finish_fn_button->setEnabled(true);
+    
+    // Reset this
+    debugger->game_window->reset_fps_counter(true);
+    debugger->game_window->redraw_pixel_buffer();
     
     while(pause) {
         QCoreApplication::processEvents();
