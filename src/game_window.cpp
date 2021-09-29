@@ -59,7 +59,7 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
-    this->setWindowTitle("Game Window");
+    this->setWindowTitle("Super SameBoy");
     
     QMenuBar *bar = new QMenuBar(this);
     this->setMenuBar(bar);
@@ -190,7 +190,7 @@ GameWindow::GameWindow() {
     auto *layout = new QHBoxLayout(central_widget);
     
     this->pixel_buffer_view = new QGraphicsView(central_widget);
-    this->pixel_buffer_view->setEnabled(false);
+    this->pixel_buffer_view->setFocusPolicy(Qt::FocusPolicy::NoFocus);
     this->pixel_buffer_scene = new QGraphicsScene(central_widget);
     this->pixel_buffer_pixmap_item = this->pixel_buffer_scene->addPixmap(this->pixel_buffer_pixmap);
     this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
