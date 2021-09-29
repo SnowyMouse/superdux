@@ -6,6 +6,8 @@
 #include <QHeaderView>
 #include <QScrollBar>
 #include <QKeyEvent>
+#include <QApplication>
+#include <QPalette>
 
 #include "gb_proxy.h"
 #include "game_disassembler.hpp"
@@ -14,9 +16,18 @@
 GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent), debugger(parent) {
     this->setColumnCount(1);
     this->debugger->format_table(this);
+    this->setSelectionMode(QAbstractItemView::NoSelection);
     this->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &GameDisassembler::customContextMenuRequested, this, &GameDisassembler::show_context_menu);
     history.reserve(256);
+    
+    auto palette = QApplication::palette();
+    
+    this->text_default_color = palette.color(QPalette::ColorRole::Text);
+    this->bg_default_color = palette.color(QPalette::ColorRole::Base);
+    
+    this->text_highlight_color = palette.color(QPalette::ColorRole::HighlightedText);
+    this->bg_highlight_color = palette.color(QPalette::ColorRole::Highlight);
 }
 
 GameDisassembler::~GameDisassembler() {}
@@ -50,7 +61,13 @@ void GameDisassembler::set_address_to_current_breakpoint() {
 void GameDisassembler::add_breakpoint() {
     char command[512];
     std::snprintf(command, sizeof(command), "breakpoint $%04X", *this->last_disassembly->address);
-    GB_debugger_execute_command(this->debugger->gameboy, command);
+    this->debugger->execute_debugger_command(command);
+}
+
+void GameDisassembler::delete_breakpoint() {
+    char command[512];
+    std::snprintf(command, sizeof(command), "delete $%04X", *this->last_disassembly->address);
+    this->debugger->execute_debugger_command(command);
 }
 
 void GameDisassembler::show_context_menu(const QPoint &point) {
@@ -90,14 +107,26 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
             auto &address = this->last_disassembly->address;
             if(address.has_value()) {
                 char breakpoint_text[512];
-                std::snprintf(breakpoint_text, sizeof(breakpoint_text), "Create breakpoint at $%04X", *address);
-                auto *create_breakpoint = menu.addAction(breakpoint_text);
-                connect(create_breakpoint, &QAction::triggered, this, &GameDisassembler::add_breakpoint);
+                bool create = !address_is_breakpoint(*address);
+                
+                std::snprintf(breakpoint_text, sizeof(breakpoint_text), "%s breakpoint at $%04X", create ? "Set" : "Unset", *address);
+                auto *set_breakpoint = menu.addAction(breakpoint_text);
+                connect(set_breakpoint, &QAction::triggered, this, create ? &GameDisassembler::add_breakpoint : &GameDisassembler::delete_breakpoint);
             }
         }
     }
     
     menu.exec(this->mapToGlobal(point));
+}
+
+bool GameDisassembler::address_is_breakpoint(std::uint16_t address) {
+    auto breakpoint_count = get_gb_breakpoint_size(this->debugger->gameboy);
+    for(std::size_t q = 0; q < breakpoint_count; q++) {
+        if(address == get_gb_breakpoint_address(this->debugger->gameboy, q)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void GameDisassembler::jump_to_address_window() {
@@ -199,9 +228,21 @@ void GameDisassembler::refresh_view() {
     auto disassembly_count = this->disassembly.size();
     for(std::size_t row = 0; row < disassembly_count && row < query_rows; row++) {
         auto &d = this->disassembly[row];
+        bool is_breakpoint = d.address.has_value() ? this->address_is_breakpoint(*d.address) : false;
+        
         auto *item = new QTableWidgetItem(d.raw_result);
         item->setData(Qt::UserRole, static_cast<unsigned int>(row));
         item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        
+        if(is_breakpoint) {
+            item->setForeground(this->text_highlight_color);
+            item->setBackground(this->bg_highlight_color);
+        }
+        else {
+            item->setForeground(this->text_default_color);
+            item->setBackground(this->bg_default_color);
+        }
+        
         this->setItem(row, 0, item);
     }
 }

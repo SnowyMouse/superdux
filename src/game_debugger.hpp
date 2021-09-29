@@ -50,6 +50,7 @@ private:
     void action_step();
     void action_step_over();
     void action_finish();
+    void action_clear_breakpoints() noexcept;
     void action_update_registers() noexcept;
     
     std::string command_to_execute_on_unbreak;
@@ -61,6 +62,7 @@ private:
     QAction *step_button;
     QAction *step_over_button;
     QAction *finish_fn_button;
+    QAction *clear_breakpoints_button;
     
     QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_pc;
     QTableWidget *backtrace;

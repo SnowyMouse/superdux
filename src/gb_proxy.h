@@ -29,7 +29,8 @@ void set_16_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint16_t 
 uint32_t get_gb_backtrace_size(struct GB_gameboy_s *gb);
 uint16_t get_gb_backtrace_address(struct GB_gameboy_s *gb, uint32_t bt);
 
-
+uint32_t get_gb_breakpoint_size(struct GB_gameboy_s *gb);
+uint16_t get_gb_breakpoint_address(struct GB_gameboy_s *gb, uint32_t bt);
 
 #ifdef __cplusplus
 }

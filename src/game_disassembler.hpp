@@ -52,7 +52,9 @@ public:
     void jump_to_address_window();
     void follow_address();
     void add_breakpoint();
+    void delete_breakpoint();
     void refresh_view();
+    bool address_is_breakpoint(std::uint16_t address);
     void set_address_to_current_breakpoint();
     
     void wheelEvent(QWheelEvent *event) override;
@@ -60,7 +62,11 @@ public:
 
     std::vector<Disassembly> disassemble_at_address(std::optional<std::uint16_t> address, std::uint8_t count, std::uint16_t &first_address);
     
+    QColor text_default_color;
+    QColor text_highlight_color;
     
+    QColor bg_default_color;
+    QColor bg_highlight_color;
     
 private:
     GameDebugger *debugger;

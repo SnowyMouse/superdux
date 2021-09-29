@@ -82,6 +82,11 @@ GameDebugger::GameDebugger() {
     this->finish_fn_button->setEnabled(false);
     connect(this->finish_fn_button, &QAction::triggered, this, &GameDebugger::action_finish);
     
+    bar->addSeparator();
+    
+    this->clear_breakpoints_button = bar->addAction("Clear breakpoints");
+    connect(this->clear_breakpoints_button, &QAction::triggered, this, &GameDebugger::action_clear_breakpoints);
+    
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
     layout->addWidget((this->disassembler = new GameDisassembler(this)));
@@ -233,6 +238,7 @@ void GameDebugger::refresh_view() {
     }
     
     this->disassembler->refresh_view();
+    this->clear_breakpoints_button->setEnabled(get_gb_breakpoint_size(this->gameboy) > 0);
     
     if(!this->debug_breakpoint_pause) {
         #define PROCESS_REGISTER_FIELD(name, size, field, fmt) {\
@@ -276,6 +282,10 @@ void GameDebugger::refresh_view() {
         }
         this->backtrace->setRowCount(row);
     }
+}
+
+void GameDebugger::action_clear_breakpoints() noexcept {
+    this->execute_debugger_command("delete");
 }
 
 void GameDebugger::action_update_registers() noexcept {
