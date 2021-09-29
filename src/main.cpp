@@ -4,6 +4,8 @@
 int main(int argc, char **argv) {
     auto *app = new QApplication(argc, argv);
     
+    QCoreApplication::setOrganizationName("super-sameboy");
+    QCoreApplication::setOrganizationDomain("super-sameboy");
     QCoreApplication::setApplicationName("super-sameboy");
     
     GameWindow window;
