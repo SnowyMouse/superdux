@@ -234,7 +234,7 @@ void GameDebugger::refresh_view() {
     
     this->disassembler->refresh_view();
     
-    if(this->right_view->isVisible()) {
+    if(!this->debug_breakpoint_pause) {
         #define PROCESS_REGISTER_FIELD(name, size, field, fmt) {\
             char str[8]; \
             std::snprintf(str, sizeof(str), fmt, get_##size##_bit_gb_register(this->gameboy, gbz80_register::GBZ80_REG_##name)); \
@@ -295,7 +295,7 @@ void GameDebugger::action_update_registers() noexcept {
     PROCESS_REGISTER_FIELD(C, 8, register_c);
     PROCESS_REGISTER_FIELD(D, 8, register_d);
     PROCESS_REGISTER_FIELD(E, 8, register_e);
-    PROCESS_REGISTER_FIELD(F, 16, register_f);
+    PROCESS_REGISTER_FIELD(F, 8, register_f);
     PROCESS_REGISTER_FIELD(HL, 16, register_hl);
     //PROCESS_REGISTER_FIELD(pc, register_pc); // changing this is very bad
     

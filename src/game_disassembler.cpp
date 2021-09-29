@@ -169,7 +169,6 @@ void GameDisassembler::refresh_view() {
     // Clear the table if we changed addresses
     if(this->current_address != this->last_address) {
         this->last_address = this->current_address;
-        this->clear();
     }
     
     auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->debugger->table_font.pixelSize() + 1));
@@ -198,14 +197,13 @@ void GameDisassembler::refresh_view() {
     }
     
     auto disassembly_count = this->disassembly.size();
-    for(std::size_t row = 0; row < disassembly_count; row++) {
+    for(std::size_t row = 0; row < disassembly_count && row < query_rows; row++) {
         auto &d = this->disassembly[row];
         auto *item = new QTableWidgetItem(d.raw_result);
         item->setData(Qt::UserRole, static_cast<unsigned int>(row));
         item->setFlags(item->flags() & ~Qt::ItemIsEditable);
         this->setItem(row, 0, item);
     }
-    this->setRowCount(disassembly.size());
 }
 
 std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_address(std::optional<std::uint16_t> address, std::uint8_t count, std::uint16_t &first_address) {
