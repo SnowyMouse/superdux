@@ -193,18 +193,22 @@ void GameDebugger::refresh_view() {
 
 void GameDebugger::refresh_registers() {
     if(this->register_view->isVisible()) {
-        #define PROCESS_REGISTER_FIELD(name, field) this->field->blockSignals(true); \
-                                                    this->field->setText(QString("$") + QString::number(this->gameboy->name, 16)); \
-                                                    this->field->blockSignals(false);
+        #define PROCESS_REGISTER_FIELD(name, field, fmt) {\
+            char str[8]; \
+            std::snprintf(str, sizeof(str), fmt, this->gameboy->name); \
+            this->field->blockSignals(true); \
+            this->field->setText(str); \
+            this->field->blockSignals(false); \
+        }
 
-        PROCESS_REGISTER_FIELD(a, register_a);
-        PROCESS_REGISTER_FIELD(b, register_b);
-        PROCESS_REGISTER_FIELD(c, register_c);
-        PROCESS_REGISTER_FIELD(d, register_d);
-        PROCESS_REGISTER_FIELD(e, register_e);
-        PROCESS_REGISTER_FIELD(f, register_f);
-        PROCESS_REGISTER_FIELD(hl, register_hl);
-        PROCESS_REGISTER_FIELD(pc, register_pc);
+        PROCESS_REGISTER_FIELD(a, register_a, "$%02x");
+        PROCESS_REGISTER_FIELD(b, register_b, "$%02x");
+        PROCESS_REGISTER_FIELD(c, register_c, "$%02x");
+        PROCESS_REGISTER_FIELD(d, register_d, "$%02x");
+        PROCESS_REGISTER_FIELD(e, register_e, "$%02x");
+        PROCESS_REGISTER_FIELD(f, register_f, "$%02x");
+        PROCESS_REGISTER_FIELD(hl, register_hl, "$%04x");
+        PROCESS_REGISTER_FIELD(pc, register_pc, "$%04x");
         
         #undef PROCESS_REGISTER_FIELD
     }
