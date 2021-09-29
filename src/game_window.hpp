@@ -111,6 +111,9 @@ private:
     QStringList recent_roms;
     QMenu *recent_roms_menu;
     
+    // Make a shadow
+    void make_shadow(QGraphicsTextItem *object);
+    
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;
     

@@ -436,8 +436,9 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     this->pixel_buffer_view->setMaximumSize(this->pixel_buffer.width() * this->scaling,this->pixel_buffer.height() * this->scaling);
     
     this->pixel_buffer_view->setTransform(QTransform::fromScale(scaling, scaling));
+    this->make_shadow(this->fps_text);
+    this->make_shadow(this->status_text);
     this->redraw_pixel_buffer();
-    
     
     this->setFixedSize(this->pixel_buffer_view->maximumWidth(), this->pixel_buffer_view->maximumHeight() + this->menuBar()->height());
     
@@ -523,11 +524,15 @@ void GameWindow::action_set_scaling() noexcept {
 }
 
 
-static void make_shadow(QGraphicsTextItem *object) {
+void GameWindow::make_shadow(QGraphicsTextItem *object) {
+    if(object == nullptr) {
+        return;
+    }
+    
     auto *effect = new QGraphicsDropShadowEffect(object);
     effect->setColor(QColor::fromRgb(0,0,0));
-    effect->setXOffset(1);
-    effect->setYOffset(1);
+    effect->setXOffset(std::max(this->scaling / 2, 1));
+    effect->setYOffset(std::max(this->scaling / 2, 1));
     effect->setBlurRadius(0);
     object->setGraphicsEffect(effect);
 }
@@ -547,7 +552,7 @@ void GameWindow::action_toggle_showing_fps() noexcept {
         this->fps_text = this->pixel_buffer_scene->addText("FPS: --", font);
         fps_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
         fps_text->setPos(0, 0);
-        make_shadow(this->fps_text);
+        this->make_shadow(this->fps_text);
     }
     else {
         delete this->fps_text;
@@ -596,7 +601,7 @@ void GameWindow::show_status_text(const char *text) {
     this->status_text = this->pixel_buffer_scene->addText(text, font);
     status_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
     status_text->setPos(0, 12);
-    make_shadow(this->status_text);
+    this->make_shadow(this->status_text);
     
     this->status_text_deletion = clock::now() + std::chrono::seconds(3);
 }
