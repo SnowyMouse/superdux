@@ -1,5 +1,3 @@
-#define GB_INTERNAL // Required to directly access registers since SameBoy does not expose these presently
-
 #include "game_debugger.hpp"
 #include "game_window.hpp"
 #include "game_disassembler.hpp"
@@ -18,6 +16,41 @@
 #include <QMessageBox>
 #include <QLabel>
 #include <QGroupBox>
+#include <QScrollBar>
+#include <QMouseEvent>
+
+static_assert(sizeof(GB_gameboy_internal_s) == 0x0012688);
+
+class GameDebuggerTable : public QTableWidget {
+public:
+    GameDebuggerTable(QWidget *parent, GameDebugger *window) : QTableWidget(parent), window(window) {}
+    
+    // Double click = goto address in debugger
+    void mouseDoubleClickEvent(QMouseEvent *event) override {
+        auto *item = this->itemAt(event->pos());
+        if(item) {
+            int r = item->data(Qt::UserRole).toInt();
+            auto *gb = reinterpret_cast<GB_gameboy_internal_s *>(this->window->gameboy);
+            auto bt_size = gb->backtrace_size;
+            
+            // Go there
+            if(r >= 0 && r <= bt_size) {
+                auto addr = gb->backtrace_returns[bt_size - r].addr;
+                std::printf("%04X\n", addr);
+                
+                // Topmost should just be the current instruction since that's what is shown
+                if(r == 0) {
+                    addr = gb->pc;
+                }
+                
+                this->window->disassembler->go_to(addr);
+            }
+        }
+    }
+    
+private:
+    GameDebugger *window;
+};
 
 GameDebugger::GameDebugger() {
     // Set the preferred font for the debugger
@@ -56,18 +89,13 @@ GameDebugger::GameDebugger() {
     this->setMinimumHeight(600);
     this->setMinimumWidth(800);
     
-    
-    
     this->right_view = new QWidget(this);
     auto *right_view_layout = new QVBoxLayout(this->right_view);
     this->right_view->setLayout(right_view_layout);
     
     // Add registers
-    this->register_view = new QGroupBox(this->right_view);
-    this->register_view->setVisible(false);
-    reinterpret_cast<QGroupBox *>(this->register_view)->setTitle("Registers");
-    this->register_view->setMinimumWidth(200);
-    this->register_view->setMaximumWidth(200);
+    auto *register_view = new QGroupBox(this->right_view);
+    reinterpret_cast<QGroupBox *>(register_view)->setTitle("Registers");
     right_view_layout->setContentsMargins(0,0,0,0);
     
     
@@ -75,10 +103,10 @@ GameDebugger::GameDebugger() {
     int register_row = 0;
     
     #define ADD_REGISTER_FIELD(nameA, fieldA, nameB, fieldB) register_layout->addWidget(new QLabel(nameA), register_row, 0); \
-                                                             this->fieldA = new QLineEdit(this->register_view); \
+                                                             this->fieldA = new QLineEdit(register_view); \
                                                              register_layout->addWidget(this->fieldA, register_row, 1); \
                                                              register_layout->addWidget(new QLabel(nameB), register_row, 2); \
-                                                             this->fieldB = new QLineEdit(this->register_view); \
+                                                             this->fieldB = new QLineEdit(register_view); \
                                                              register_layout->addWidget(this->fieldB, register_row, 3); \
                                                              connect(this->fieldA, &QLineEdit::textChanged, this, &GameDebugger::action_update_registers);\
                                                              connect(this->fieldB, &QLineEdit::textChanged, this, &GameDebugger::action_update_registers);\
@@ -94,11 +122,27 @@ GameDebugger::GameDebugger() {
     
     #undef ADD_REGISTER_FIELD
     
-    this->register_view->setLayout(register_layout);
-    this->register_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-    right_view_layout->addWidget(this->register_view);
-    right_view_layout->addWidget(new QWidget());
+    register_view->setLayout(register_layout);
+    register_view->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
+    right_view_layout->addWidget(register_view);
+    
+    // Backtrace
+    auto *backtrace_frame = new QGroupBox(this->right_view);
+    backtrace_frame->setTitle("Backtrace");
+    auto *backtrace_layout = new QVBoxLayout();
+    this->backtrace = new GameDebuggerTable(this->right_view, this);
+    this->format_table(this->backtrace);
+    this->backtrace->setColumnCount(1);
+    this->backtrace->setTextElideMode(Qt::ElideNone);
+    backtrace_layout->addWidget(this->backtrace);
+    backtrace_frame->setLayout(backtrace_layout);
+    right_view_layout->addWidget(backtrace_frame);
+    
+    // Done
     layout->addWidget(this->right_view);
+    this->right_view->setVisible(false);
+    this->right_view->setMaximumWidth(300);
+    this->right_view->setMinimumWidth(300);
     
     this->setWindowTitle("Debugger");
 }
@@ -137,7 +181,7 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     
     // Figure out the address
     debugger->disassembler->set_address_to_current_breakpoint();
-    debugger->register_view->setVisible(true);
+    debugger->right_view->setVisible(true);
     
     // Enable these
     debugger->continue_button->setEnabled(true);
@@ -150,7 +194,7 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
         debugger->refresh_view();
     }
     
-    debugger->register_view->setVisible(false);
+    debugger->right_view->setVisible(false);
     debugger->break_button->setEnabled(true);
     debugger->continue_button->setEnabled(false);
     debugger->step_button->setEnabled(false);
@@ -188,14 +232,11 @@ void GameDebugger::refresh_view() {
     }
     
     this->disassembler->refresh_view();
-    this->refresh_registers();
-}
-
-void GameDebugger::refresh_registers() {
-    if(this->register_view->isVisible()) {
+    
+    if(this->right_view->isVisible()) {
         #define PROCESS_REGISTER_FIELD(name, field, fmt) {\
             char str[8]; \
-            std::snprintf(str, sizeof(str), fmt, this->gameboy->name); \
+            std::snprintf(str, sizeof(str), fmt, reinterpret_cast<GB_gameboy_internal_s *>(this->gameboy)->name); \
             this->field->blockSignals(true); \
             this->field->setText(str); \
             this->field->blockSignals(false); \
@@ -211,18 +252,40 @@ void GameDebugger::refresh_registers() {
         PROCESS_REGISTER_FIELD(pc, register_pc, "$%04x");
         
         #undef PROCESS_REGISTER_FIELD
+        
+        this->push_retain_logs();
+        this->execute_debugger_command("backtrace");
+        auto logs = QString::fromStdString(this->retained_logs).split('\n');
+        this->retained_logs.clear();
+        this->pop_retain_logs();
+        
+        this->backtrace->setRowCount(logs.length());
+        int row = 0;
+        for(auto &l : logs) {
+            auto l_trimmed = l.trimmed();
+            if(l_trimmed.isEmpty()) {
+                continue;
+            }
+            auto *item = new QTableWidgetItem(l_trimmed);
+            item->setToolTip(l_trimmed);
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+            this->backtrace->setItem(row, 0, item);
+            item->setData(Qt::UserRole, row);
+            row++;
+        }
+        this->backtrace->setRowCount(row);
     }
 }
 
 void GameDebugger::action_update_registers() noexcept {
-    if(!this->debug_breakpoint_pause || this->register_view->isHidden()) {
+    if(!this->debug_breakpoint_pause || this->right_view->isHidden()) {
         return;
     }
     
     #define PROCESS_REGISTER_FIELD(name, field) {\
         auto value = this->evaluate_expression(this->field->text().toUtf8().data());\
         if(value.has_value()) {\
-            this->gameboy->name = *value;\
+            reinterpret_cast<GB_gameboy_internal_s *>(this->gameboy)->name = *value;\
         }\
     }
 
@@ -276,4 +339,21 @@ void GameDebugger::log_callback(GB_gameboy_s *gb, const char *text, GB_log_attri
     }
     
     std::printf("%s", text); // todo: implement a console
+}
+
+void GameDebugger::format_table(QTableWidget *widget) {
+    widget->horizontalHeader()->setStretchLastSection(true);
+    widget->horizontalHeader()->hide();
+    widget->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    widget->verticalHeader()->setMaximumSectionSize(this->table_font.pixelSize() + 4);
+    widget->verticalHeader()->setMinimumSectionSize(this->table_font.pixelSize() + 4);
+    widget->verticalHeader()->setDefaultSectionSize(this->table_font.pixelSize() + 4);
+    widget->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    widget->verticalHeader()->hide();
+    widget->setSelectionMode(QAbstractItemView::SingleSelection);
+    widget->verticalScrollBar()->hide();
+    widget->setAlternatingRowColors(true);
+    widget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    widget->setShowGrid(false);
+    widget->setFont(this->table_font);
 }

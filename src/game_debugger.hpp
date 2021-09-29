@@ -11,11 +11,13 @@ extern "C" {
 #include <optional>
 
 class GameDisassembler;
+class GameDebuggerTable;
 class GameWindow;
 class QLineEdit;
 
 class GameDebugger : public QMainWindow {
     friend GameDisassembler;
+    friend GameDebuggerTable;
     friend GameWindow;
     
     Q_OBJECT
@@ -52,7 +54,6 @@ private:
     
     std::string command_to_execute_on_unbreak;
     
-    QWidget *register_view;
     QWidget *right_view;
     
     QAction *break_button;
@@ -62,12 +63,14 @@ private:
     QAction *finish_fn_button;
     
     QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_pc;
-    void refresh_registers();
+    QTableWidget *backtrace;
     
     std::optional<std::uint16_t> evaluate_expression(const char *expression);
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
     void refresh_view();
+    
+    void format_table(QTableWidget *widget);
     
 };
 

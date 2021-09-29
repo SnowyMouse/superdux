@@ -6,9 +6,13 @@
 #include <QFont>
 
 class GameDebugger;
+class GameDebuggerBacktrace;
 
 class GameDisassembler : public QTableWidget {
     Q_OBJECT
+    
+    friend GameDebugger;
+    friend GameDebuggerBacktrace;
     
 public:
     GameDisassembler(GameDebugger *parent);

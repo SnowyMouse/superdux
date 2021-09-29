@@ -1,5 +1,3 @@
-#define GB_INTERNAL // Required to get the PC register since registers aren't yet exposed by SameBoy
-
 #include <QMenu>
 #include <QAction>
 #include <QInputDialog>
@@ -14,21 +12,7 @@
 
 GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent), debugger(parent) {
     this->setColumnCount(1);
-    this->horizontalHeader()->setStretchLastSection(true);
-    this->horizontalHeader()->hide();
-    this->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    this->verticalHeader()->setMaximumSectionSize(this->debugger->table_font.pixelSize() + 4);
-    this->verticalHeader()->setMinimumSectionSize(this->debugger->table_font.pixelSize() + 4);
-    this->verticalHeader()->setDefaultSectionSize(this->debugger->table_font.pixelSize() + 4);
-    this->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    this->verticalHeader()->hide();
-    this->setSelectionMode(QAbstractItemView::SingleSelection);
-    this->verticalScrollBar()->hide();
-    this->setAlternatingRowColors(true);
-    this->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    this->setShowGrid(false);
-    this->setFont(this->debugger->table_font);
-    
+    this->debugger->format_table(this);
     this->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &GameDisassembler::customContextMenuRequested, this, &GameDisassembler::show_context_menu);
     history.reserve(256);
@@ -59,7 +43,7 @@ void GameDisassembler::follow_address() {
 }
 
 void GameDisassembler::set_address_to_current_breakpoint() {
-    this->current_address = this->debugger->gameboy->pc;
+    this->current_address = reinterpret_cast<GB_gameboy_internal_s *>(this->debugger->gameboy)->pc;
 }
 
 void GameDisassembler::add_breakpoint() {
