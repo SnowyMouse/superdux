@@ -142,8 +142,8 @@ GameWindow::GameWindow() {
     auto *mute = audio_menu->addAction("Mute");
     connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
     mute->setIcon(GET_ICON("audio-volume-muted"));
-    mute->setChecked(this->muted);
     mute->setCheckable(true);
+    mute->setChecked(this->muted);
     
     auto *volume = audio_menu->addMenu("Volume");
     
