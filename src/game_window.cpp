@@ -676,8 +676,12 @@ void GameWindow::action_reset() noexcept {
 void GameWindow::perform_reset(std::optional<GB_model_t> new_model) {
     // reload sram since GB_reset() nukes the RTC
     // first save to buffer
-    std::vector<std::uint8_t> save_data_buffer(GB_save_battery_size(&this->gameboy));
-    GB_save_battery_to_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
+    std::vector<std::uint8_t> save_data_buffer;
+    
+    if(this->rom_loaded) {
+        save_data_buffer.resize(GB_save_battery_size(&this->gameboy));
+        GB_save_battery_to_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
+    }
     
     if(new_model.has_value()) {
         GB_switch_model_and_reset(&this->gameboy, *new_model);
@@ -687,7 +691,9 @@ void GameWindow::perform_reset(std::optional<GB_model_t> new_model) {
     }
     
     // now load sram
-    GB_load_battery_from_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
+    if(this->rom_loaded) {
+        GB_load_battery_from_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
+    }
 }
 
 void GameWindow::action_toggle_audio() noexcept {
@@ -720,9 +726,7 @@ void GameWindow::show_status_text(const char *text) {
 
 void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
     if(GB_is_inited(&this->gameboy)) {
-        if(this->rom_loaded) {
-            this->perform_reset(model);
-        }
+        this->perform_reset(model);
     }
     else {
         GB_init(&this->gameboy, model);
