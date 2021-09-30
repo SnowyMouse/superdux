@@ -601,7 +601,7 @@ void GameWindow::game_loop() {
     }
     
     // If paused, reset the FPS counter
-    if(this->debugger_window->debug_breakpoint_pause || !this->rom_loaded || this->paused || (this->pause_on_menu && this->menu_open)) {
+    if(this->debugger_window->is_debug_breakpoint_paused() || !this->rom_loaded || this->paused || (this->pause_on_menu && this->menu_open)) {
         this->reset_fps_counter(true);
         return;
     }
@@ -903,7 +903,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     if(!this->exit_without_save) {
         this->save_if_loaded();
     }
-    this->debugger_window->debug_breakpoint_pause = false;
+    this->debugger_window->force_unpause_debugger();
     
     QSettings settings;
     settings.setValue(SETTINGS_VOLUME, this->volume);

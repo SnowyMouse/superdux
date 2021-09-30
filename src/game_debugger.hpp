@@ -17,8 +17,6 @@ class QLineEdit;
 class GameWindow;
 
 class GameDebugger : public QMainWindow {
-    friend GameWindow;
-    
     Q_OBJECT
     
 public:
@@ -55,6 +53,19 @@ public:
     const QFont &get_table_font() const noexcept {
         return this->table_font;
     }
+    
+    /** Get whether or not we are paused due to a breakpoint */
+    bool is_debug_breakpoint_paused() const noexcept {
+        return this->debug_breakpoint_pause;
+    }
+    
+    /** Force the debugger to unpause - only use this if quitting */
+    void force_unpause_debugger() noexcept {
+        this->debug_breakpoint_pause = false;
+    }
+    
+    /** Refresh the information in view */
+    void refresh_view();
 private:
     GameDisassembler *disassembler;
     
@@ -90,12 +101,9 @@ private:
     
     QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_pc;
     QTableWidget *backtrace;
-    
-    
     GameWindow *game_window;
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
-    void refresh_view();
     
     
 };
