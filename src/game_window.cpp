@@ -54,7 +54,7 @@ public:
             auto urls = d->urls();
             if(urls.length() == 1) {
                 auto path = std::filesystem::path(urls[0].path().toStdString());
-                if(path.extension() == ".gb" || path.extension() == ".gbc") {
+                if(path.extension() == ".gb" || path.extension() == ".gbc" || path.extension() == ".isx") {
                     return path;
                 }
             }
@@ -452,10 +452,19 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     
     this->rom_loaded = true;
     GB_reset(&this->gameboy);
-    GB_load_rom(&this->gameboy, rom_path);
-    save_path = std::filesystem::path(rom_path).replace_extension(".sav").string();
+    
+    auto path = std::filesystem::path(rom_path);
+    
+    if(path.extension() == ".isx") {
+        GB_load_isx(&this->gameboy, rom_path);
+    }
+    else {
+        GB_load_rom(&this->gameboy, rom_path);
+    }
+    
+    save_path = path.replace_extension(".sav").string();
     GB_load_battery(&this->gameboy, save_path.c_str());
-    GB_debugger_load_symbol_file(&this->gameboy, std::filesystem::path(rom_path).replace_extension(".sym").string().c_str());
+    GB_debugger_load_symbol_file(&this->gameboy, path.replace_extension(".sym").string().c_str());
 }
 
 void GameWindow::update_recent_roms_list() {
@@ -616,7 +625,7 @@ void GameWindow::action_toggle_pause() noexcept {
 
 void GameWindow::action_open_rom() noexcept {
     QFileDialog qfd;
-    qfd.setNameFilters(QStringList { "Game Boy ROM (*.gb)", "Game Boy Color ROM (*.gbc)" });
+    qfd.setNameFilters(QStringList { "Game Boy ROM (*.gb)", "Game Boy Color ROM (*.gbc)", "ISX Binary (*.isx)" });
     
     if(qfd.exec() == QDialog::DialogCode::Accepted) {
         this->load_rom(qfd.selectedFiles()[0].toUtf8().data());
