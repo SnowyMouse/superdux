@@ -578,9 +578,15 @@ void GameWindow::action_open_rom() noexcept {
 }
 
 void GameWindow::action_reset() noexcept {
-    this->save_if_loaded();
+    // reload battery since GB_reset() nukes the RTC
+    // first save to buffer
+    std::vector<std::uint8_t> save_data_buffer(GB_save_battery_size(&this->gameboy));
+    GB_save_battery_to_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
+    
     GB_reset(&this->gameboy);
-    GB_load_battery(&this->gameboy, this->save_path.c_str()); // reload battery since GB_reset() nukes the RTC
+    
+    // now load battery
+    GB_load_battery_from_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
 }
 
 void GameWindow::action_toggle_audio() noexcept {
