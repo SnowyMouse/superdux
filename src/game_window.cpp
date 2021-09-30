@@ -112,9 +112,10 @@ GameWindow::GameWindow() {
     
     file_menu->addSeparator();
     
-    auto *quit_without_saving = file_menu->addAction("Quit without saving");
-    quit_without_saving->setIcon(GET_ICON("application-exit"));
-    connect(quit_without_saving, &QAction::triggered, this, &GameWindow::action_quit_without_saving);
+    this->exit_without_saving = file_menu->addAction("Quit without saving");
+    this->exit_without_saving->setIcon(GET_ICON("application-exit"));
+    connect(this->exit_without_saving, &QAction::triggered, this, &GameWindow::action_quit_without_saving);
+    this->exit_without_saving->setEnabled(false);
     
     auto *quit = file_menu->addAction("Quit");
     quit->setShortcut(QKeySequence::Quit);
@@ -402,6 +403,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     
     this->save_if_loaded();
     this->reset_rom_action->setEnabled(true);
+    this->exit_without_saving->setEnabled(true);
     
     recent_roms.removeAll(rom_path);
     recent_roms.push_front(rom_path);

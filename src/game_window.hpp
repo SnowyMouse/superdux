@@ -104,6 +104,7 @@ private:
     // Save path
     std::string save_path;
     bool exit_without_save = false;
+    QAction *exit_without_saving;
     bool save_if_loaded() noexcept;
     
     // Debugging
