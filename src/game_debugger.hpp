@@ -10,10 +10,12 @@ extern "C" {
 #include <QMainWindow>
 #include <optional>
 
+#include "game_window.hpp"
+
 class GameDisassembler;
 class GameDebuggerTable;
-class GameWindow;
 class QLineEdit;
+class GameWindow;
 
 class GameDebugger : public QMainWindow {
     friend GameDisassembler;
@@ -26,7 +28,9 @@ public:
     GameDebugger(GameWindow *window);
     ~GameDebugger() override;
     
-    void set_gameboy(GB_gameboy_s *);
+    GB_gameboy_s *get_gameboy() noexcept {
+        return this->game_window->get_gameboy();
+    }
     
 private:
     GameDisassembler *disassembler;
@@ -34,7 +38,6 @@ private:
     // Set the preferred font for the debugger
     QFont table_font;
     
-    GB_gameboy_s *gameboy = nullptr;
     void push_retain_logs() { this->retain_logs++; }
     void pop_retain_logs() { this->retain_logs--; }
     int retain_logs = 0;

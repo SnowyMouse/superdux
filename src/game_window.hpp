@@ -15,19 +15,19 @@ extern "C" {
 #include <vector>
 #include <chrono>
 #include <string>
+#include <optional>
 #include <QStringList>
 #include <QSettings>
-
-#include "game_debugger.hpp"
 
 class QAudioOutput;
 class QIODevice;
 class QGamepad;
+class GameDebugger;
 
 class GameWindow : public QMainWindow {
-    friend GameDebugger;
-    
     Q_OBJECT
+    
+    friend GameDebugger;
     
 public:
     GameWindow();
@@ -37,6 +37,10 @@ public:
     const QSettings &settings();
     
     ~GameWindow();
+    
+    GB_gameboy_s *get_gameboy() noexcept {
+        return &this->gameboy;
+    }
     
 private:
     using clock = std::chrono::steady_clock;

@@ -55,7 +55,7 @@ void GameDisassembler::follow_address() {
 }
 
 void GameDisassembler::set_address_to_current_breakpoint() {
-    this->current_address = get_16_bit_gb_register(this->debugger->gameboy, gbz80_register::GBZ80_REG_PC);
+    this->current_address = get_16_bit_gb_register(this->debugger->get_gameboy(), gbz80_register::GBZ80_REG_PC);
 }
 
 void GameDisassembler::add_breakpoint() {
@@ -120,9 +120,10 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
 }
 
 bool GameDisassembler::address_is_breakpoint(std::uint16_t address) {
-    auto breakpoint_count = get_gb_breakpoint_size(this->debugger->gameboy);
+    auto *gameboy = this->debugger->get_gameboy();
+    auto breakpoint_count = get_gb_breakpoint_size(gameboy);
     for(std::size_t q = 0; q < breakpoint_count; q++) {
-        if(address == get_gb_breakpoint_address(this->debugger->gameboy, q)) {
+        if(address == get_gb_breakpoint_address(gameboy, q)) {
             return true;
         }
     }
@@ -248,21 +249,19 @@ void GameDisassembler::refresh_view() {
 }
 
 std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_address(std::optional<std::uint16_t> address, std::uint8_t count, std::uint16_t &first_address) {
-    if(!this->debugger->gameboy) {
-        return {};
-    }
+    auto *gameboy = this->debugger->get_gameboy();
     
     // Tell sameboy to disassemble at the address and capture its output.
     // Doing it this way is horrible. Let's do it anyway.
     this->debugger->push_retain_logs();
     
     if(address.has_value()) {
-        GB_cpu_disassemble(this->debugger->gameboy, *address, count);
+        GB_cpu_disassemble(gameboy, *address, count);
     }
     else {
         char *cmd = nullptr;
         asprintf(&cmd, "disassemble");
-        GB_debugger_execute_command(this->debugger->gameboy, cmd);
+        GB_debugger_execute_command(gameboy, cmd);
     }
         
     auto lines = QString::fromStdString(this->debugger->retained_logs).split("\n");

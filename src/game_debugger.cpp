@@ -30,7 +30,8 @@ public:
         auto *item = this->itemAt(event->pos());
         if(item) {
             int r = item->data(Qt::UserRole).toInt();
-            auto bt_size = get_gb_backtrace_size(this->window->gameboy);
+            auto *gameboy = this->window->get_gameboy();
+            auto bt_size = get_gb_backtrace_size(gameboy);
             
             // Go there
             if(r >= 0 && r <= bt_size) {
@@ -38,10 +39,10 @@ public:
                 
                 // Topmost should just be the current instruction since that's what is shown
                 if(r == 0) {
-                    addr = get_16_bit_gb_register(this->window->gameboy, gbz80_register::GBZ80_REG_PC);
+                    addr = get_16_bit_gb_register(gameboy, gbz80_register::GBZ80_REG_PC);
                 }
                 else {
-                    addr = get_gb_backtrace_address(this->window->gameboy, bt_size - r);
+                    addr = get_gb_backtrace_address(gameboy, bt_size - r);
                 }
                 
                 this->window->disassembler->go_to(addr);
@@ -144,6 +145,11 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     backtrace_frame->setLayout(backtrace_layout);
     right_view_layout->addWidget(backtrace_frame);
     
+    // Set callbacks
+    auto *gameboy = this->get_gameboy();
+    GB_set_log_callback(gameboy, log_callback);
+    GB_set_input_callback(gameboy, input_callback);
+    
     // Done
     layout->addWidget(this->right_view);
     this->right_view->setMaximumWidth(300);
@@ -154,7 +160,7 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
 }
 
 void GameDebugger::action_break() {
-    GB_debugger_break(this->gameboy);
+    GB_debugger_break(this->get_gameboy());
 }
 
 void GameDebugger::action_continue() {
@@ -231,13 +237,7 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
 void GameDebugger::execute_debugger_command(const char *command) {
     char *cmd = nullptr;
     asprintf(&cmd, "%s", command);
-    GB_debugger_execute_command(this->gameboy, cmd);
-}
-
-void GameDebugger::set_gameboy(GB_gameboy_s *gb) {
-    this->gameboy = gb;
-    GB_set_log_callback(this->gameboy, log_callback);
-    GB_set_input_callback(this->gameboy, input_callback);
+    GB_debugger_execute_command(this->get_gameboy(), cmd);
 }
 
 void GameDebugger::refresh_view() {
@@ -246,13 +246,14 @@ void GameDebugger::refresh_view() {
         return;
     }
     
+    auto *gameboy = this->get_gameboy();
     this->disassembler->refresh_view();
-    this->clear_breakpoints_button->setEnabled(get_gb_breakpoint_size(this->gameboy) > 0);
+    this->clear_breakpoints_button->setEnabled(get_gb_breakpoint_size(gameboy) > 0);
     
     if(!this->debug_breakpoint_pause) {
         #define PROCESS_REGISTER_FIELD(name, size, field, fmt) {\
             char str[8]; \
-            std::snprintf(str, sizeof(str), fmt, get_##size##_bit_gb_register(this->gameboy, gbz80_register::GBZ80_REG_##name)); \
+            std::snprintf(str, sizeof(str), fmt, get_##size##_bit_gb_register(gameboy, gbz80_register::GBZ80_REG_##name)); \
             this->field->blockSignals(true); \
             this->field->setText(str); \
             this->field->blockSignals(false); \
@@ -302,10 +303,12 @@ void GameDebugger::action_update_registers() noexcept {
         return;
     }
     
+    auto *gameboy = this->get_gameboy();
+    
     #define PROCESS_REGISTER_FIELD(name, size, field) {\
         auto value = this->evaluate_expression(this->field->text().toUtf8().data());\
         if(value.has_value()) {\
-            set_##size##_bit_gb_register(this->gameboy, gbz80_register::GBZ80_REG_##name, *value);\
+            set_##size##_bit_gb_register(gameboy, gbz80_register::GBZ80_REG_##name, *value);\
         }\
     }
 
@@ -327,7 +330,9 @@ std::optional<std::uint16_t> GameDebugger::evaluate_expression(const char *expre
     
     this->push_retain_logs();
     
-    if(GB_debugger_evaluate(this->gameboy, expression, &result_maybe, nullptr)) {
+    auto *gameboy = this->get_gameboy();
+    
+    if(GB_debugger_evaluate(gameboy, expression, &result_maybe, nullptr)) {
         auto &logs = this->retained_logs;
         if(!logs.empty()) {
             QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", logs.c_str()).exec();

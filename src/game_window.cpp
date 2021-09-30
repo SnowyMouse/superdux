@@ -1,4 +1,6 @@
 #include "game_window.hpp"
+#include "game_debugger.hpp"
+
 #include <QHBoxLayout>
 #include <QTimer>
 #include <QMenuBar>
@@ -131,7 +133,6 @@ GameWindow::GameWindow() {
     
     QMenuBar *bar = new QMenuBar(this);
     this->setMenuBar(bar);
-    this->debugger_window = new GameDebugger(this);
     
     // File menu
     auto *file_menu = bar->addMenu("File");
@@ -347,6 +348,8 @@ GameWindow::GameWindow() {
     connect(tools_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(tools_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
+    // Create the debugger now that everything else is set up
+    this->debugger_window = new GameDebugger(this);
     auto *show_debugger = tools_menu->addAction("Show debugger");
     connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
     
@@ -711,8 +714,6 @@ void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
         GB_set_boot_rom_load_callback(&this->gameboy, load_boot_rom);
         GB_set_rgb_encode_callback(&this->gameboy, rgb_encode);
         GB_set_vblank_callback(&this->gameboy, GameWindow::on_vblank);
-        
-        this->debugger_window->set_gameboy(&this->gameboy);
     }
     
     // Update/clear our pixel buffer
