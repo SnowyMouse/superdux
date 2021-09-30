@@ -201,7 +201,7 @@ void GameDisassembler::refresh_view() {
         this->last_address = this->current_address;
     }
     
-    auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->debugger->table_font.pixelSize() + 1));
+    auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->debugger->get_table_font().pixelSize() + 1));
     this->setRowCount(query_rows);
     std::uint16_t first_address;
     this->disassembly = this->disassemble_at_address(this->current_address, query_rows, first_address);
@@ -264,8 +264,7 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
         GB_debugger_execute_command(gameboy, cmd);
     }
         
-    auto lines = QString::fromStdString(this->debugger->retained_logs).split("\n");
-    this->debugger->retained_logs.clear();
+    auto lines = QString::fromStdString(this->debugger->get_and_clear_retained_logs()).split("\n");
     
     std::vector<Disassembly> returned_instructions;
     for(auto &l : lines) {

@@ -21,7 +21,7 @@
 
 #include "gb_proxy.h"
 
-class GameDebuggerTable : public QTableWidget {
+class GameDebugger::GameDebuggerTable : public QTableWidget {
 public:
     GameDebuggerTable(QWidget *parent, GameDebugger *window) : QTableWidget(parent), window(window) {}
     
@@ -234,10 +234,28 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     return cmd;
 }
 
-void GameDebugger::execute_debugger_command(const char *command) {
+std::string GameDebugger::execute_debugger_command(const char *command) {
+    // Create a copy that can be free()'d
     char *cmd = nullptr;
     asprintf(&cmd, "%s", command);
+    
+    // Retain logs
+    this->retain_logs++;
+    
+    // Copy old retained logs (in case logs are currently being retained
+    auto old_logs = std::move(this->retained_logs);
+    this->retained_logs.clear();
+    
+    // Execute command
     GB_debugger_execute_command(this->get_gameboy(), cmd);
+    std::string result = std::move(this->retained_logs);
+    
+    // Copy back old retained logs
+    this->retained_logs = std::move(old_logs);
+    this->retain_logs--;
+    
+    // Done
+    return result;
 }
 
 void GameDebugger::refresh_view() {
@@ -270,11 +288,7 @@ void GameDebugger::refresh_view() {
         
         #undef PROCESS_REGISTER_FIELD
         
-        this->push_retain_logs();
-        this->execute_debugger_command("backtrace");
-        auto logs = QString::fromStdString(this->retained_logs).split('\n');
-        this->retained_logs.clear();
-        this->pop_retain_logs();
+        auto logs = QString::fromStdString(this->execute_debugger_command("backtrace")).split('\n');
         
         this->backtrace->setRowCount(logs.length());
         int row = 0;
@@ -328,12 +342,10 @@ std::optional<std::uint16_t> GameDebugger::evaluate_expression(const char *expre
     std::optional<std::uint16_t> result;
     std::uint16_t result_maybe;
     
-    this->push_retain_logs();
-    
     auto *gameboy = this->get_gameboy();
     
     if(GB_debugger_evaluate(gameboy, expression, &result_maybe, nullptr)) {
-        auto &logs = this->retained_logs;
+        auto logs = this->execute_debugger_command("backtrace");
         if(!logs.empty()) {
             QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", logs.c_str()).exec();
             logs.clear();
@@ -345,7 +357,6 @@ std::optional<std::uint16_t> GameDebugger::evaluate_expression(const char *expre
     else {
         result = result_maybe;
     }
-    this->pop_retain_logs();
     
     return result;
 }

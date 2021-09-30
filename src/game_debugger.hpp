@@ -13,13 +13,10 @@ extern "C" {
 #include "game_window.hpp"
 
 class GameDisassembler;
-class GameDebuggerTable;
 class QLineEdit;
 class GameWindow;
 
 class GameDebugger : public QMainWindow {
-    friend GameDisassembler;
-    friend GameDebuggerTable;
     friend GameWindow;
     
     Q_OBJECT
@@ -32,21 +29,45 @@ public:
         return this->game_window->get_gameboy();
     }
     
+    /** Add 1 to retaining logs (if != 0, logs are not printed to console but stored in a buffer */
+    void push_retain_logs() { this->retain_logs++; }
+    
+    /** Subtract 1 from retaining logs (if != 0, logs are not printed to console but stored in a buffer */
+    void pop_retain_logs() { this->retain_logs--; }
+    
+    /** Return logs and clear */
+    std::string get_and_clear_retained_logs() {
+        auto result = std::move(this->retained_logs);
+        this->retained_logs = {};
+        return result;
+    }
+    
+    /** Format the table for use with the debugger */
+    void format_table(QTableWidget *widget);
+    
+    /** Evaluate the expression, returning an address if successful */
+    std::optional<std::uint16_t> evaluate_expression(const char *expression);
+    
+    /** Execute the debugger command, returning the result */
+    std::string execute_debugger_command(const char *command);
+    
+    /** Get the font used for tables */
+    const QFont &get_table_font() const noexcept {
+        return this->table_font;
+    }
 private:
     GameDisassembler *disassembler;
     
+    class GameDebuggerTable;
+    
     // Set the preferred font for the debugger
     QFont table_font;
-    
-    void push_retain_logs() { this->retain_logs++; }
-    void pop_retain_logs() { this->retain_logs--; }
     int retain_logs = 0;
     std::string retained_logs;
     static GameDebugger *resolve_debugger(GB_gameboy_s *gb) noexcept;
     static char *input_callback(GB_gameboy_s *) noexcept;
     bool debug_breakpoint_pause = false;
     
-    void execute_debugger_command(const char *command);
     void continue_break(const char *command_to_execute = nullptr);
     void action_break();
     void action_continue();
@@ -70,14 +91,12 @@ private:
     QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_pc;
     QTableWidget *backtrace;
     
-    std::optional<std::uint16_t> evaluate_expression(const char *expression);
     
     GameWindow *game_window;
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
     void refresh_view();
     
-    void format_table(QTableWidget *widget);
     
 };
 
