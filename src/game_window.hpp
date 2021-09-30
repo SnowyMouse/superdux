@@ -125,8 +125,6 @@ private:
     // Make a shadow
     void make_shadow(QGraphicsTextItem *object);
     
-    void perform_reset(std::optional<GB_model_t> new_model = std::nullopt);
-    
     // Used for preventing loading different ROMs while debugging
     void set_loading_other_roms_enabled(bool enabled) noexcept;
     
