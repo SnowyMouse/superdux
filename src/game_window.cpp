@@ -396,7 +396,7 @@ void GameWindow::play_audio_buffer() {
 
 void GameWindow::load_rom(const char *rom_path) noexcept {
     if(!std::filesystem::exists(rom_path)) {
-        this->show_status_text("ROM not found");
+        this->show_status_text("Error: ROM not found");
         print_debug_message("Could not find %s\n", rom_path);
         return;
     }

@@ -1,9 +1,14 @@
 #include <QApplication>
+#include <filesystem>
 #include "game_window.hpp"
 
 int main(int argc, char **argv) {
     if(argc > 2) {
         std::printf("Usage: %s [path-to-rom]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    else if(argc == 2 && !std::filesystem::exists(argv[1])) {
+        std::fprintf(stderr, "Error: No file exists at %s\n", argv[1]);
         return EXIT_FAILURE;
     }
     
