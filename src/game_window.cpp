@@ -128,9 +128,10 @@ GameWindow::GameWindow() {
     pause->setCheckable(true);
     pause->setChecked(this->paused);
     
-    auto *reset = emulation_menu->addAction("Reset");
-    connect(reset, &QAction::triggered, this, &GameWindow::action_reset);
-    reset->setIcon(GET_ICON("view-refresh"));
+    this->reset_rom_action = emulation_menu->addAction("Reset");
+    connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
+    this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
+    this->reset_rom_action->setEnabled(false);
     
     
     emulation_menu->addSeparator();
@@ -395,6 +396,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     }
     
     this->save_if_loaded();
+    this->reset_rom_action->setEnabled(true);
     
     recent_roms.removeAll(rom_path);
     recent_roms.push_front(rom_path);
@@ -403,11 +405,11 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->update_recent_roms_list();
     
     this->rom_loaded = true;
+    GB_reset(&this->gameboy);
     GB_load_rom(&this->gameboy, rom_path);
     save_path = std::filesystem::path(rom_path).replace_extension(".sav").string();
     GB_load_battery(&this->gameboy, save_path.c_str());
     GB_debugger_load_symbol_file(&this->gameboy, std::filesystem::path(rom_path).replace_extension(".sym").string().c_str());
-    GB_reset(&this->gameboy);
 }
 
 void GameWindow::update_recent_roms_list() {

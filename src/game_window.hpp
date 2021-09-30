@@ -112,6 +112,9 @@ private:
     QStringList recent_roms;
     QMenu *recent_roms_menu;
     
+    // Reset button
+    QAction *reset_rom_action;
+    
     // Make a shadow
     void make_shadow(QGraphicsTextItem *object);
     
