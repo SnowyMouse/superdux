@@ -103,6 +103,7 @@ private:
     
     // Save path
     std::string save_path;
+    bool exit_without_save = false;
     bool save_if_loaded() noexcept;
     
     // Debugging
@@ -151,7 +152,8 @@ private slots:
     void action_showing_menu() noexcept;
     void action_hiding_menu() noexcept;
     
-    void action_save_battery() noexcept;
+    void action_save_sram() noexcept;
+    void action_quit_without_saving() noexcept;
 };
 
 #endif

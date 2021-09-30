@@ -15,6 +15,7 @@
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
 #include <chrono>
+#include <QMessageBox>
 
 #include <agb_boot.h>
 #include <sgb_boot.h>
@@ -104,12 +105,16 @@ GameWindow::GameWindow() {
     this->recent_roms_menu = file_menu->addMenu("Recent ROMs");
     this->update_recent_roms_list();
     
-    auto *save = file_menu->addAction("Save battery");
+    auto *save = file_menu->addAction("Save SRAM to disk");
     save->setShortcut(QKeySequence::Save);
     save->setIcon(GET_ICON("document-save"));
-    connect(save, &QAction::triggered, this, &GameWindow::action_save_battery);
+    connect(save, &QAction::triggered, this, &GameWindow::action_save_sram);
     
     file_menu->addSeparator();
+    
+    auto *quit_without_saving = file_menu->addAction("Quit without saving");
+    quit_without_saving->setIcon(GET_ICON("application-exit"));
+    connect(quit_without_saving, &QAction::triggered, this, &GameWindow::action_quit_without_saving);
     
     auto *quit = file_menu->addAction("Quit");
     quit->setShortcut(QKeySequence::Quit);
@@ -578,14 +583,14 @@ void GameWindow::action_open_rom() noexcept {
 }
 
 void GameWindow::action_reset() noexcept {
-    // reload battery since GB_reset() nukes the RTC
+    // reload sram since GB_reset() nukes the RTC
     // first save to buffer
     std::vector<std::uint8_t> save_data_buffer(GB_save_battery_size(&this->gameboy));
     GB_save_battery_to_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
     
     GB_reset(&this->gameboy);
     
-    // now load battery
+    // now load sram
     GB_load_battery_from_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
 }
 
@@ -762,7 +767,7 @@ bool GameWindow::save_if_loaded() noexcept {
     }
 }
     
-void GameWindow::action_save_battery() noexcept {
+void GameWindow::action_save_sram() noexcept {
     auto filename = std::filesystem::path(this->save_path).filename().string();
     if(!this->save_if_loaded()) {
         if(this->rom_loaded) {
@@ -775,15 +780,26 @@ void GameWindow::action_save_battery() noexcept {
         }
     }
     else {
-        this->show_status_text("Battery saved");
+        this->show_status_text("SRAM saved");
     }
 }
 
-GameWindow::~GameWindow() {
-    this->save_if_loaded();
+void GameWindow::action_quit_without_saving() noexcept {
+    QMessageBox qmb(QMessageBox::Icon::Question, "Are you sure?", "This will close the emulator without saving your SRAM.\n\nAny save data that has not been saved to disk will be lost.", QMessageBox::Cancel | QMessageBox::Ok);
+    qmb.setDefaultButton(QMessageBox::Cancel);
+    
+    if(qmb.exec() == QMessageBox::Ok) {
+        this->exit_without_save = true;
+        this->close();
+    }
 }
 
+GameWindow::~GameWindow() {}
+
 void GameWindow::closeEvent(QCloseEvent *) {
+    if(!this->exit_without_save) {
+        this->save_if_loaded();
+    }
     this->debugger_window->debug_breakpoint_pause = false;
     
     QSettings settings;
