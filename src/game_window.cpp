@@ -16,6 +16,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <chrono>
 #include <QMessageBox>
+#include <QMimeData>
 
 #include <agb_boot.h>
 #include <sgb_boot.h>
@@ -39,10 +40,47 @@
 
 class GamePixelBufferView : public QGraphicsView {
 public:
-    GamePixelBufferView(QWidget *parent) : QGraphicsView(parent) {}
+    GamePixelBufferView(QWidget *parent, GameWindow *window) : QGraphicsView(parent), window(window) {
+        this->setAcceptDrops(true);
+    }
     void keyPressEvent(QKeyEvent *event) override {
         event->ignore();
     }
+    
+    // Make sure the extension is valid
+    template<typename T> static std::optional<std::filesystem::path> validate_event(T *event) {
+        auto *d = event->mimeData();
+        if(d->hasUrls()) {
+            auto urls = d->urls();
+            if(urls.length() == 1) {
+                auto path = std::filesystem::path(urls[0].path().toStdString());
+                if(path.extension() == ".gb" || path.extension() == ".gbc") {
+                    return path;
+                }
+            }
+        }
+        return std::nullopt;
+    }
+    
+    // Handle drag-and-drop
+    void dragEnterEvent(QDragEnterEvent *event) override {
+        if(validate_event(event).has_value()) {
+            event->accept();
+        }
+    }
+    void dragMoveEvent(QDragMoveEvent *event) override {
+        if(validate_event(event).has_value()) {
+            event->accept();
+        }
+    }
+    void dropEvent(QDropEvent *event) override {
+        auto path = validate_event(event);
+        if(path.has_value()) {
+            this->window->load_rom(path->string().c_str());
+        }
+    }
+    
+    GameWindow *window;
 };
 
 static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) {
@@ -86,6 +124,7 @@ GameWindow::GameWindow() {
     this->muted = settings.value(SETTINGS_MUTE, false).toBool();
     this->recent_roms = settings.value(SETTINGS_RECENT_ROMS).toStringList();
     
+    this->setAcceptDrops(true);
     this->setWindowTitle("Super SameBoy");
     
     QMenuBar *bar = new QMenuBar(this);
@@ -226,7 +265,7 @@ GameWindow::GameWindow() {
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
     
-    this->pixel_buffer_view = new GamePixelBufferView(central_widget);
+    this->pixel_buffer_view = new GamePixelBufferView(central_widget, this);
     this->pixel_buffer_scene = new QGraphicsScene(central_widget);
     this->pixel_buffer_pixmap_item = this->pixel_buffer_scene->addPixmap(this->pixel_buffer_pixmap);
     this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
