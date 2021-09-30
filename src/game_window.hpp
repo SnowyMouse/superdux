@@ -42,8 +42,10 @@ private:
     using clock = std::chrono::steady_clock;
     
     // Gameboy itself
-    GB_gameboy_s gameboy;
+    GB_gameboy_s gameboy = {};
+    GB_model_t gb_model = GB_model_t::GB_MODEL_CGB_C;
     void initialize_gameboy(GB_model_t model) noexcept;
+    std::vector<QAction *> gb_model_actions;
     
     // Audio
     bool muted = false;
@@ -65,10 +67,10 @@ private:
     std::vector<QAction *> scaling_options;
     bool vblank = false;
     QPixmap pixel_buffer_pixmap;
-    QGraphicsPixmapItem *pixel_buffer_pixmap_item;
+    QGraphicsPixmapItem *pixel_buffer_pixmap_item = nullptr;
     QImage pixel_buffer;
     QGraphicsView *pixel_buffer_view;
-    QGraphicsScene *pixel_buffer_scene;
+    QGraphicsScene *pixel_buffer_scene = nullptr;
     QGraphicsTextItem *fps_text = nullptr;
     static void on_vblank(GB_gameboy_s *);
     void set_pixel_view_scaling(int scaling);
@@ -120,6 +122,8 @@ private:
     // Make a shadow
     void make_shadow(QGraphicsTextItem *object);
     
+    void perform_reset(std::optional<GB_model_t> new_model = std::nullopt);
+    
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;
     
@@ -153,6 +157,7 @@ private slots:
     void action_showing_menu() noexcept;
     void action_hiding_menu() noexcept;
     
+    void action_set_model() noexcept;
     void action_save_sram() noexcept;
     void action_quit_without_saving() noexcept;
 };

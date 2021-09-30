@@ -31,6 +31,7 @@
 #define SETTINGS_PAUSE_ON_MENU "pause_on_menu"
 #define SETTINGS_MUTE "mute"
 #define SETTINGS_RECENT_ROMS "recent_roms"
+#define SETTINGS_GB_MODEL "gb_model"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -116,12 +117,13 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
 
 GameWindow::GameWindow() {
     QSettings settings;
-    this->volume = settings.value(SETTINGS_VOLUME, 100).toInt();
-    this->scaling = settings.value(SETTINGS_SCALE, 2).toInt();
-    this->show_fps = settings.value(SETTINGS_SHOW_FPS, false).toBool();
-    this->mono = settings.value(SETTINGS_MONO, false).toBool();
-    this->pause_on_menu = settings.value(SETTINGS_PAUSE_ON_MENU, false).toBool();
-    this->muted = settings.value(SETTINGS_MUTE, false).toBool();
+    this->volume = settings.value(SETTINGS_VOLUME, this->volume).toInt();
+    this->scaling = settings.value(SETTINGS_SCALE, this->scaling).toInt();
+    this->show_fps = settings.value(SETTINGS_SHOW_FPS, this->show_fps).toBool();
+    this->mono = settings.value(SETTINGS_MONO, this->mono).toBool();
+    this->pause_on_menu = settings.value(SETTINGS_PAUSE_ON_MENU, this->pause_on_menu).toBool();
+    this->muted = settings.value(SETTINGS_MUTE, this->muted).toBool();
+    this->gb_model = static_cast<decltype(this->gb_model)>(settings.value(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model)).toInt());
     this->recent_roms = settings.value(SETTINGS_RECENT_ROMS).toStringList();
     
     this->setAcceptDrops(true);
@@ -167,19 +169,36 @@ GameWindow::GameWindow() {
     connect(emulation_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(emulation_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
+    this->reset_rom_action = emulation_menu->addAction("Reset");
+    connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
+    this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
+    this->reset_rom_action->setEnabled(false);
+    
+    auto *model_menu = emulation_menu->addMenu("Game Boy model");
+    std::pair<const char *, GB_model_t> models[] = {
+        {"Game Boy", GB_model_t::GB_MODEL_DMG_B},
+        {"Game Boy Color", GB_model_t::GB_MODEL_CGB_C},
+        {"Game Boy Advance (GBC mode)", GB_model_t::GB_MODEL_AGB},
+        {"Super Game Boy", GB_model_t::GB_MODEL_SGB},
+        {"Super Game Boy 2", GB_model_t::GB_MODEL_SGB2},
+    };
+    for(auto &m : models) {
+        auto *action = model_menu->addAction(m.first);
+        action->setData(static_cast<int>(m.second));
+        action->setCheckable(true);
+        action->setChecked(m.second == this->gb_model);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_model);
+        this->gb_model_actions.emplace_back(action);
+    }
+    
+    emulation_menu->addSeparator();
+    
     auto *pause = emulation_menu->addAction("Pause");
     connect(pause, &QAction::triggered, this, &GameWindow::action_toggle_pause);
     pause->setIcon(GET_ICON("media-playback-pause"));
     pause->setCheckable(true);
     pause->setChecked(this->paused);
     
-    this->reset_rom_action = emulation_menu->addAction("Reset");
-    connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
-    this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
-    this->reset_rom_action->setEnabled(false);
-    
-    
-    emulation_menu->addSeparator();
     auto *pause_on_menu = emulation_menu->addAction("Pause if menu is open");
     connect(pause_on_menu, &QAction::triggered, this, &GameWindow::action_toggle_pause_in_menu);
     pause_on_menu->setIcon(GET_ICON("media-playback-pause"));
@@ -257,28 +276,23 @@ GameWindow::GameWindow() {
         connect(action, &QAction::triggered, this, &GameWindow::action_set_scaling);
         action->setCheckable(true);
         action->setChecked(i == this->scaling);
-        
         scaling_options.emplace_back(action);
     }
     
-    
+    // Here's the layout
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
     
-    this->pixel_buffer_view = new GamePixelBufferView(central_widget, this);
-    this->pixel_buffer_scene = new QGraphicsScene(central_widget);
-    this->pixel_buffer_pixmap_item = this->pixel_buffer_scene->addPixmap(this->pixel_buffer_pixmap);
-    this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
-    
-    // Instantiate the game boy
-    this->initialize_gameboy(GB_model_t::GB_MODEL_CGB_C);
-
     // Set our pixel buffer parameters
+    this->pixel_buffer_view = new GamePixelBufferView(central_widget, this);
     this->pixel_buffer_view->setFrameStyle(0);
     this->pixel_buffer_view->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
     
+    // Instantiate the game boy
+    this->initialize_gameboy(this->gb_model);
+
     // If showing FPS, trigger it
     if(this->show_fps) {
         this->show_fps = false;
@@ -450,7 +464,10 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->update_recent_roms_list();
     
     this->rom_loaded = true;
+    
+    // Reset
     GB_reset(&this->gameboy);
+    GB_debugger_clear_symbols(&this->gameboy);
     
     auto path = std::filesystem::path(rom_path);
     
@@ -470,9 +487,6 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     auto sym_path = path.replace_extension(".sym");
     if(std::filesystem::exists(path.replace_extension(".sym"))) {
         GB_debugger_load_symbol_file(&this->gameboy, sym_path.string().c_str());
-    }
-    else {
-        GB_debugger_clear_symbols(&this->gameboy);
     }
 }
 
@@ -497,10 +511,24 @@ void GameWindow::redraw_pixel_buffer() {
 }
 
 void GameWindow::set_pixel_view_scaling(int scaling) {
+    // Reinitialize the scene
+    this->pixel_buffer_pixmap = {};
+    auto *new_scene = new QGraphicsScene(this->pixel_buffer_view);
+    auto *new_pixmap = new_scene->addPixmap(this->pixel_buffer_pixmap);
+    if(this->pixel_buffer_scene) {
+        delete this->pixel_buffer_pixmap_item;
+        auto items = this->pixel_buffer_scene->items();
+        for(auto &i : items) {
+            new_scene->addItem(i);
+        }
+    }
+    this->pixel_buffer_pixmap_item = new_pixmap;
+    this->pixel_buffer_scene = new_scene;
+    this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
+    
     this->scaling = scaling;
     this->pixel_buffer_view->setMinimumSize(this->pixel_buffer.width() * this->scaling,this->pixel_buffer.height() * this->scaling);
     this->pixel_buffer_view->setMaximumSize(this->pixel_buffer.width() * this->scaling,this->pixel_buffer.height() * this->scaling);
-    
     this->pixel_buffer_view->setTransform(QTransform::fromScale(scaling, scaling));
     this->make_shadow(this->fps_text);
     this->make_shadow(this->status_text);
@@ -642,12 +670,21 @@ void GameWindow::action_open_rom() noexcept {
 }
 
 void GameWindow::action_reset() noexcept {
+    this->perform_reset();
+}
+
+void GameWindow::perform_reset(std::optional<GB_model_t> new_model) {
     // reload sram since GB_reset() nukes the RTC
     // first save to buffer
     std::vector<std::uint8_t> save_data_buffer(GB_save_battery_size(&this->gameboy));
     GB_save_battery_to_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
     
-    GB_reset(&this->gameboy);
+    if(new_model.has_value()) {
+        GB_switch_model_and_reset(&this->gameboy, *new_model);
+    }
+    else {
+        GB_reset(&this->gameboy);
+    }
     
     // now load sram
     GB_load_battery_from_buffer(&this->gameboy, save_data_buffer.data(), save_data_buffer.size());
@@ -682,14 +719,20 @@ void GameWindow::show_status_text(const char *text) {
 }
 
 void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
-    std::memset(&this->gameboy, 0, sizeof(this->gameboy));
-    GB_init(&this->gameboy, model);
-    GB_set_user_data(&this->gameboy, this);
-    GB_set_boot_rom_load_callback(&this->gameboy, load_boot_rom);
-    GB_set_rgb_encode_callback(&this->gameboy, rgb_encode);
-    GB_set_vblank_callback(&this->gameboy, GameWindow::on_vblank);
-    
-    this->debugger_window->set_gameboy(&this->gameboy);
+    if(GB_is_inited(&this->gameboy)) {
+        if(this->rom_loaded) {
+            this->perform_reset(model);
+        }
+    }
+    else {
+        GB_init(&this->gameboy, model);
+        GB_set_user_data(&this->gameboy, this);
+        GB_set_boot_rom_load_callback(&this->gameboy, load_boot_rom);
+        GB_set_rgb_encode_callback(&this->gameboy, rgb_encode);
+        GB_set_vblank_callback(&this->gameboy, GameWindow::on_vblank);
+        
+        this->debugger_window->set_gameboy(&this->gameboy);
+    }
     
     // Update/clear our pixel buffer
     int width = GB_get_screen_width(&this->gameboy), height = GB_get_screen_height(&this->gameboy);
@@ -843,6 +886,17 @@ void GameWindow::action_save_sram() noexcept {
     }
 }
 
+void GameWindow::action_set_model() noexcept {
+    // Uses the user data from the sender to get model
+    auto *action = qobject_cast<QAction *>(sender());
+    this->gb_model = static_cast<decltype(this->gb_model)>(action->data().toInt());
+    this->initialize_gameboy(this->gb_model);
+    
+    for(auto &i : this->gb_model_actions) {
+        i->setChecked(i->data().toInt() == this->gb_model);
+    }
+}
+
 void GameWindow::action_quit_without_saving() noexcept {
     QMessageBox qmb(QMessageBox::Icon::Question, "Are you sure?", "This will close the emulator without saving your SRAM.\n\nAny save data that has not been saved to disk will be lost.", QMessageBox::Cancel | QMessageBox::Ok);
     qmb.setDefaultButton(QMessageBox::Cancel);
@@ -869,6 +923,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_PAUSE_ON_MENU, this->pause_on_menu);
     settings.setValue(SETTINGS_MUTE, this->muted);
     settings.setValue(SETTINGS_RECENT_ROMS, this->recent_roms);
+    settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
     
     QApplication::quit();
 }
