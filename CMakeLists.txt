@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project("super-sameboy"
+    VERSION 0.1.0
     LANGUAGES C CXX
 )
 
@@ -28,7 +29,7 @@ add_executable(super-sameboy
 )
 
 target_include_directories(super-sameboy
-    PRIVATE "${SAMEBOY_DIR}"
+    PRIVATE "${SAMEBOY_SOURCE_DIR}"
     PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
@@ -58,5 +59,5 @@ add_custom_target(gb-struct-size-do ALL gb-struct-size-test
 )
 
 target_include_directories(gb-struct-size-test
-    PRIVATE "${SAMEBOY_DIR}"
+    PRIVATE "${SAMEBOY_SOURCE_DIR}"
 )
