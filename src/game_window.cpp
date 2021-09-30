@@ -580,6 +580,7 @@ void GameWindow::action_open_rom() noexcept {
 void GameWindow::action_reset() noexcept {
     this->save_if_loaded();
     GB_reset(&this->gameboy);
+    GB_load_battery(&this->gameboy, this->save_path.c_str()); // reload battery since GB_reset() nukes the RTC
 }
 
 void GameWindow::action_toggle_audio() noexcept {
