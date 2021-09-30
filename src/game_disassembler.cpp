@@ -201,6 +201,7 @@ void GameDisassembler::refresh_view() {
         this->last_address = this->current_address;
     }
     
+    // Disassemble based on the number of rows that are visible (plus one in case there is a partial row on the bottom)
     auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->debugger->get_table_font().pixelSize() + 1));
     this->setRowCount(query_rows);
     this->disassembly = this->disassemble_at_address(this->current_address, query_rows);
@@ -208,6 +209,7 @@ void GameDisassembler::refresh_view() {
     this->next_address_medium = this->current_address;
     this->next_address_far = this->current_address;
     
+    // Calculate how far to scroll down if we scroll down
     int next_addresses_found = 0;
     for(auto &i : this->disassembly) {
         if(i.address.has_value() && *i.address > this->current_address) {

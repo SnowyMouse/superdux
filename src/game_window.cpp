@@ -118,6 +118,7 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
+    // Load settings
     QSettings settings;
     this->volume = settings.value(SETTINGS_VOLUME, this->volume).toInt();
     this->scaling = settings.value(SETTINGS_SCALE, this->scaling).toInt();
@@ -128,9 +129,11 @@ GameWindow::GameWindow() {
     this->gb_model = static_cast<decltype(this->gb_model)>(settings.value(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model)).toInt());
     this->recent_roms = settings.value(SETTINGS_RECENT_ROMS).toStringList();
     
+    // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
     this->setWindowTitle("Super SameBoy");
     
+    // Start setting up the menu bar
     QMenuBar *bar = new QMenuBar(this);
     this->setMenuBar(bar);
     
@@ -164,7 +167,6 @@ GameWindow::GameWindow() {
     quit->setIcon(GET_ICON("application-exit"));
     connect(quit, &QAction::triggered, this, &GameWindow::close);
     
-    
     // Emulation menu
     auto *emulation_menu = bar->addMenu("Emulation");
     connect(emulation_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
@@ -194,6 +196,7 @@ GameWindow::GameWindow() {
     
     emulation_menu->addSeparator();
     
+    // Pause options
     this->pause_action = emulation_menu->addAction("Pause");
     connect(this->pause_action, &QAction::triggered, this, &GameWindow::action_toggle_pause);
     this->pause_action->setIcon(GET_ICON("media-playback-pause"));
@@ -217,6 +220,7 @@ GameWindow::GameWindow() {
     mute->setCheckable(true);
     mute->setChecked(this->muted);
     
+    // Volume list (increase/decrease and set volumes from 0 to 100)
     auto *volume = audio_menu->addMenu("Volume");
     
     auto *raise_volume = volume->addAction("Increase volume");
@@ -461,9 +465,10 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->reset_rom_action->setEnabled(true);
     this->exit_without_saving->setEnabled(true);
 
-    recent_roms.removeAll(rom_path);
-    recent_roms.push_front(rom_path);
-    recent_roms = recent_roms.mid(0, 5);    
+    // Remove the ROM from the list (if present) so we can re-place it at the top of the list
+    this->recent_roms.removeAll(rom_path);
+    this->recent_roms.push_front(rom_path);
+    this->recent_roms = this->recent_roms.mid(0, 5);    
     this->update_recent_roms_list();
     
     this->rom_loaded = true;
@@ -494,9 +499,10 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
 }
 
 void GameWindow::update_recent_roms_list() {
-    recent_roms_menu->clear();
+    // Regenerate the ROM menu
+    this->recent_roms_menu->clear();
     for(auto &i : this->recent_roms) {
-        auto *recent = recent_roms_menu->addAction(i);
+        auto *recent = this->recent_roms_menu->addAction(i);
         recent->setData(i);
         connect(recent, &QAction::triggered, this, &GameWindow::action_open_recent_rom);
     }
@@ -508,7 +514,9 @@ void GameWindow::action_open_recent_rom() {
 }
 
 void GameWindow::redraw_pixel_buffer() {
-    // Update the pixmap
+    // Update the pixmap and set it.
+    // TODO: Consider using QPainter directly as it may be a bit more performant
+    // TODO: Also consider adding an option to use hardware acceleration to implement shaders
     this->pixel_buffer_pixmap.convertFromImage(this->pixel_buffer);
     pixel_buffer_pixmap_item->setPixmap(this->pixel_buffer_pixmap);
 }
@@ -727,6 +735,8 @@ void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
 void GameWindow::action_gamepads_changed() {
     delete this->gamepad;
     this->gamepad = nullptr;
+    
+    // Setup gamepads (TODO: write a class that encapsulates QGamepad so we can configure inputs)
     for(auto &i : QGamepadManager::instance()->connectedGamepads()) {
         this->gamepad = new QGamepad(i);
         connect(this->gamepad, &QGamepad::buttonAChanged, this, &GameWindow::action_gamepad_a);
@@ -775,7 +785,7 @@ void GameWindow::action_gamepad_axis_y(double axis) noexcept {
     }
 }
 
-// TODO: Add configuration. 
+// TODO: Add configuration for keyboard
 void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
     switch(event->key()) {
         case Qt::Key::Key_Up:
