@@ -3,10 +3,23 @@
 Super SameBoy is a Qt-based interface of SameBoy, a free, highly accurate Game
 Boy and Game Boy Color emulator.
 
-You will need Qt5 (Qt6 does not have QController yet). SameBoy also requires an
-installation of RGBDS to build the boot ROMs. This project also uses Python (for
-building only - it doesn't use it at runtime). Lastly, you will need a copy of
-SameBoy's source code. One is tracked via `git submodule`, but you may choose to
-use a different version.
+Build requirements:
+* CMake
+* Python
+* C11 and C++17 compiler
+* Qt5 with QController (Qt6 does not have QController yet, sadly)
+* [SameBoy]\*
+    * [RGBDS] (for building SameBoy's boot ROMs)
 
-SameBoy can be found at https://github.com/LIJI32/SameBoy
+[SameBoy]: https://github.com/LIJI32/SameBoy
+[RGBDS]:   https://github.com/gbdev/rgbds
+
+\* You need a copy of SameBoy's source code. One is tracked via `git submodule`,
+   but you may also choose to use a different version of SameBoy by setting the
+   `SAMEBOY_SOURCE_DIR` setting in the CMake cache like this:
+   
+   `$ cmake <arguments> -DSAMEBOY_SOURCE_DIR=/path/to/sameboy/source`
+
+   You can also update the existing submodule manually with this:
+   
+   `$ git submodule update --remote`
