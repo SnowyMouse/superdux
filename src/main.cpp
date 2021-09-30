@@ -2,6 +2,11 @@
 #include "game_window.hpp"
 
 int main(int argc, char **argv) {
+    if(argc > 2) {
+        std::printf("Usage: %s [path-to-rom]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    
     auto *app = new QApplication(argc, argv);
     
     QCoreApplication::setOrganizationName("super-sameboy");
