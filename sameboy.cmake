@@ -44,13 +44,13 @@ foreach(ROM ${BOOT_ROMS})
     set(ROM_ASM_DEP "${SAMEBOY_DIR}/BootROMs/${ROM}.asm")
     
     # ROMs that depend on other sources
-    if(${ROM} EQUAL "agb_boot")
+    if("${ROM}" EQUAL "agb_boot")
         set(ROM_ASM_DEP
             ${ROM_ASM_DEP}
             "${SAMEBOY_DIR}/BootROMs/cgb_boot.asm"
         )
     endif()
-    if(${ROM} EQUAL "sgb2_boot")
+    if("${ROM}" EQUAL "sgb2_boot")
         set(ROM_ASM_DEP
             ${ROM_ASM_DEP}
             "${SAMEBOY_DIR}/BootROMs/sgb_boot.asm"
@@ -59,11 +59,22 @@ foreach(ROM ${BOOT_ROMS})
     
     list(APPEND BOOT_ROMS_BIN "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.bin")
     list(APPEND BOOT_ROMS_HEADER "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.h")
+    
+    # Resize to this size if needed
+    if(("${ROM}" MATCHES "agb.*") OR ("${ROM}" MATCHES "cgb.*"))
+        set(ROM_SIZE 2304)
+    else()
+        set(ROM_SIZE 256)
+    endif()
+    
     add_custom_command(OUTPUT "${ROM_H}"
         COMMAND rgbasm -i "${SAMEBOY_DIR}/BootROMs/" -o "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${SAMEBOY_DIR}/BootROMs/${ROM}.asm"
-        COMMAND rgblink -o "${ROM_BIN}" "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o"
+        COMMAND rgblink -x -o "${ROM_BIN}" "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o"
+        
+        COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/append.py" "${ROM}" "${ROM_BIN}" "${ROM_SIZE}"
         COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${ROM}" "${ROM_BIN}" "${ROM_H}"
-        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12" ${ROM_ASM_DEP} "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py"
+        
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12" ${ROM_ASM_DEP} "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${CMAKE_CURRENT_SOURCE_DIR}/append.py"
         BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${ROM_BIN}"
     )
 endforeach()
