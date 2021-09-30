@@ -178,6 +178,7 @@ void GameDebugger::continue_break(const char *command_to_execute) {
     this->command_to_execute_on_unbreak = command_to_execute ? command_to_execute : "continue";
 }
 
+// this is called when hitting a breakpoint
 char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     // TODO: don't do this messy thing
     auto *debugger = resolve_debugger(gb);
@@ -199,11 +200,15 @@ char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
     debugger->game_window->reset_fps_counter(true);
     debugger->game_window->redraw_pixel_buffer();
     
+    // Disable these
+    debugger->game_window->set_loading_other_roms_enabled(false);
+    
     while(pause) {
         QCoreApplication::processEvents();
         debugger->refresh_view();
     }
     
+    debugger->game_window->set_loading_other_roms_enabled(true);
     debugger->right_view->setEnabled(false);
     debugger->break_button->setEnabled(true);
     debugger->continue_button->setEnabled(false);

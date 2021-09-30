@@ -45,6 +45,8 @@ private:
     GB_gameboy_s gameboy = {};
     GB_model_t gb_model = GB_model_t::GB_MODEL_CGB_C;
     void initialize_gameboy(GB_model_t model) noexcept;
+    QAction *open_roms_action;
+    QMenu *gameboy_model_menu;
     std::vector<QAction *> gb_model_actions;
     
     // Audio
@@ -54,6 +56,7 @@ private:
     std::vector<QAction *> channel_count_options;
     
     // Emulation
+    QAction *pause_action;
     bool paused = false;
     bool rom_loaded = false;
     void game_loop();
@@ -123,6 +126,9 @@ private:
     void make_shadow(QGraphicsTextItem *object);
     
     void perform_reset(std::optional<GB_model_t> new_model = std::nullopt);
+    
+    // Used for preventing loading different ROMs while debugging
+    void set_loading_other_roms_enabled(bool enabled) noexcept;
     
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;

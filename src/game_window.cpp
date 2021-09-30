@@ -138,10 +138,10 @@ GameWindow::GameWindow() {
     connect(file_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(file_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
-    auto *open = file_menu->addAction("Open ROM...");
-    open->setShortcut(QKeySequence::Open);
-    open->setIcon(GET_ICON("document-open"));
-    connect(open, &QAction::triggered, this, &GameWindow::action_open_rom);
+    this->open_roms_action = file_menu->addAction("Open ROM...");
+    this->open_roms_action->setShortcut(QKeySequence::Open);
+    this->open_roms_action->setIcon(GET_ICON("document-open"));
+    connect(this->open_roms_action, &QAction::triggered, this, &GameWindow::action_open_rom);
     
     this->recent_roms_menu = file_menu->addMenu("Recent ROMs");
     this->update_recent_roms_list();
@@ -174,7 +174,7 @@ GameWindow::GameWindow() {
     this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
     this->reset_rom_action->setEnabled(false);
     
-    auto *model_menu = emulation_menu->addMenu("Game Boy model");
+    this->gameboy_model_menu = emulation_menu->addMenu("Game Boy model");
     std::pair<const char *, GB_model_t> models[] = {
         {"Game Boy", GB_model_t::GB_MODEL_DMG_B},
         {"Game Boy Color", GB_model_t::GB_MODEL_CGB_C},
@@ -183,7 +183,7 @@ GameWindow::GameWindow() {
         {"Super Game Boy 2", GB_model_t::GB_MODEL_SGB2},
     };
     for(auto &m : models) {
-        auto *action = model_menu->addAction(m.first);
+        auto *action = this->gameboy_model_menu->addAction(m.first);
         action->setData(static_cast<int>(m.second));
         action->setCheckable(true);
         action->setChecked(m.second == this->gb_model);
@@ -193,11 +193,11 @@ GameWindow::GameWindow() {
     
     emulation_menu->addSeparator();
     
-    auto *pause = emulation_menu->addAction("Pause");
-    connect(pause, &QAction::triggered, this, &GameWindow::action_toggle_pause);
-    pause->setIcon(GET_ICON("media-playback-pause"));
-    pause->setCheckable(true);
-    pause->setChecked(this->paused);
+    this->pause_action = emulation_menu->addAction("Pause");
+    connect(this->pause_action, &QAction::triggered, this, &GameWindow::action_toggle_pause);
+    this->pause_action->setIcon(GET_ICON("media-playback-pause"));
+    this->pause_action->setCheckable(true);
+    this->pause_action->setChecked(this->paused);
     
     auto *pause_on_menu = emulation_menu->addAction("Pause if menu is open");
     connect(pause_on_menu, &QAction::triggered, this, &GameWindow::action_toggle_pause_in_menu);
@@ -909,6 +909,14 @@ void GameWindow::action_quit_without_saving() noexcept {
         this->exit_without_save = true;
         this->close();
     }
+}
+
+void GameWindow::set_loading_other_roms_enabled(bool enabled) noexcept {
+    this->recent_roms_menu->setEnabled(enabled);
+    this->reset_rom_action->setEnabled(enabled);
+    this->open_roms_action->setEnabled(enabled);
+    this->gameboy_model_menu->setEnabled(enabled);
+    this->pause_action->setEnabled(enabled);
 }
 
 GameWindow::~GameWindow() {}
