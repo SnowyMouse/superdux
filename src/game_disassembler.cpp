@@ -203,8 +203,7 @@ void GameDisassembler::refresh_view() {
     
     auto query_rows = static_cast<std::uint8_t>(std::min(255, this->height() / this->debugger->get_table_font().pixelSize() + 1));
     this->setRowCount(query_rows);
-    std::uint16_t first_address;
-    this->disassembly = this->disassemble_at_address(this->current_address, query_rows, first_address);
+    this->disassembly = this->disassemble_at_address(this->current_address, query_rows);
     this->next_address_short = this->current_address;
     this->next_address_medium = this->current_address;
     this->next_address_far = this->current_address;
@@ -248,23 +247,16 @@ void GameDisassembler::refresh_view() {
     }
 }
 
-std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_address(std::optional<std::uint16_t> address, std::uint8_t count, std::uint16_t &first_address) {
+std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_address(std::uint16_t address, std::uint8_t count) {
     auto *gameboy = this->debugger->get_gameboy();
     
     // Tell sameboy to disassemble at the address and capture its output.
     // Doing it this way is horrible. Let's do it anyway.
+    QStringList lines;
     this->debugger->push_retain_logs();
-    
-    if(address.has_value()) {
-        GB_cpu_disassemble(gameboy, *address, count);
-    }
-    else {
-        char *cmd = nullptr;
-        asprintf(&cmd, "disassemble");
-        GB_debugger_execute_command(gameboy, cmd);
-    }
-        
-    auto lines = QString::fromStdString(this->debugger->get_and_clear_retained_logs()).split("\n");
+    GB_cpu_disassemble(gameboy, address, count);
+    this->debugger->pop_retain_logs();
+    lines = QString::fromStdString(this->debugger->get_and_clear_retained_logs()).split("\n");
     
     std::vector<Disassembly> returned_instructions;
     for(auto &l : lines) {
@@ -318,15 +310,6 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
         
         instruction.raw_result = l;
     }
-    
-    for(auto &f : returned_instructions) {
-        if(f.address.has_value()) {
-            first_address = *f.address;
-            break;
-        }
-    }
-    
-    this->debugger->pop_retain_logs();
     
     return returned_instructions;
 }
