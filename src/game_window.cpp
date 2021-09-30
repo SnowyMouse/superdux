@@ -443,11 +443,10 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->save_if_loaded();
     this->reset_rom_action->setEnabled(true);
     this->exit_without_saving->setEnabled(true);
-    
+
     recent_roms.removeAll(rom_path);
     recent_roms.push_front(rom_path);
-    recent_roms = recent_roms.mid(0, 5);
-    
+    recent_roms = recent_roms.mid(0, 5);    
     this->update_recent_roms_list();
     
     this->rom_loaded = true;
@@ -455,6 +454,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     
     auto path = std::filesystem::path(rom_path);
     
+    // Load ISX or a ROM
     if(path.extension() == ".isx") {
         GB_load_isx(&this->gameboy, rom_path);
     }
@@ -462,9 +462,18 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         GB_load_rom(&this->gameboy, rom_path);
     }
     
+    // Load the save
     save_path = path.replace_extension(".sav").string();
     GB_load_battery(&this->gameboy, save_path.c_str());
-    GB_debugger_load_symbol_file(&this->gameboy, path.replace_extension(".sym").string().c_str());
+    
+    // Load symbol files
+    auto sym_path = path.replace_extension(".sym");
+    if(std::filesystem::exists(path.replace_extension(".sym"))) {
+        GB_debugger_load_symbol_file(&this->gameboy, sym_path.string().c_str());
+    }
+    else {
+        GB_debugger_clear_symbols(&this->gameboy);
+    }
 }
 
 void GameWindow::update_recent_roms_list() {
