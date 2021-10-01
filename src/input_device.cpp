@@ -1,20 +1,34 @@
 #include <QGamepad>
+#include <QSettings>
 
 #include "input_device.hpp"
 
 InputDevice::~InputDevice() {}
 
 InputDeviceKeyboard::InputDeviceKeyboard() {
-    settings[Input_A] = Qt::Key_X;
-    settings[Input_B] = Qt::Key_Z;
-    settings[Input_Start] = Qt::Key_Return;
-    settings[Input_Select] = Qt::Key_Shift;
-    settings[Input_Left] = Qt::Key_Left;
-    settings[Input_Right] = Qt::Key_Right;
-    settings[Input_Up] = Qt::Key_Up;
-    settings[Input_Down] = Qt::Key_Down;
-    settings[Input_Turbo] = Qt::Key_C;
+    QSettings application_settings;
+    
+    auto controls_keyboard = application_settings.value("controls_keyboard", QMap<QString, QVariant> {
+        // Sane defaults
+        { input_type_to_string(Input_A), Qt::Key_X },
+        { input_type_to_string(Input_B), Qt::Key_Z },
+        { input_type_to_string(Input_Start), Qt::Key_Return },
+        { input_type_to_string(Input_Select), Qt::Key_Shift },
+        { input_type_to_string(Input_Left), Qt::Key_Left },
+        { input_type_to_string(Input_Right), Qt::Key_Right },
+        { input_type_to_string(Input_Up), Qt::Key_Up },
+        { input_type_to_string(Input_Down), Qt::Key_Down },
+        { input_type_to_string(Input_Turbo), Qt::Key_C }
+    }).toMap();
+    
+    for(auto &i : controls_keyboard.keys()) {
+        auto k = input_type_from_string(i.toUtf8().data());
+        if(k.has_value()) {
+            settings[*k] = static_cast<Qt::Key>(controls_keyboard[i].toInt());
+        }
+    }
 }
+
 void InputDeviceKeyboard::handle_key_event(QKeyEvent *event, bool pressed) {
     auto k = event->key();
     
