@@ -240,7 +240,7 @@ std::string GameDebugger::execute_debugger_command(const char *command) {
     asprintf(&cmd, "%s", command);
     
     // Retain logs
-    this->retain_logs++;
+    this->push_retain_logs();
     
     // Copy old retained logs (in case logs are currently being retained
     auto old_logs = std::move(this->retained_logs);
@@ -252,7 +252,7 @@ std::string GameDebugger::execute_debugger_command(const char *command) {
     
     // Copy back old retained logs
     this->retained_logs = std::move(old_logs);
-    this->retain_logs--;
+    this->pop_retain_logs();
     
     // Done
     return result;

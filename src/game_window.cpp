@@ -152,14 +152,14 @@ GameWindow::GameWindow() {
     this->recent_roms_menu = file_menu->addMenu("Recent ROMs");
     this->update_recent_roms_list();
     
-    auto *save = file_menu->addAction("Save SRAM to disk");
+    auto *save = file_menu->addAction("Save SRAM to Disk");
     save->setShortcut(QKeySequence::Save);
     save->setIcon(GET_ICON("document-save"));
     connect(save, &QAction::triggered, this, &GameWindow::action_save_sram);
     
     file_menu->addSeparator();
     
-    this->exit_without_saving = file_menu->addAction("Quit without saving");
+    this->exit_without_saving = file_menu->addAction("Quit Without Saving");
     this->exit_without_saving->setIcon(GET_ICON("application-exit"));
     connect(this->exit_without_saving, &QAction::triggered, this, &GameWindow::action_quit_without_saving);
     this->exit_without_saving->setEnabled(false);
@@ -291,11 +291,6 @@ GameWindow::GameWindow() {
     toggle_fps->setCheckable(true);
     toggle_fps->setShortcut(static_cast<int>(Qt::Key_F3));
     
-    // Create the debugger now that everything else is set up
-    this->debugger_window = new GameDebugger(this);
-    auto *show_debugger = view_menu->addAction("Show Debugger");
-    connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
-    
     // Here's the layout
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
@@ -309,6 +304,11 @@ GameWindow::GameWindow() {
     
     // Instantiate the game boy
     this->initialize_gameboy(this->gb_model);
+    
+    // Create the debugger now that everything else is set up
+    this->debugger_window = new GameDebugger(this);
+    auto *show_debugger = view_menu->addAction("Show Debugger");
+    connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
 
     // If showing FPS, trigger it
     if(this->show_fps) {
