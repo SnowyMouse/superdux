@@ -26,6 +26,8 @@
 #include <dmg_boot.h>
 #include <sgb2_boot.h>
 
+#include "input_device.hpp"
+
 #define SETTINGS_VOLUME "volume"
 #define SETTINGS_SCALE "scale"
 #define SETTINGS_SHOW_FPS "show_fps"
@@ -357,10 +359,12 @@ GameWindow::GameWindow() {
     auto *show_debugger = tools_menu->addAction("Show debugger");
     connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
     
-    
     // Detect gamepads changing
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
     this->action_gamepads_changed();
+    
+    this->input_keyboard_device = new InputDeviceKeyboard(this);
+    connect(this->input_keyboard_device, &InputDeviceKeyboard::input, this, &GameWindow::handle_device_input);
     
     // Fire game_loop as often as possible
     QTimer *timer = new QTimer(this);
@@ -619,6 +623,9 @@ void GameWindow::game_loop() {
     
     while(!this->vblank && clock::now() < timeout) {
         GB_run(&this->gameboy);
+        if(this->frameskip) {
+            this->vblank = false;
+        }
     }
     
     // Clear the vblank flag and redraw
@@ -735,87 +742,14 @@ void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
 void GameWindow::action_gamepads_changed() {
     delete this->gamepad;
     this->gamepad = nullptr;
-    
-    // Setup gamepads (TODO: write a class that encapsulates QGamepad so we can configure inputs)
     for(auto &i : QGamepadManager::instance()->connectedGamepads()) {
-        this->gamepad = new QGamepad(i);
-        connect(this->gamepad, &QGamepad::buttonAChanged, this, &GameWindow::action_gamepad_a);
-        connect(this->gamepad, &QGamepad::buttonBChanged, this, &GameWindow::action_gamepad_b);
-        connect(this->gamepad, &QGamepad::buttonStartChanged, this, &GameWindow::action_gamepad_start);
-        connect(this->gamepad, &QGamepad::buttonSelectChanged, this, &GameWindow::action_gamepad_select);
-        connect(this->gamepad, &QGamepad::buttonUpChanged, this, &GameWindow::action_gamepad_up);
-        connect(this->gamepad, &QGamepad::buttonDownChanged, this, &GameWindow::action_gamepad_down);
-        connect(this->gamepad, &QGamepad::buttonLeftChanged, this, &GameWindow::action_gamepad_left);
-        connect(this->gamepad, &QGamepad::buttonRightChanged, this, &GameWindow::action_gamepad_right);
-        connect(this->gamepad, &QGamepad::axisLeftXChanged, this, &GameWindow::action_gamepad_axis_x);
-        connect(this->gamepad, &QGamepad::axisRightXChanged, this, &GameWindow::action_gamepad_axis_x);
-        connect(this->gamepad, &QGamepad::axisLeftYChanged, this, &GameWindow::action_gamepad_axis_y);
-        connect(this->gamepad, &QGamepad::axisRightYChanged, this, &GameWindow::action_gamepad_axis_y);
+        this->gamepad = new InputDeviceGamepad(i);
+        connect(this->gamepad, &InputDevice::input, this, &GameWindow::handle_device_input);
     }
 }
 
-#define ACTION_GAMEPAD(fn, KEY) void GameWindow::fn(bool button) noexcept {\
-    GB_set_key_state(&this->gameboy, GB_key_t::KEY, button);\
-}
-
-ACTION_GAMEPAD(action_gamepad_a, GB_KEY_A)
-ACTION_GAMEPAD(action_gamepad_b, GB_KEY_B)
-ACTION_GAMEPAD(action_gamepad_start, GB_KEY_START)
-ACTION_GAMEPAD(action_gamepad_select, GB_KEY_SELECT)
-
-ACTION_GAMEPAD(action_gamepad_up, GB_KEY_UP)
-ACTION_GAMEPAD(action_gamepad_down, GB_KEY_DOWN)
-ACTION_GAMEPAD(action_gamepad_left, GB_KEY_LEFT)
-ACTION_GAMEPAD(action_gamepad_right, GB_KEY_RIGHT)
-
-void GameWindow::action_gamepad_axis_x(double axis) noexcept {
-    if(axis < 0.0) {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, axis < -0.35);
-    }
-    else {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, axis > 0.35);
-    }
-}
-void GameWindow::action_gamepad_axis_y(double axis) noexcept {
-    if(axis < 0.0) {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, axis < -0.35);
-    }
-    else {
-        GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, axis > 0.35);
-    }
-}
-
-// TODO: Add configuration for keyboard
 void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
-    switch(event->key()) {
-        case Qt::Key::Key_Up:
-            action_gamepad_up(press);
-            break;
-        case Qt::Key::Key_Down:
-            action_gamepad_down(press);
-            break;
-        case Qt::Key::Key_Left:
-            action_gamepad_left(press);
-            break;
-        case Qt::Key::Key_Right:
-            action_gamepad_right(press);
-            break;
-        case Qt::Key::Key_X:
-            action_gamepad_a(press);
-            break;
-        case Qt::Key::Key_Z:
-            action_gamepad_b(press);
-            break;
-        case Qt::Key::Key_Return:
-            action_gamepad_start(press);
-            break;
-        case Qt::Key::Key_Shift:
-            action_gamepad_select(press);
-            break;
-        default:
-            break;
-    }
-    
+    this->input_keyboard_device->handle_key_event(event, press);
     event->ignore();
 }
 
@@ -926,4 +860,44 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
     
     QApplication::quit();
+}
+
+void GameWindow::handle_device_input(InputDevice::InputType type, double input) {
+    bool boolean_input = input >= 0.5;
+    
+    switch(type) {
+        case InputDevice::Input_A:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_A, boolean_input);
+            break;
+        case InputDevice::Input_B:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_B, boolean_input);
+            break;
+        case InputDevice::Input_Start:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_START, boolean_input);
+            break;
+        case InputDevice::Input_Select:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_SELECT, boolean_input);
+            break;
+        case InputDevice::Input_Up:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, boolean_input);
+            break;
+        case InputDevice::Input_Down:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, boolean_input);
+            break;
+        case InputDevice::Input_Left:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, boolean_input);
+            break;
+        case InputDevice::Input_Right:
+            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, boolean_input);
+            break;
+        case InputDevice::Input_Turbo:
+            if(input > 0.1) {
+                GB_set_clock_multiplier(&this->gameboy, 1.0 + 3.0 * ((input - 0.1) / 0.9)); // TODO: allow you to set the maximum turbo
+            }
+            else {
+                GB_set_clock_multiplier(&this->gameboy, 1.0);
+            }
+            break;
+        default: break;
+    }
 }

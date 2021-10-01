@@ -227,6 +227,7 @@ void GameDisassembler::refresh_view() {
         }
     }
     
+    // If anything has a breakpoint set, highlight it
     auto disassembly_count = this->disassembly.size();
     for(std::size_t row = 0; row < disassembly_count && row < query_rows; row++) {
         auto &d = this->disassembly[row];

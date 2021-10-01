@@ -19,6 +19,8 @@ extern "C" {
 #include <QStringList>
 #include <QSettings>
 
+#include "input_device.hpp"
+
 class QAudioOutput;
 class QIODevice;
 class QGamepad;
@@ -105,7 +107,7 @@ private:
     void show_new_volume_text();
     
     // Input
-    QGamepad *gamepad = nullptr;
+    InputDeviceGamepad *gamepad = nullptr;
     void keyPressEvent(QKeyEvent *) override;
     void keyReleaseEvent(QKeyEvent *) override;
     void handle_keyboard_key(QKeyEvent *event, bool press);
@@ -113,6 +115,7 @@ private:
     // Save path
     std::string save_path;
     bool exit_without_save = false;
+    bool frameskip = false;
     QAction *exit_without_saving;
     bool save_if_loaded() noexcept;
     
@@ -129,8 +132,14 @@ private:
     // Make a shadow
     void make_shadow(QGraphicsTextItem *object);
     
+    // Handle input
+    void handle_device_input(InputDevice::InputType type, double input);
+    
     // Used for preventing loading different ROMs while debugging
     void set_loading_other_roms_enabled(bool enabled) noexcept;
+    
+    // Device
+    InputDeviceKeyboard *input_keyboard_device;
     
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;
@@ -150,17 +159,6 @@ private slots:
     void action_set_channel_count() noexcept;
     
     void action_gamepads_changed();
-    
-    void action_gamepad_a(bool) noexcept;
-    void action_gamepad_b(bool) noexcept;
-    void action_gamepad_start(bool) noexcept;
-    void action_gamepad_select(bool) noexcept;
-    void action_gamepad_up(bool) noexcept;
-    void action_gamepad_down(bool) noexcept;
-    void action_gamepad_left(bool) noexcept;
-    void action_gamepad_right(bool) noexcept;
-    void action_gamepad_axis_x(double) noexcept;
-    void action_gamepad_axis_y(double) noexcept;
     
     void action_showing_menu() noexcept;
     void action_hiding_menu() noexcept;
