@@ -54,6 +54,10 @@ public:
     #undef DO_THIS
     #undef DO_EVERYTHING
     
+    virtual QString name() const noexcept {
+        return "Unknown";
+    }
+    
     virtual ~InputDevice() = 0;
     
 signals:
@@ -64,8 +68,12 @@ class InputDeviceKeyboard : public InputDevice {
     Q_OBJECT
     
 public:
-    InputDeviceKeyboard(GameWindow *window);
+    InputDeviceKeyboard();
     ~InputDeviceKeyboard() override;
+    
+    QString name() const noexcept override {
+        return "Keyboard";
+    }
     
     void handle_key_event(QKeyEvent *event, bool pressed);
     
@@ -168,6 +176,10 @@ public:
     
     #undef DO_EVERYTHING
     ~InputDeviceGamepad() override;
+    
+    QString name() const noexcept override {
+        return this->gamepad->name();
+    }
     
 signals:
     void controllerInput(ControllerInputType type, float value);

@@ -4,7 +4,7 @@
 
 InputDevice::~InputDevice() {}
 
-InputDeviceKeyboard::InputDeviceKeyboard(GameWindow *) {
+InputDeviceKeyboard::InputDeviceKeyboard() {
     settings[Input_A] = Qt::Key_X;
     settings[Input_B] = Qt::Key_Z;
     settings[Input_Start] = Qt::Key_Return;

@@ -19,6 +19,7 @@
 #include <chrono>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QDialog>
 
 #include <agb_boot.h>
 #include <sgb_boot.h>
@@ -169,8 +170,8 @@ GameWindow::GameWindow() {
     quit->setIcon(GET_ICON("application-exit"));
     connect(quit, &QAction::triggered, this, &GameWindow::close);
     
-    // Edit menu
-    auto *edit_menu = bar->addMenu("Edit");
+    // Settings menu
+    auto *edit_menu = bar->addMenu("Settings");
     connect(edit_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(edit_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
@@ -255,6 +256,13 @@ GameWindow::GameWindow() {
         action->setChecked(i == this->scaling);
         scaling_options.emplace_back(action);
     }
+    
+    edit_menu->addSeparator();
+    
+    // Add controls options (TODO)
+    //auto *controls = edit_menu->addAction("Controls");
+    //connect(controls, &QAction::triggered, this, &GameWindow::action_edit_controls);
+    
     
     // Emulation menu
     auto *emulation_menu = bar->addMenu("Emulation");
@@ -360,11 +368,8 @@ GameWindow::GameWindow() {
     }
     
     // Detect gamepads changing
-    connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
-    this->action_gamepads_changed();
-    
-    this->input_keyboard_device = new InputDeviceKeyboard(this);
-    connect(this->input_keyboard_device, &InputDeviceKeyboard::input, this, &GameWindow::handle_device_input);
+    connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::reload_devices);
+    this->reload_devices();
     
     // Fire game_loop as often as possible
     QTimer *timer = new QTimer(this);
@@ -739,17 +744,14 @@ void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
     this->set_pixel_view_scaling(this->scaling);
 }
 
-void GameWindow::action_gamepads_changed() {
-    delete this->gamepad;
-    this->gamepad = nullptr;
-    for(auto &i : QGamepadManager::instance()->connectedGamepads()) {
-        this->gamepad = new InputDeviceGamepad(i);
-        connect(this->gamepad, &InputDevice::input, this, &GameWindow::handle_device_input);
-    }
-}
-
 void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
-    this->input_keyboard_device->handle_key_event(event, press);
+    for(auto &i : this->devices) {
+        auto *dev = dynamic_cast<InputDeviceKeyboard *>(i.get());
+        if(dev) {
+            dev->handle_key_event(event, press);
+        }
+    }
+    
     event->ignore();
 }
 
@@ -863,10 +865,40 @@ void GameWindow::closeEvent(QCloseEvent *) {
 }
 
 void GameWindow::action_edit_controls() noexcept {
+    QDialog d;
+    QHBoxLayout *layout = new QHBoxLayout();
+    d.setLayout(layout);
     
+    this->disable_input = true;
+    
+    d.exec();
+    
+    this->disable_input = false;
+}
+
+std::vector<std::unique_ptr<InputDevice>> GameWindow::get_all_devices() {
+    std::vector<std::unique_ptr<InputDevice>> devices;
+    devices.emplace_back(std::make_unique<InputDeviceKeyboard>());
+    for(auto &i : QGamepadManager::instance()->connectedGamepads()) {
+        devices.emplace_back(std::make_unique<InputDeviceGamepad>(i));
+    }
+    return devices;
+}
+
+void GameWindow::reload_devices() {
+    this->devices.clear();
+    this->devices = this->get_all_devices();
+    print_debug_message("Loading %zu devices\n", this->devices.size());
+    for(auto &d : this->devices) {
+        connect(d.get(), &InputDevice::input, this, &GameWindow::handle_device_input);
+    }
 }
 
 void GameWindow::handle_device_input(InputDevice::InputType type, double input) {
+    if(this->disable_input) {
+        return;
+    }
+    
     bool boolean_input = input >= 0.5;
     
     switch(type) {

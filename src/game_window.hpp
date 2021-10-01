@@ -107,10 +107,14 @@ private:
     void show_new_volume_text();
     
     // Input
-    InputDeviceGamepad *gamepad = nullptr;
+    bool disable_input = false; // used when configuring settings
     void keyPressEvent(QKeyEvent *) override;
     void keyReleaseEvent(QKeyEvent *) override;
     void handle_keyboard_key(QKeyEvent *event, bool press);
+    std::vector<std::unique_ptr<InputDevice>> devices;
+    
+    void reload_devices();
+    std::vector<std::unique_ptr<InputDevice>> get_all_devices();
     
     // Save path
     std::string save_path;
@@ -138,9 +142,6 @@ private:
     // Used for preventing loading different ROMs while debugging
     void set_loading_other_roms_enabled(bool enabled) noexcept;
     
-    // Device
-    InputDeviceKeyboard *input_keyboard_device;
-    
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;
     
@@ -158,8 +159,6 @@ private slots:
     void action_set_volume();
     void action_add_volume();
     void action_set_channel_count() noexcept;
-    
-    void action_gamepads_changed();
     
     void action_showing_menu() noexcept;
     void action_hiding_menu() noexcept;
