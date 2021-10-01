@@ -71,21 +71,21 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     this->continue_button->setEnabled(false);
     connect(this->continue_button, &QAction::triggered, this, &GameDebugger::action_continue);
     
-    this->step_button = bar->addAction("Step into");
+    this->step_button = bar->addAction("Step Into");
     this->step_button->setEnabled(false);
     connect(this->step_button, &QAction::triggered, this, &GameDebugger::action_step);
     
-    this->step_over_button = bar->addAction("Step over");
+    this->step_over_button = bar->addAction("Step Over");
     this->step_over_button->setEnabled(false);
     connect(this->step_over_button, &QAction::triggered, this, &GameDebugger::action_step_over);
     
-    this->finish_fn_button = bar->addAction("Finish function");
+    this->finish_fn_button = bar->addAction("Finish Function");
     this->finish_fn_button->setEnabled(false);
     connect(this->finish_fn_button, &QAction::triggered, this, &GameDebugger::action_finish);
     
     bar->addSeparator();
     
-    this->clear_breakpoints_button = bar->addAction("Clear breakpoints");
+    this->clear_breakpoints_button = bar->addAction("Clear Breakpoints");
     connect(this->clear_breakpoints_button, &QAction::triggered, this, &GameDebugger::action_clear_breakpoints);
     
     auto *central_widget = new QWidget(this);

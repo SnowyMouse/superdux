@@ -169,17 +169,12 @@ GameWindow::GameWindow() {
     quit->setIcon(GET_ICON("application-exit"));
     connect(quit, &QAction::triggered, this, &GameWindow::close);
     
-    // Emulation menu
-    auto *emulation_menu = bar->addMenu("Emulation");
-    connect(emulation_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
-    connect(emulation_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    // Edit menu
+    auto *edit_menu = bar->addMenu("Edit");
+    connect(edit_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(edit_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
-    this->reset_rom_action = emulation_menu->addAction("Reset");
-    connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
-    this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
-    this->reset_rom_action->setEnabled(false);
-    
-    this->gameboy_model_menu = emulation_menu->addMenu("Game Boy model");
+    this->gameboy_model_menu = edit_menu->addMenu("Game Boy Model");
     std::pair<const char *, GB_model_t> models[] = {
         {"Game Boy", GB_model_t::GB_MODEL_DMG_B},
         {"Game Boy Color", GB_model_t::GB_MODEL_CGB_C},
@@ -196,42 +191,24 @@ GameWindow::GameWindow() {
         this->gb_model_actions.emplace_back(action);
     }
     
-    emulation_menu->addSeparator();
+    edit_menu->addSeparator();
     
-    // Pause options
-    this->pause_action = emulation_menu->addAction("Pause");
-    connect(this->pause_action, &QAction::triggered, this, &GameWindow::action_toggle_pause);
-    this->pause_action->setIcon(GET_ICON("media-playback-pause"));
-    this->pause_action->setCheckable(true);
-    this->pause_action->setChecked(this->paused);
+    // Volume list (increase/decrease and set volumes from 0 to 100)
+    auto *volume = edit_menu->addMenu("Volume");
     
-    auto *pause_on_menu = emulation_menu->addAction("Pause if menu is open");
-    connect(pause_on_menu, &QAction::triggered, this, &GameWindow::action_toggle_pause_in_menu);
-    pause_on_menu->setIcon(GET_ICON("media-playback-pause"));
-    pause_on_menu->setCheckable(true);
-    pause_on_menu->setChecked(this->pause_on_menu);
-    
-    // Audio menu
-    auto *audio_menu = bar->addMenu("Audio");
-    connect(audio_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
-    connect(audio_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
-    
-    auto *mute = audio_menu->addAction("Mute");
+    auto *mute = volume->addAction("Mute");
     connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
     mute->setIcon(GET_ICON("audio-volume-muted"));
     mute->setCheckable(true);
     mute->setChecked(this->muted);
     
-    // Volume list (increase/decrease and set volumes from 0 to 100)
-    auto *volume = audio_menu->addMenu("Volume");
-    
-    auto *raise_volume = volume->addAction("Increase volume");
+    auto *raise_volume = volume->addAction("Increase Volume");
     raise_volume->setIcon(GET_ICON("audio-volume-high"));
     raise_volume->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::Key_Up));
     raise_volume->setData(10);
     connect(raise_volume, &QAction::triggered, this, &GameWindow::action_add_volume);
     
-    auto *reduce_volume = volume->addAction("Decrease volume");
+    auto *reduce_volume = volume->addAction("Decrease Volume");
     reduce_volume->setIcon(GET_ICON("audio-volume-low"));
     reduce_volume->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::Key_Down));
     reduce_volume->setData(-10);
@@ -250,12 +227,13 @@ GameWindow::GameWindow() {
     }
     
     // Channel count
-    auto *channel_count = audio_menu->addMenu("Channel count");
+    auto *channel_count = edit_menu->addMenu("Channel Count");
     auto *stereo = channel_count->addAction("Stereo");
     stereo->setData(2);
     stereo->setCheckable(true);
     stereo->setChecked(!this->mono);
     connect(stereo, &QAction::triggered, this, &GameWindow::action_set_channel_count);
+    
     auto *mono = channel_count->addAction("Mono");
     mono->setData(1);
     mono->setCheckable(true);
@@ -263,18 +241,10 @@ GameWindow::GameWindow() {
     connect(mono, &QAction::triggered, this, &GameWindow::action_set_channel_count);
     this->channel_count_options = { mono, stereo };
     
-    // Video menu
-    auto *video_menu = bar->addMenu("Video");
-    connect(video_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
-    connect(video_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    edit_menu->addSeparator();
     
-    auto *toggle_fps = video_menu->addAction("Show FPS");
-    connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
-    toggle_fps->setCheckable(true);
-    toggle_fps->setShortcut(static_cast<int>(Qt::Key_F3));
-
     // Add scaling options
-    auto *scaling = video_menu->addMenu("Scaling");
+    auto *scaling = edit_menu->addMenu("Render Scaling");
     for(int i = 8; i >= 1; i--) {
         char text[4];
         std::snprintf(text, sizeof(text), "%ix", i);
@@ -285,6 +255,46 @@ GameWindow::GameWindow() {
         action->setChecked(i == this->scaling);
         scaling_options.emplace_back(action);
     }
+    
+    // Emulation menu
+    auto *emulation_menu = bar->addMenu("Emulation");
+    connect(emulation_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(emulation_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    
+    this->reset_rom_action = emulation_menu->addAction("Reset");
+    connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
+    this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
+    this->reset_rom_action->setEnabled(false);
+    
+    emulation_menu->addSeparator();
+    
+    // Pause options
+    this->pause_action = emulation_menu->addAction("Pause");
+    connect(this->pause_action, &QAction::triggered, this, &GameWindow::action_toggle_pause);
+    this->pause_action->setIcon(GET_ICON("media-playback-pause"));
+    this->pause_action->setCheckable(true);
+    this->pause_action->setChecked(this->paused);
+    
+    auto *pause_on_menu = emulation_menu->addAction("Pause In Menu");
+    connect(pause_on_menu, &QAction::triggered, this, &GameWindow::action_toggle_pause_in_menu);
+    pause_on_menu->setIcon(GET_ICON("media-playback-pause"));
+    pause_on_menu->setCheckable(true);
+    pause_on_menu->setChecked(this->pause_on_menu);
+    
+    // Video menu
+    auto *view_menu = bar->addMenu("View");
+    connect(view_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(view_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    
+    auto *toggle_fps = view_menu->addAction("Show FPS");
+    connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
+    toggle_fps->setCheckable(true);
+    toggle_fps->setShortcut(static_cast<int>(Qt::Key_F3));
+    
+    // Create the debugger now that everything else is set up
+    this->debugger_window = new GameDebugger(this);
+    auto *show_debugger = view_menu->addAction("Show Debugger");
+    connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
     
     // Here's the layout
     auto *central_widget = new QWidget(this);
@@ -348,16 +358,6 @@ GameWindow::GameWindow() {
     else {
         print_debug_message("Could not get an audio device. Audio will be disabled.\n");
     }
-    
-    // Tools menu
-    auto *tools_menu = bar->addMenu("Tools");
-    connect(tools_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
-    connect(tools_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
-    
-    // Create the debugger now that everything else is set up
-    this->debugger_window = new GameDebugger(this);
-    auto *show_debugger = tools_menu->addAction("Show debugger");
-    connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
     
     // Detect gamepads changing
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::action_gamepads_changed);
@@ -860,6 +860,10 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
     
     QApplication::quit();
+}
+
+void GameWindow::action_edit_controls() noexcept {
+    
 }
 
 void GameWindow::handle_device_input(InputDevice::InputType type, double input) {

@@ -131,7 +131,7 @@ public:
         switch(input_type) {
             DO_EVERYTHING
             default:
-                return nullptr
+                return nullptr;
         }
     }
     #undef DO_THIS

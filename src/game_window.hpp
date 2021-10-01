@@ -152,6 +152,7 @@ private slots:
     void action_open_rom() noexcept;
     void action_open_recent_rom();
     void action_reset() noexcept;
+    void action_edit_controls() noexcept;
     
     void action_toggle_audio() noexcept;
     void action_set_volume();
