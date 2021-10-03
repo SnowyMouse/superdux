@@ -65,7 +65,9 @@ EditControlsDialog::EditControlsDialog() : QDialog() {
     
     layout->addWidget(ok);
     
-    this->regenerate_button_settings(-1);
+    this->regenerate_button_settings(this->device_box->currentIndex());
+    
+    layout->setSizeConstraint(QLayout::SetFixedSize);
 }
 
 EditControlsDialog::~EditControlsDialog() {}
