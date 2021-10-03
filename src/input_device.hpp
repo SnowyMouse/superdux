@@ -15,21 +15,6 @@ class InputDevice : public QObject {
     Q_OBJECT
     
 public:
-    enum InputType : unsigned int  {
-        Input_A,
-        Input_B,
-        Input_Start,
-        Input_Select,
-        Input_Up,
-        Input_Down,
-        Input_Left,
-        Input_Right,
-        Input_Turbo,
-        Input_VolumeUp,
-        Input_VolumeDown,
-        Input_COUNT
-    };
-    
     #define DO_EVERYTHING DO_THIS(A) \
                           DO_THIS(B) \
                           DO_THIS(Start) \
@@ -39,9 +24,17 @@ public:
                           DO_THIS(Left) \
                           DO_THIS(Right) \
                           DO_THIS(Turbo) \
+                          DO_THIS(Slowmo) \
                           DO_THIS(VolumeUp) \
                           DO_THIS(VolumeDown)
     
+    enum InputType : unsigned int  {
+        #define DO_THIS(type) Input_##type,
+        DO_EVERYTHING
+        #undef DO_THIS
+        Input_COUNT
+    };
+                          
     #define DO_THIS(type) case Input_##type: return # type;
     static const char *input_type_to_string(InputType input_type) noexcept {
         switch(input_type) {
@@ -105,32 +98,6 @@ class InputDeviceGamepad : public InputDevice {
     Q_OBJECT
     
 public:
-    enum ControllerInputType : unsigned int {
-        Controller_Input_A,
-        Controller_Input_B,
-        Controller_Input_Select,
-        Controller_Input_Start,
-        Controller_Input_Up,
-        Controller_Input_Down,
-        Controller_Input_Left,
-        Controller_Input_Right,
-        Controller_Input_LeftX,
-        Controller_Input_LeftY,
-        Controller_Input_RightX,
-        Controller_Input_RightY,
-        Controller_Input_Center,
-        Controller_Input_Guide,
-        Controller_Input_L1,
-        Controller_Input_L2,
-        Controller_Input_L3,
-        Controller_Input_R1,
-        Controller_Input_R2,
-        Controller_Input_R3,
-        Controller_Input_X,
-        Controller_Input_Y,
-        Controller_Input_COUNT
-    };
-    
     #define DO_EVERYTHING DO_THIS(A, bool, button) \
                           DO_THIS(B, bool, button) \
                           DO_THIS(Select, bool, button) \
@@ -153,6 +120,13 @@ public:
                           DO_THIS(R3, bool, button) \
                           DO_THIS(X, bool, button) \
                           DO_THIS(Y, bool, button)
+   
+    enum ControllerInputType : unsigned int {
+        #define DO_THIS(type, ...) Controller_Input_##type,
+        DO_EVERYTHING
+        #undef DO_THIS
+        Controller_Input_COUNT
+    };
     
     #define DO_THIS(type, ...) case Controller_Input_##type: return # type;
     static const char *gamepad_input_type_to_string(ControllerInputType input_type) noexcept {

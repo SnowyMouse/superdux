@@ -944,14 +944,22 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
                 GB_set_clock_multiplier(&this->gameboy, 1.0);
             }
             break;
+        case InputDevice::Input_Slowmo:
+            if(input > 0.1) {
+                GB_set_clock_multiplier(&this->gameboy, 1.0 / (1.0 + 3.0 * ((input - 0.1) / 0.9))); // TODO: allow you to set the maximum slowmotion
+            }
+            else {
+                GB_set_clock_multiplier(&this->gameboy, 1.0);
+            }
+            break;
         case InputDevice::Input_VolumeDown:
             if(boolean_input) {
-                this->increment_volume(-10);
+                this->increment_volume(-5);
             }
             break;
         case InputDevice::Input_VolumeUp:
             if(boolean_input) {
-                this->increment_volume(10);
+                this->increment_volume(5);
             }
             break;
         default: break;

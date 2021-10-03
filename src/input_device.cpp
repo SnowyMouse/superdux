@@ -178,11 +178,6 @@ void InputDeviceGamepad::handle_input(ControllerInputType type, double value) {
         t = static_cast<std::uint32_t>(type);
     }
     
-    // Deadzones
-    if(value < 0.25) {
-        value = 0.0;
-    }
-    
     // Done
     this->emit_input(t, value);
 }
