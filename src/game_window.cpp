@@ -352,7 +352,7 @@ GameWindow::GameWindow() {
     if(info.isFormatSupported(format)) {
         int best_sample_rate = 0;
         for(auto &i : info.supportedSampleRates()) {
-            if(i > best_sample_rate && i <= 96000) {
+            if(i > best_sample_rate && i <= 2000000) { // 2 MHz max
                 best_sample_rate = i;
             }
         }
