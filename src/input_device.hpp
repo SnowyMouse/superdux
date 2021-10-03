@@ -25,6 +25,8 @@ public:
         Input_Left,
         Input_Right,
         Input_Turbo,
+        Input_VolumeUp,
+        Input_VolumeDown,
         Input_COUNT
     };
     
@@ -36,7 +38,9 @@ public:
                           DO_THIS(Down) \
                           DO_THIS(Left) \
                           DO_THIS(Right) \
-                          DO_THIS(Turbo)
+                          DO_THIS(Turbo) \
+                          DO_THIS(VolumeUp) \
+                          DO_THIS(VolumeDown)
     
     #define DO_THIS(type) case Input_##type: return # type;
     static const char *input_type_to_string(InputType input_type) noexcept {

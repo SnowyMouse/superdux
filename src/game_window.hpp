@@ -145,6 +145,8 @@ private:
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;
     
+    void increment_volume(int amount);
+    
 private slots:
     void action_set_scaling() noexcept;
     void action_toggle_showing_fps() noexcept;

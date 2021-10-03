@@ -401,12 +401,16 @@ void GameWindow::action_set_channel_count() noexcept {
     }
 }
 
+void GameWindow::increment_volume(int amount) {
+    int volume = this->volume + amount; 
+    this->volume = std::max(std::min(volume, 100), 0);
+    this->show_new_volume_text();
+}
+
 void GameWindow::action_add_volume() {
     // Uses the user data from the sender to get volume delta
     auto *action = qobject_cast<QAction *>(sender());
-    int volume = this->volume + action->data().toInt(); 
-    this->volume = std::max(std::min(volume, 100), 0);
-    this->show_new_volume_text();
+    this->increment_volume(action->data().toInt());
 }
 
 void GameWindow::show_new_volume_text() {
@@ -938,6 +942,16 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             }
             else {
                 GB_set_clock_multiplier(&this->gameboy, 1.0);
+            }
+            break;
+        case InputDevice::Input_VolumeDown:
+            if(boolean_input) {
+                this->increment_volume(-10);
+            }
+            break;
+        case InputDevice::Input_VolumeUp:
+            if(boolean_input) {
+                this->increment_volume(10);
             }
             break;
         default: break;
