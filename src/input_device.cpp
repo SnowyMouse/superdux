@@ -60,7 +60,7 @@ void InputDevice::load_settings() {
 }
 
 void InputDevice::emit_input(std::uint32_t input_type, double value) {
-    emit controlInput(input_type, value);
+    emit control_input(input_type, value);
     for(std::size_t i = 0; i < Input_COUNT; i++) {
         auto &s = this->settings[i];
         if(s.contains(static_cast<std::uint32_t>(input_type))) {

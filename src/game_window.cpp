@@ -1,5 +1,6 @@
 #include "game_window.hpp"
 #include "game_debugger.hpp"
+#include "edit_controls_dialog.hpp"
 
 #include <QHBoxLayout>
 #include <QTimer>
@@ -19,7 +20,11 @@
 #include <chrono>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QComboBox>
 #include <QDialog>
+#include <QLineEdit>
+
+#include <QLabel>
 
 #include <agb_boot.h>
 #include <sgb_boot.h>
@@ -259,9 +264,9 @@ GameWindow::GameWindow() {
     
     edit_menu->addSeparator();
     
-    // Add controls options (TODO)
-    //auto *controls = edit_menu->addAction("Controls");
-    //connect(controls, &QAction::triggered, this, &GameWindow::action_edit_controls);
+    // Add controls options
+    auto *controls = edit_menu->addAction("Controls");
+    connect(controls, &QAction::triggered, this, &GameWindow::action_edit_controls);
     
     
     // Emulation menu
@@ -870,15 +875,11 @@ void GameWindow::closeEvent(QCloseEvent *) {
 }
 
 void GameWindow::action_edit_controls() noexcept {
-    QDialog d;
-    QHBoxLayout *layout = new QHBoxLayout();
-    d.setLayout(layout);
-    
+    EditControlsDialog d;
     this->disable_input = true;
-    
     d.exec();
-    
     this->disable_input = false;
+    this->reload_devices();
 }
 
 std::vector<std::unique_ptr<InputDevice>> GameWindow::get_all_devices() {

@@ -37,6 +37,7 @@ public:
     void load_rom(const char *rom_path) noexcept;
     
     const QSettings &settings();
+    static std::vector<std::unique_ptr<InputDevice>> get_all_devices();
     
     ~GameWindow();
     
@@ -114,7 +115,6 @@ private:
     std::vector<std::unique_ptr<InputDevice>> devices;
     
     void reload_devices();
-    std::vector<std::unique_ptr<InputDevice>> get_all_devices();
     
     // Save path
     std::string save_path;

@@ -72,7 +72,7 @@ public:
     
 signals:
     void input(InputType type, double input);
-    void controlInput(std::uint32_t, double input);
+    void control_input(std::uint32_t, double input);
     
 protected:
     void load_settings();
