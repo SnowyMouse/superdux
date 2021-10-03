@@ -6,6 +6,7 @@
 #include <cstring>
 #include <optional>
 #include <QKeyEvent>
+#include <QList>
 
 class QGamepad;
 class GameWindow;
@@ -14,7 +15,7 @@ class InputDevice : public QObject {
     Q_OBJECT
     
 public:
-    enum InputType {
+    enum InputType : unsigned int  {
         Input_A,
         Input_B,
         Input_Start,
@@ -54,14 +55,27 @@ public:
     #undef DO_THIS
     #undef DO_EVERYTHING
     
+    void emit_input(std::uint32_t input_type, double value);
+    
+    virtual std::optional<QString> control_to_string(std::uint32_t what) = 0;
+    virtual std::optional<std::uint32_t> control_from_string(const QString &what) = 0;
+    virtual void load_sane_defaults() = 0;
+    
     virtual QString name() const noexcept {
         return "Unknown";
     }
     
     virtual ~InputDevice() = 0;
     
+    QList<std::uint32_t> settings[Input_COUNT];
+    void save_settings();
+    
 signals:
     void input(InputType type, double input);
+    void controlInput(std::uint32_t, double input);
+    
+protected:
+    void load_settings();
 };
 
 class InputDeviceKeyboard : public InputDevice {
@@ -75,17 +89,19 @@ public:
         return "Keyboard";
     }
     
-    void handle_key_event(QKeyEvent *event, bool pressed);
+    QMap<QString, QVariant> get_settings();
+    std::optional<QString> control_to_string(std::uint32_t what) override;
+    std::optional<std::uint32_t> control_from_string(const QString &what) override;
     
-private:
-    std::optional<Qt::Key> settings[Input_COUNT] = {};
+    void handle_key_event(QKeyEvent *event, bool pressed);
+    void load_sane_defaults() override;
 };
 
 class InputDeviceGamepad : public InputDevice {
     Q_OBJECT
     
 public:
-    enum ControllerInputType {
+    enum ControllerInputType : unsigned int {
         Controller_Input_A,
         Controller_Input_B,
         Controller_Input_Select,
@@ -150,6 +166,9 @@ public:
     }
     #undef DO_THIS
     
+    std::optional<QString> control_to_string(std::uint32_t what) override;
+    std::optional<std::uint32_t> control_from_string(const QString &what) override;
+    
     void handle_input(ControllerInputType type, double value);
     
     #define DO_THIS(type, rval, ...) void on_##type(rval v) { handle_input(Controller_Input_##type, v); }
@@ -158,17 +177,7 @@ public:
     
     InputDeviceGamepad(int gamepadDeviceID) {
         this->gamepad = new QGamepad(gamepadDeviceID, this);
-        
-        this->settings[Controller_Input_A][0] = InputType::Input_A;
-        this->settings[Controller_Input_B][0] = InputType::Input_B;
-        this->settings[Controller_Input_Start][0] = InputType::Input_Start;
-        this->settings[Controller_Input_Select][0] = InputType::Input_Select;
-        this->settings[Controller_Input_Up][0] = InputType::Input_Up;
-        this->settings[Controller_Input_Down][0] = InputType::Input_Down;
-        this->settings[Controller_Input_Left][0] = InputType::Input_Left;
-        this->settings[Controller_Input_Right][0] = InputType::Input_Right;
-        this->settings[Controller_Input_R2][0] = InputType::Input_Turbo;
-        
+        this->load_settings();
         #define DO_THIS(type, rval, stype) connect(this->gamepad, &QGamepad::stype ## type ## Changed, this, &InputDeviceGamepad::on_##type);
         DO_EVERYTHING
         #undef DO_THIS
@@ -181,13 +190,10 @@ public:
         return this->gamepad->name();
     }
     
-signals:
-    void controllerInput(ControllerInputType type, float value);
-    void disconnected();
+    void load_sane_defaults() override;
     
 private:
     QGamepad *gamepad;
-    std::optional<InputType> settings[Controller_Input_COUNT][2] = {};
 };
 
 #endif
