@@ -23,11 +23,9 @@ private:
     class InputLineEdit;
     
     QComboBox *device_box = nullptr;
-    QWidget *table = nullptr;
     
     QWidget *device_picker;
     QLayout *device_picker_layout = nullptr;
-    QLayout *layout = nullptr;
     
     InputLineEdit *settings[InputDevice::Input_COUNT][4];
     void handle_control_input(std::uint32_t, double);
