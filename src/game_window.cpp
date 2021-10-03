@@ -510,10 +510,15 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
 void GameWindow::update_recent_roms_list() {
     // Regenerate the ROM menu
     this->recent_roms_menu->clear();
-    for(auto &i : this->recent_roms) {
-        auto *recent = this->recent_roms_menu->addAction(i);
-        recent->setData(i);
-        connect(recent, &QAction::triggered, this, &GameWindow::action_open_recent_rom);
+    if(this->recent_roms.empty()) {
+        this->recent_roms_menu->addAction("No recent ROMs")->setDisabled(true);
+    }
+    else {
+        for(auto &i : this->recent_roms) {
+            auto *recent = this->recent_roms_menu->addAction(i);
+            recent->setData(i);
+            connect(recent, &QAction::triggered, this, &GameWindow::action_open_recent_rom);
+        }
     }
 }
 
