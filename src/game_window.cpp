@@ -585,7 +585,7 @@ void GameWindow::action_open_rom() noexcept {
     qfd.setNameFilters(QStringList { "Game Boy ROM (*.gb)", "Game Boy Color ROM (*.gbc)", "ISX Binary (*.isx)" });
     
     if(qfd.exec() == QDialog::DialogCode::Accepted) {
-        this->load_rom(qfd.selectedFiles()[0].toUtf8().data());
+        this->load_rom(qfd.selectedFiles().at(0).toUtf8().data());
     }
 }
 
