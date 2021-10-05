@@ -31,5 +31,9 @@ int main(int argc, char **argv) {
         window.load_rom(argv[1]);
     }
     
-    return app->exec();
+    int r = app->exec();
+    
+    SDL_Quit();
+    
+    return r;
 }
