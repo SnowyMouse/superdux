@@ -10,8 +10,6 @@
 #include <QFontDatabase>
 #include <QFileDialog>
 #include <cstring>
-#include <QAudioDeviceInfo>
-#include <QAudioOutput>
 #include <QGamepad>
 #include <QKeyEvent>
 #include <QGamepadManager>
@@ -293,37 +291,19 @@ GameWindow::GameWindow() {
     layout->setContentsMargins(0,0,0,0);
     central_widget->setLayout(layout);
     this->setCentralWidget(central_widget);
-    
-    // Get the audio
-    QAudioFormat format = {};
-    format.setChannelCount(2);
-    format.setSampleRate(44100);
-    format.setSampleSize(16);
-    format.setCodec("audio/pcm");
-    format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::SignedInt);
 
-    // Check if it works
-    QAudioDeviceInfo info = QAudioDeviceInfo::defaultOutputDevice();
-    if(info.isFormatSupported(format)) {
-        int best_sample_rate = 0;
-        for(auto &i : info.supportedSampleRates()) {
-            if(i > best_sample_rate && i <= 2000000) { // 2 MHz max
-                best_sample_rate = i;
-            }
-        }
-        format.setSampleRate(best_sample_rate);
-        
-        this->audio_output = new QAudioOutput(format /*, this */); // TODO: FIGURE OUT WHY UNCOMMENTING THIS CRASHES WHEN YOU CLOSE THE WINDOW
-        this->audio_output->setNotifyInterval(1);
-        connect(this->audio_output, &QAudioOutput::notify, this, &GameWindow::play_audio_buffer); // play the audio buffer whenever possible
-        this->audio_device = this->audio_output->start();
-        
-        this->instance->set_audio_enabled(true, best_sample_rate);
-        sample_buffer.reserve(best_sample_rate);
-    }
-    else {
-        print_debug_message("Could not get an audio device. Audio will be disabled.\n");
+    // Audio
+    SDL_AudioSpec request = {}, result = {};
+    request.freq = 96000;
+    request.format = AUDIO_S16SYS;
+    request.channels = 2;
+    request.samples = 512;
+    this->audio_device_id = SDL_OpenAudioDevice(0, 0, &request, &result, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
+    this->sample_rate = result.freq;
+    this->instance->set_audio_enabled(true, this->sample_rate);
+    
+    if(this->muted) {
+        this->instance->set_audio_enabled(false);
     }
     
     // Detect gamepads changing
@@ -384,13 +364,9 @@ void GameWindow::play_audio_buffer() {
     std::size_t sample_count = buffer.size();
     auto *sample_data = buffer.data();
     
-    std::size_t bytes_available = sample_count * sizeof(*sample_data);
-    std::size_t period_size = this->audio_output->periodSize() * sizeof(*sample_data);
-    
-    if(bytes_available > period_size) {
-        this->audio_device->write(reinterpret_cast<const char *>(sample_data), period_size);
-        buffer.erase(buffer.begin(), buffer.begin() + period_size / sizeof(*sample_data));
-    }
+    SDL_QueueAudio(this->audio_device_id, sample_data, sample_count * sizeof(*sample_data));
+    SDL_PauseAudioDevice(this->audio_device_id, 0);
+    buffer.clear();
 }
 
 void GameWindow::load_rom(const char *rom_path) noexcept {
@@ -526,11 +502,6 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     }
 }
 
-void GameWindow::on_vblank(GB_gameboy_s *gb) {
-    auto *window = reinterpret_cast<GameWindow *>(GB_get_user_data(gb));
-    window->vblank = true;
-}
-
 void GameWindow::game_loop() {
     // If we have any audio, let's get that
     std::size_t sample_buffer_end = this->sample_buffer.size();
@@ -550,9 +521,9 @@ void GameWindow::game_loop() {
                 right = left;
             }
             
-            // Scale samples
+            // Scale samples (logarithm to linear)
             if(this->volume < 100 && this->volume >= 0) {
-                double scale = QAudio::convertVolume(this->volume / 100.0, QAudio::VolumeScale::LogarithmicVolumeScale, QAudio::VolumeScale::LinearVolumeScale);
+                double scale = std::pow(100.0, this->volume / 100.0) / 100.0 - 0.01 * (100.0 - this->volume) / 100.0;
                 left *= scale;
                 right *= scale;
             }
@@ -625,7 +596,7 @@ void GameWindow::action_reset() noexcept {
 void GameWindow::action_toggle_audio() noexcept {
     this->muted = !this->muted;
     this->sample_buffer.clear();
-    this->instance->set_audio_enabled(!this->muted);
+    this->instance->set_audio_enabled(!this->muted, this->sample_rate);
     
     if(this->muted) {
         this->show_status_text("Muted");

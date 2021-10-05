@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <filesystem>
 #include "game_window.hpp"
+#include <SDL2/SDL.h>
 
 int main(int argc, char **argv) {
     if(argc > 2) {
@@ -11,6 +12,8 @@ int main(int argc, char **argv) {
         std::fprintf(stderr, "Error: No file exists at %s\n", argv[1]);
         return EXIT_FAILURE;
     }
+    
+    SDL_Init(SDL_INIT_AUDIO);
     
     auto *app = new QApplication(argc, argv);
     

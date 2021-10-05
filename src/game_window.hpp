@@ -5,13 +5,13 @@ extern "C" {
 #include <Core/gb.h>
 }
 
+#include <SDL2/SDL.h>
 #include <QMainWindow>
 #include <QImage>
 #include <QPixmap>
 #include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QIODevice>
-#include <QAudio>
 #include <vector>
 #include <chrono>
 #include <string>
@@ -25,8 +25,6 @@ extern "C" {
 
 #include "game_instance.hpp"
 
-class QAudioOutput;
-class QIODevice;
 class QGamepad;
 class GameDebugger;
 
@@ -65,6 +63,7 @@ private:
     bool muted = false;
     bool mono = false;
     char volume = 100;
+    SDL_AudioDeviceID audio_device_id;
     std::vector<QAction *> channel_count_options;
     
     // Emulation
@@ -85,7 +84,6 @@ private:
     QGraphicsView *pixel_buffer_view;
     QGraphicsScene *pixel_buffer_scene = nullptr;
     QGraphicsTextItem *fps_text = nullptr;
-    static void on_vblank(GB_gameboy_s *);
     void set_pixel_view_scaling(int scaling);
     void redraw_pixel_buffer();
     
@@ -94,10 +92,8 @@ private:
     float last_fps = -1.0;
     
     // Audio
-    QAudioOutput *audio_output;
-    QIODevice *audio_device;
-    static void on_sample(GB_gameboy_s *, GB_sample_t *);
     std::vector<std::int16_t> sample_buffer;
+    std::uint32_t sample_rate;
     void play_audio_buffer();
     
     void show_status_text(const char *text);
@@ -115,7 +111,7 @@ private:
     
     void reload_devices();
     
-//     // Save path
+    // Save path
     std::filesystem::path save_path;
     bool exit_without_save = false;
     QAction *exit_without_saving;
