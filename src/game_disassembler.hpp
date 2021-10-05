@@ -19,7 +19,7 @@ public:
     std::uint16_t last_address = 0;
     
     // Address to inspect
-    std::uint16_t current_address = 0x150;
+    std::uint16_t current_address = 0;
     
     // Next address(es) depending on if we use arrow keys, page down, or scroll wheel
     std::uint16_t next_address_short = 0;
