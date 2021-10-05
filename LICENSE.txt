@@ -1,6 +1,6 @@
-Super SameBoy (c) Snowy Mouse
+SameBoy DX (c) Snowy Mouse
 
-Super SameBoy is licensed under version 3.0 of the GNU GPL as published by the
+SameBoy DX is licensed under version 3.0 of the GNU GPL as published by the
 Free Software Foundation.
 
 See COPYING for more info.

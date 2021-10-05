@@ -17,9 +17,9 @@ int main(int argc, char **argv) {
     
     auto *app = new QApplication(argc, argv);
     
-    QCoreApplication::setOrganizationName("super-sameboy");
-    QCoreApplication::setOrganizationDomain("super-sameboy");
-    QCoreApplication::setApplicationName("super-sameboy");
+    QCoreApplication::setOrganizationName("sameboy-dx");
+    QCoreApplication::setOrganizationDomain("sameboy-dx");
+    QCoreApplication::setApplicationName("sameboy-dx");
     
     GameWindow window;
     

@@ -104,7 +104,7 @@ GameWindow::GameWindow() {
     
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
-    this->setWindowTitle("Super SameBoy");
+    this->setWindowTitle("SameBoy DX");
     
     // Start setting up the menu bar
     QMenuBar *bar = new QMenuBar(this);

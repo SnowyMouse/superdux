@@ -1,6 +1,6 @@
-# Super SameBoy
+# SameBoy DX
 
-Super SameBoy is a Qt-based interface of SameBoy, a free, highly accurate Game
+SameBoy DX is a Qt-based interface of SameBoy, a free, highly accurate Game
 Boy and Game Boy Color emulator.
 
 Build requirements:
