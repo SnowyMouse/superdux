@@ -26,22 +26,16 @@
 
 #include <QLabel>
 
-#include <agb_boot.h>
-#include <sgb_boot.h>
-#include <cgb_boot.h>
-#include <dmg_boot.h>
-#include <sgb2_boot.h>
-
 #include "input_device.hpp"
 
 #define SETTINGS_VOLUME "volume"
 #define SETTINGS_SCALE "scale"
 #define SETTINGS_SHOW_FPS "show_fps"
 #define SETTINGS_MONO "mono"
-#define SETTINGS_PAUSE_ON_MENU "pause_on_menu"
 #define SETTINGS_MUTE "mute"
 #define SETTINGS_RECENT_ROMS "recent_roms"
 #define SETTINGS_GB_MODEL "gb_model"
+#define SETTINGS_SYNC_TO_VBLANK "sync_to_vblank"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -94,35 +88,6 @@ public:
     GameWindow *window;
 };
 
-static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) {
-    switch(type) {
-        case GB_BOOT_ROM_DMG0:
-        case GB_BOOT_ROM_DMG:
-            GB_load_boot_rom_from_buffer(gb, dmg_boot, sizeof(dmg_boot));
-            break;
-        case GB_BOOT_ROM_SGB2:
-            GB_load_boot_rom_from_buffer(gb, sgb2_boot, sizeof(sgb2_boot));
-            break;
-        case GB_BOOT_ROM_SGB:
-            GB_load_boot_rom_from_buffer(gb, sgb_boot, sizeof(sgb_boot));
-            break;
-        case GB_BOOT_ROM_AGB:
-            GB_load_boot_rom_from_buffer(gb, agb_boot, sizeof(agb_boot));
-            break;
-        case GB_BOOT_ROM_CGB0:
-        case GB_BOOT_ROM_CGB:
-            GB_load_boot_rom_from_buffer(gb, cgb_boot, sizeof(cgb_boot));
-            break;
-        default:
-            print_debug_message("Unable to find a suitable boot ROM for GB_boot_rom_t type %i\n", type);
-            break;
-    }
-}
-
-static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b) {
-    return 0xFF000000 | (r << 16) | (g << 8) | (b << 0);
-}
-
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
@@ -132,10 +97,13 @@ GameWindow::GameWindow() {
     this->scaling = settings.value(SETTINGS_SCALE, this->scaling).toInt();
     this->show_fps = settings.value(SETTINGS_SHOW_FPS, this->show_fps).toBool();
     this->mono = settings.value(SETTINGS_MONO, this->mono).toBool();
-    this->pause_on_menu = settings.value(SETTINGS_PAUSE_ON_MENU, this->pause_on_menu).toBool();
     this->muted = settings.value(SETTINGS_MUTE, this->muted).toBool();
     this->gb_model = static_cast<decltype(this->gb_model)>(settings.value(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model)).toInt());
     this->recent_roms = settings.value(SETTINGS_RECENT_ROMS).toStringList();
+    
+    // Instantiate the gameboy
+    this->instance = std::make_unique<GameInstance>(this->gb_model);
+    this->instance->set_vblank_buffering_enabled(settings.value(SETTINGS_SYNC_TO_VBLANK, true).toBool());
     
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
@@ -286,13 +254,7 @@ GameWindow::GameWindow() {
     connect(this->pause_action, &QAction::triggered, this, &GameWindow::action_toggle_pause);
     this->pause_action->setIcon(GET_ICON("media-playback-pause"));
     this->pause_action->setCheckable(true);
-    this->pause_action->setChecked(this->paused);
-    
-    auto *pause_on_menu = emulation_menu->addAction("Pause In Menu");
-    connect(pause_on_menu, &QAction::triggered, this, &GameWindow::action_toggle_pause_in_menu);
-    pause_on_menu->setIcon(GET_ICON("media-playback-pause"));
-    pause_on_menu->setCheckable(true);
-    pause_on_menu->setChecked(this->pause_on_menu);
+    this->pause_action->setChecked(false);
     
     // Video menu
     auto *view_menu = bar->addMenu("View");
@@ -314,9 +276,7 @@ GameWindow::GameWindow() {
     this->pixel_buffer_view->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-    
-    // Instantiate the game boy
-    this->initialize_gameboy(this->gb_model);
+    this->set_pixel_view_scaling(this->scaling);
     
     // Create the debugger now that everything else is set up
     this->debugger_window = new GameDebugger(this);
@@ -334,9 +294,6 @@ GameWindow::GameWindow() {
     layout->setContentsMargins(0,0,0,0);
     central_widget->setLayout(layout);
     this->setCentralWidget(central_widget);
-    
-    // Remove any garbage pixels
-    this->redraw_pixel_buffer();
     
     // Get the audio
     QAudioFormat format = {};
@@ -363,10 +320,8 @@ GameWindow::GameWindow() {
         connect(this->audio_output, &QAudioOutput::notify, this, &GameWindow::play_audio_buffer); // play the audio buffer whenever possible
         this->audio_device = this->audio_output->start();
         
-        GB_set_sample_rate(&this->gameboy, best_sample_rate);
-        GB_apu_set_sample_callback(&this->gameboy, GameWindow::on_sample);
-        
-        sample_buffer.reserve(1024);
+        this->instance->set_audio_enabled(true, best_sample_rate);
+        sample_buffer.reserve(best_sample_rate);
     }
     else {
         print_debug_message("Could not get an audio device. Audio will be disabled.\n");
@@ -424,39 +379,6 @@ void GameWindow::show_new_volume_text() {
     }
 }
 
-void GameWindow::on_sample(GB_gameboy_s *gb, GB_sample_t *sample) {
-    auto *window = reinterpret_cast<GameWindow *>(GB_get_user_data(gb));
-    
-    if(window->muted) {
-        return;
-    }
-    
-    auto &buffer = window->sample_buffer;
-    
-    // Get our samples
-    int left = sample->left;
-    int right = sample->right;
-    
-    // Convert to mono if we want
-    if(window->mono) {
-        left = (left + right) / 2;
-        right = left;
-    }
-    
-    // Scale samples
-    if(window->volume < 100 && window->volume >= 0) {
-        double scale = QAudio::convertVolume(window->volume / 100.0, QAudio::VolumeScale::LogarithmicVolumeScale, QAudio::VolumeScale::LinearVolumeScale);
-        left *= scale;
-        right *= scale;
-    }
-    
-    // Play
-    buffer.emplace_back(left);
-    buffer.emplace_back(right);
-    
-    window->play_audio_buffer();
-}
-
 void GameWindow::play_audio_buffer() {
     auto &buffer = this->sample_buffer;
     
@@ -489,30 +411,16 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->recent_roms = this->recent_roms.mid(0, 5);    
     this->update_recent_roms_list();
     
-    this->rom_loaded = true;
+    // Make path
+    auto path = std::filesystem::path(rom_path);
+    this->save_path = std::filesystem::path(path).replace_extension(".sav");
     
     // Reset
-    GB_reset(&this->gameboy);
-    GB_debugger_clear_symbols(&this->gameboy);
+    int r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
     
-    auto path = std::filesystem::path(rom_path);
-    
-    // Load ISX or a ROM
-    if(path.extension() == ".isx") {
-        GB_load_isx(&this->gameboy, rom_path);
-    }
-    else {
-        GB_load_rom(&this->gameboy, rom_path);
-    }
-    
-    // Load the save
-    save_path = path.replace_extension(".sav").string();
-    GB_load_battery(&this->gameboy, save_path.c_str());
-    
-    // Load symbol files
-    auto sym_path = path.replace_extension(".sym");
-    if(std::filesystem::exists(path.replace_extension(".sym"))) {
-        GB_debugger_load_symbol_file(&this->gameboy, sym_path.string().c_str());
+    // Start thread
+    if(r == 0 && !instance_thread.joinable()) {
+        instance_thread = std::thread(GameInstance::start_game_loop, this->instance.get());
     }
 }
 
@@ -537,11 +445,51 @@ void GameWindow::action_open_recent_rom() {
 }
 
 void GameWindow::redraw_pixel_buffer() {
-    // Update the pixmap and set it.
-    // TODO: Consider using QPainter directly as it may be a bit more performant
-    // TODO: Also consider adding an option to use hardware acceleration to implement shaders
-    this->pixel_buffer_pixmap.convertFromImage(this->pixel_buffer);
+    std::uint32_t width, height;
+    this->instance->get_dimensions(width, height);
+    this->pixel_buffer.resize(width * height, 0xFFFFFFFF);
+    this->instance->read_pixel_buffer(this->pixel_buffer.data(), this->pixel_buffer.size());
+    
+    this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), width, height, QImage::Format::Format_ARGB32));
     pixel_buffer_pixmap_item->setPixmap(this->pixel_buffer_pixmap);
+    
+    // Handle status text fade
+    if(this->status_text) {
+        auto now = clock::now();
+        
+        // Delete status text if time expired
+        if(now > this->status_text_deletion) {
+            delete this->status_text;
+            this->status_text = nullptr;
+        }
+        
+        // Otherwise fade out in last 500 ms
+        else {
+            auto ms_left = std::chrono::duration_cast<std::chrono::milliseconds>(this->status_text_deletion - now).count();
+            static constexpr const double fade_ms = 500.0;
+            if(ms_left < fade_ms) {
+                float opacity = ms_left / fade_ms;
+                this->status_text->setOpacity(opacity);
+                qobject_cast<QGraphicsDropShadowEffect *>(this->status_text->graphicsEffect())->setColor(QColor::fromRgbF(0,0,0,opacity * opacity));
+            }
+        }
+    }
+    
+    // Show frame rate
+    if(this->fps_text) {
+        float fps = this->instance->get_frame_rate();
+        if(this->last_fps != fps) {
+            char fps_text_str[64];
+            if(fps == 0.0) {
+                std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: --");
+            }
+            else {
+                std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: %.01f", fps);
+            }
+            this->fps_text->setPlainText(fps_text_str);
+            this->last_fps = fps;
+        }
+    }
 }
 
 void GameWindow::set_pixel_view_scaling(int scaling) {
@@ -561,8 +509,11 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
     
     this->scaling = scaling;
-    this->pixel_buffer_view->setMinimumSize(this->pixel_buffer.width() * this->scaling,this->pixel_buffer.height() * this->scaling);
-    this->pixel_buffer_view->setMaximumSize(this->pixel_buffer.width() * this->scaling,this->pixel_buffer.height() * this->scaling);
+    
+    std::uint32_t width, height;
+    this->instance->get_dimensions(width, height);
+    this->pixel_buffer_view->setMinimumSize(width * this->scaling, height * this->scaling);
+    this->pixel_buffer_view->setMaximumSize(width * this->scaling, height * this->scaling);
     this->pixel_buffer_view->setTransform(QTransform::fromScale(scaling, scaling));
     this->make_shadow(this->fps_text);
     this->make_shadow(this->status_text);
@@ -576,81 +527,43 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     }
 }
 
-void GameWindow::reset_fps_counter(bool update_text) noexcept {
-    this->fps_numerator = 0;
-    this->fps_denominator = 0;
-    this->last_frame_time = clock::now();
-    
-    if(this->fps_text && update_text) {
-        this->fps_text->setPlainText("FPS: --");
-    }
-}
-
-void GameWindow::calculate_frame_rate() noexcept {
-    if(this->show_fps) {
-        auto now = clock::now();
-        
-        this->fps_denominator += std::chrono::duration_cast<std::chrono::microseconds>(now - this->last_frame_time).count() / 1000000.0;
-        this->last_frame_time = now;
-        
-        // Once we reach critical mass (30 frames), show the frame rate
-        if(this->fps_numerator++ > 30) {
-            char fps_text_str[64];
-            std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: %.01f", this->fps_numerator / this->fps_denominator);
-            QString fps_text_qstr = fps_text_str;
-            this->fps_text->setPlainText(fps_text_str);
-            this->reset_fps_counter(false);
-        }
-    }
-}
-
 void GameWindow::on_vblank(GB_gameboy_s *gb) {
     auto *window = reinterpret_cast<GameWindow *>(GB_get_user_data(gb));
     window->vblank = true;
 }
 
 void GameWindow::game_loop() {
-    this->debugger_window->refresh_view();
+    // If we have any audio, let's get that
+    std::size_t sample_buffer_end = this->sample_buffer.size();
+    this->instance->transfer_sample_buffer(this->sample_buffer);
     
-    auto now = clock::now();
-    
-    if(this->status_text != nullptr) {
-        if(now > this->status_text_deletion) {
-            delete this->status_text;
-            this->status_text = nullptr;
-        }
-        else {
-            // Fade out in the last 500 ms
-            auto ms_left = std::chrono::duration_cast<std::chrono::milliseconds>(this->status_text_deletion - now).count();
-            static constexpr const double fade_ms = 500.0;
-            if(ms_left < fade_ms) {
-                float opacity = ms_left / fade_ms;
-                this->status_text->setOpacity(opacity);
-                qobject_cast<QGraphicsDropShadowEffect *>(this->status_text->graphicsEffect())->setColor(QColor::fromRgbF(0,0,0,opacity * opacity));
+    // Do we have to change anything?
+    if(this->volume < 100 || this->mono) {
+        std::size_t sample_buffer_new_end = this->sample_buffer.size();
+        for(std::size_t s = sample_buffer_end; s < sample_buffer_new_end; s += 2) {
+            // Get our samples
+            std::int16_t &left = this->sample_buffer[s];
+            std::int16_t &right = this->sample_buffer[s + 1];
+            
+            // Convert to mono if we want
+            if(this->mono) {
+                left = (left + right) / 2;
+                right = left;
+            }
+            
+            // Scale samples
+            if(this->volume < 100 && this->volume >= 0) {
+                double scale = QAudio::convertVolume(this->volume / 100.0, QAudio::VolumeScale::LogarithmicVolumeScale, QAudio::VolumeScale::LinearVolumeScale);
+                left *= scale;
+                right *= scale;
             }
         }
     }
     
-    // If paused, reset the FPS counter
-    if(this->debugger_window->is_debug_breakpoint_paused() || !this->rom_loaded || this->paused || (this->pause_on_menu && this->menu_open)) {
-        this->reset_fps_counter(true);
-        return;
-    }
-    
-    // Run until vblank occurs or we take waaaay too long (e.g. 50 ms)
-    auto timeout = now + std::chrono::milliseconds(50);
-    
-    while(!this->vblank && clock::now() < timeout) {
-        GB_run(&this->gameboy);
-        if(this->frameskip) {
-            this->vblank = false;
-        }
-    }
-    
-    // Clear the vblank flag and redraw
-    this->vblank = false;
+    this->play_audio_buffer();
     this->redraw_pixel_buffer();
-    this->calculate_frame_rate();
+    
+    this->debugger_window->refresh_view();
 }
 
 void GameWindow::action_set_scaling() noexcept {
@@ -685,7 +598,7 @@ void GameWindow::action_toggle_showing_fps() noexcept {
         fps_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
         fps_text->setPos(0, 0);
         this->make_shadow(this->fps_text);
-        this->reset_fps_counter(true);
+        this->last_fps = -1.0;
     }
     else {
         delete this->fps_text;
@@ -694,7 +607,7 @@ void GameWindow::action_toggle_showing_fps() noexcept {
 }
 
 void GameWindow::action_toggle_pause() noexcept {
-    this->paused = !this->paused;
+    this->instance->set_paused_manually(!this->instance->is_paused_manually());
 }
 
 void GameWindow::action_open_rom() noexcept {
@@ -707,12 +620,13 @@ void GameWindow::action_open_rom() noexcept {
 }
 
 void GameWindow::action_reset() noexcept {
-    GB_reset(&this->gameboy);
+    this->instance->reset();
 }
 
 void GameWindow::action_toggle_audio() noexcept {
     this->muted = !this->muted;
     this->sample_buffer.clear();
+    this->instance->set_audio_enabled(!this->muted);
     
     if(this->muted) {
         this->show_status_text("Muted");
@@ -736,26 +650,6 @@ void GameWindow::show_status_text(const char *text) {
     this->make_shadow(this->status_text);
     
     this->status_text_deletion = clock::now() + std::chrono::seconds(3);
-}
-
-void GameWindow::initialize_gameboy(GB_model_t model) noexcept {
-    if(GB_is_inited(&this->gameboy)) {
-        GB_switch_model_and_reset(&this->gameboy, model);
-    }
-    else {
-        GB_init(&this->gameboy, model);
-        GB_set_user_data(&this->gameboy, this);
-        GB_set_boot_rom_load_callback(&this->gameboy, load_boot_rom);
-        GB_set_rgb_encode_callback(&this->gameboy, rgb_encode);
-        GB_set_vblank_callback(&this->gameboy, GameWindow::on_vblank);
-    }
-    
-    // Update/clear our pixel buffer
-    int width = GB_get_screen_width(&this->gameboy), height = GB_get_screen_height(&this->gameboy);
-    this->pixel_buffer = QImage(width, height, QImage::Format::Format_ARGB32);
-    this->pixel_buffer.fill(0);
-    GB_set_pixels_output(&this->gameboy, reinterpret_cast<std::uint32_t *>(this->pixel_buffer.bits()));
-    this->set_pixel_view_scaling(this->scaling);
 }
 
 void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
@@ -790,18 +684,14 @@ void GameWindow::action_hiding_menu() noexcept {
     this->menu_open = false;
 }
 
-void GameWindow::action_toggle_pause_in_menu() noexcept {
-    this->pause_on_menu = !this->pause_on_menu;
-}
-
 bool GameWindow::save_if_loaded() noexcept {
-    if(this->rom_loaded) {
-        if(!GB_save_battery(&this->gameboy, this->save_path.c_str())) {
-            print_debug_message("Saved cartridge RAM to %s\n", save_path.c_str());
+    if(this->instance->is_rom_loaded()) {
+        if(this->instance->save_sram(this->save_path) == 0) {
+            print_debug_message("Saved cartridge RAM to %s\n", save_path.string().c_str());
             return true;
         }
         else {
-            print_debug_message("Failed to save %s\n", save_path.c_str());
+            print_debug_message("Failed to save %s\n", save_path.string().c_str());
             return false;
         }
     }
@@ -812,9 +702,10 @@ bool GameWindow::save_if_loaded() noexcept {
 }
     
 void GameWindow::action_save_sram() noexcept {
-    auto filename = std::filesystem::path(this->save_path).filename().string();
+    // Initiate saving the SRAM
+    auto filename = this->save_path.filename().string();
     if(!this->save_if_loaded()) {
-        if(this->rom_loaded) {
+        if(this->instance->is_rom_loaded()) {
             char message[256];
             std::snprintf(message, sizeof(message), "Failed to save %s", filename.c_str());
             this->show_status_text(message);
@@ -832,11 +723,13 @@ void GameWindow::action_set_model() noexcept {
     // Uses the user data from the sender to get model
     auto *action = qobject_cast<QAction *>(sender());
     this->gb_model = static_cast<decltype(this->gb_model)>(action->data().toInt());
-    this->initialize_gameboy(this->gb_model);
+    this->instance->set_model(this->gb_model);
     
     for(auto &i : this->gb_model_actions) {
         i->setChecked(i->data().toInt() == this->gb_model);
     }
+    
+    this->set_pixel_view_scaling(this->scaling);
 }
 
 void GameWindow::action_quit_without_saving() noexcept {
@@ -857,23 +750,27 @@ void GameWindow::set_loading_other_roms_enabled(bool enabled) noexcept {
     this->pause_action->setEnabled(enabled);
 }
 
-GameWindow::~GameWindow() {}
+GameWindow::~GameWindow() {
+    if(this->instance_thread.joinable()) {
+        this->instance->end_game_loop();
+        this->instance_thread.join();
+    }
+}
 
 void GameWindow::closeEvent(QCloseEvent *) {
     if(!this->exit_without_save) {
         this->save_if_loaded();
     }
-    this->debugger_window->force_unpause_debugger();
     
     QSettings settings;
     settings.setValue(SETTINGS_VOLUME, this->volume);
     settings.setValue(SETTINGS_SCALE, this->scaling);
     settings.setValue(SETTINGS_SHOW_FPS, this->show_fps);
     settings.setValue(SETTINGS_MONO, this->mono);
-    settings.setValue(SETTINGS_PAUSE_ON_MENU, this->pause_on_menu);
     settings.setValue(SETTINGS_MUTE, this->muted);
     settings.setValue(SETTINGS_RECENT_ROMS, this->recent_roms);
     settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
+    settings.setValue(SETTINGS_SYNC_TO_VBLANK, static_cast<bool>(this->instance->is_vblank_buffering_enabled()));
     
     QApplication::quit();
 }
@@ -913,43 +810,43 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
     
     switch(type) {
         case InputDevice::Input_A:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_A, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_A, boolean_input);
             break;
         case InputDevice::Input_B:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_B, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_B, boolean_input);
             break;
         case InputDevice::Input_Start:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_START, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_START, boolean_input);
             break;
         case InputDevice::Input_Select:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_SELECT, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_SELECT, boolean_input);
             break;
         case InputDevice::Input_Up:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_UP, boolean_input);
             break;
         case InputDevice::Input_Down:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_DOWN, boolean_input);
             break;
         case InputDevice::Input_Left:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_LEFT, boolean_input);
             break;
         case InputDevice::Input_Right:
-            GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, boolean_input);
+            this->instance->set_button_state(GB_key_t::GB_KEY_RIGHT, boolean_input);
             break;
         case InputDevice::Input_Turbo:
             if(input > 0.1) {
-                GB_set_clock_multiplier(&this->gameboy, 1.0 + 3.0 * ((input - 0.1) / 0.9)); // TODO: allow you to set the maximum turbo
+                this->instance->set_speed_multiplier(1.0 + 3.0 * ((input - 0.1) / 0.9)); // TODO: allow you to set the maximum turbo
             }
             else {
-                GB_set_clock_multiplier(&this->gameboy, 1.0);
+                this->instance->set_speed_multiplier(1.0);
             }
             break;
         case InputDevice::Input_Slowmo:
             if(input > 0.1) {
-                GB_set_clock_multiplier(&this->gameboy, 1.0 / (1.0 + 3.0 * ((input - 0.1) / 0.9))); // TODO: allow you to set the maximum slowmotion
+                this->instance->set_speed_multiplier(1.0 / (1.0 + 3.0 * ((input - 0.1) / 0.9))); // TODO: allow you to set the maximum slowmotion
             }
             else {
-                GB_set_clock_multiplier(&this->gameboy, 1.0);
+                this->instance->set_speed_multiplier(1.0);
             }
             break;
         case InputDevice::Input_VolumeDown:

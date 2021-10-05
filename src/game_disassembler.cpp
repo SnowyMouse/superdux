@@ -48,26 +48,26 @@ void GameDisassembler::go_back() {
 }
 
 void GameDisassembler::follow_address() {
-    auto where = this->debugger->evaluate_expression(this->last_disassembly->follow_address.toUtf8().data());
+    auto where = this->debugger->get_instance().evaluate_expression(this->last_disassembly->follow_address.toUtf8().data());
     if(where.has_value()) {
         this->go_to(*where);
     }
 }
 
 void GameDisassembler::set_address_to_current_breakpoint() {
-    this->current_address = get_16_bit_gb_register(this->debugger->get_gameboy(), gbz80_register::GBZ80_REG_PC);
+    this->current_address = this->debugger->get_instance().get_register_value(gbz80_register::GBZ80_REG_PC);
 }
 
 void GameDisassembler::add_breakpoint() {
     char command[512];
     std::snprintf(command, sizeof(command), "breakpoint $%04X", *this->last_disassembly->address);
-    this->debugger->execute_debugger_command(command);
+    this->debugger->get_instance().execute_command(command);
 }
 
 void GameDisassembler::delete_breakpoint() {
     char command[512];
     std::snprintf(command, sizeof(command), "delete $%04X", *this->last_disassembly->address);
-    this->debugger->execute_debugger_command(command);
+    this->debugger->get_instance().execute_command(command);
 }
 
 void GameDisassembler::show_context_menu(const QPoint &point) {
@@ -120,13 +120,12 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
 }
 
 bool GameDisassembler::address_is_breakpoint(std::uint16_t address) {
-    auto *gameboy = this->debugger->get_gameboy();
-    auto breakpoint_count = get_gb_breakpoint_size(gameboy);
-    for(std::size_t q = 0; q < breakpoint_count; q++) {
-        if(address == get_gb_breakpoint_address(gameboy, q)) {
+    for(auto &i : this->debugger->get_breakpoints()) {
+        if(i == address) {
             return true;
         }
     }
+    
     return false;
 }
 
@@ -149,7 +148,7 @@ void GameDisassembler::jump_to_address_window() {
     
     // Go to the address
     if(dialog.exec() == QInputDialog::Accepted) {
-        auto where_to = this->debugger->evaluate_expression(dialog.textValue().toUtf8().data());
+        auto where_to = this->debugger->get_instance().evaluate_expression(dialog.textValue().toUtf8().data());
         if(where_to.has_value()) {
             this->go_to(*where_to);
         }
@@ -251,15 +250,11 @@ void GameDisassembler::refresh_view() {
 }
 
 std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_address(std::uint16_t address, std::uint8_t count) {
-    auto *gameboy = this->debugger->get_gameboy();
-    
     // Tell sameboy to disassemble at the address and capture its output.
     // Doing it this way is horrible. Let's do it anyway.
     QStringList lines;
-    this->debugger->push_retain_logs();
-    GB_cpu_disassemble(gameboy, address, count);
-    this->debugger->pop_retain_logs();
-    lines = QString::fromStdString(this->debugger->get_and_clear_retained_logs()).split("\n");
+    
+    lines = QString::fromStdString(this->debugger->get_instance().disassemble_address(address, count)).split("\n");
     
     std::vector<Disassembly> returned_instructions;
     for(auto &l : lines) {

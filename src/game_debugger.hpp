@@ -23,45 +23,21 @@ public:
     GameDebugger(GameWindow *window);
     ~GameDebugger() override;
     
-    GB_gameboy_s *get_gameboy() noexcept {
-        return this->game_window->get_gameboy();
-    }
-    
-    /** Add 1 to retaining logs (if != 0, logs are not printed to console but stored in a buffer */
-    void push_retain_logs() { this->retain_logs++; }
-    
-    /** Subtract 1 from retaining logs (if != 0, logs are not printed to console but stored in a buffer */
-    void pop_retain_logs() { this->retain_logs--; }
-    
-    /** Return logs and clear */
-    std::string get_and_clear_retained_logs() {
-        auto result = std::move(this->retained_logs);
-        this->retained_logs = {};
-        return result;
+    GameInstance &get_instance() noexcept {
+        return this->game_window->get_instance();
     }
     
     /** Format the table for use with the debugger */
     void format_table(QTableWidget *widget);
-    
-    /** Evaluate the expression, returning an address if successful */
-    std::optional<std::uint16_t> evaluate_expression(const char *expression);
-    
-    /** Execute the debugger command, returning the result */
-    std::string execute_debugger_command(const char *command);
     
     /** Get the font used for tables */
     const QFont &get_table_font() const noexcept {
         return this->table_font;
     }
     
-    /** Get whether or not we are paused due to a breakpoint */
-    bool is_debug_breakpoint_paused() const noexcept {
-        return this->debug_breakpoint_pause;
-    }
-    
-    /** Force the debugger to unpause - only use this if quitting */
-    void force_unpause_debugger() noexcept {
-        this->debug_breakpoint_pause = false;
+    /** Get all breakpoints */
+    const std::vector<std::uint16_t> get_breakpoints() {
+        return this->breakpoints_copy;
     }
     
     /** Refresh the information in view */
@@ -71,15 +47,17 @@ private:
     
     class GameDebuggerTable;
     
+    // Copy of breakpoints and backtrace
+    std::vector<std::pair<std::string, std::uint16_t>> backtrace_copy;
+    std::vector<std::uint16_t> breakpoints_copy;
+    
+    // Did we check if breakpoint
+    bool known_breakpoint = false;
+    void set_known_breakpoint(bool known_breakpoint);
+    
     // Set the preferred font for the debugger
     QFont table_font;
-    int retain_logs = 0;
-    std::string retained_logs;
-    static GameDebugger *resolve_debugger(GB_gameboy_s *gb) noexcept;
-    static char *input_callback(GB_gameboy_s *) noexcept;
-    bool debug_breakpoint_pause = false;
     
-    void continue_break(const char *command_to_execute = nullptr);
     void action_break();
     void action_continue();
     void action_step();
@@ -87,8 +65,6 @@ private:
     void action_finish();
     void action_clear_breakpoints() noexcept;
     void action_update_registers() noexcept;
-    
-    std::string command_to_execute_on_unbreak;
     
     QWidget *right_view;
     
@@ -104,6 +80,7 @@ private:
     GameWindow *game_window;
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
+    void closeEvent(QCloseEvent *) override;
     
     
 };

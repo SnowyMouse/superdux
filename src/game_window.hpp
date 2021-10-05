@@ -19,7 +19,11 @@ extern "C" {
 #include <QStringList>
 #include <QSettings>
 
+#include <thread>
+
 #include "input_device.hpp"
+
+#include "game_instance.hpp"
 
 class QAudioOutput;
 class QIODevice;
@@ -41,17 +45,18 @@ public:
     
     ~GameWindow();
     
-    GB_gameboy_s *get_gameboy() noexcept {
-        return &this->gameboy;
+    GameInstance &get_instance() noexcept {
+        return *this->instance;
     }
     
 private:
     using clock = std::chrono::steady_clock;
     
+    std::unique_ptr<GameInstance> instance;
+    std::thread instance_thread;
+    
     // Gameboy itself
-    GB_gameboy_s gameboy = {};
     GB_model_t gb_model = GB_model_t::GB_MODEL_CGB_C;
-    void initialize_gameboy(GB_model_t model) noexcept;
     QAction *open_roms_action;
     QMenu *gameboy_model_menu;
     std::vector<QAction *> gb_model_actions;
@@ -64,8 +69,6 @@ private:
     
     // Emulation
     QAction *pause_action;
-    bool paused = false;
-    bool rom_loaded = false;
     void game_loop();
     
     // Pause if menu is open?
@@ -78,7 +81,7 @@ private:
     bool vblank = false;
     QPixmap pixel_buffer_pixmap;
     QGraphicsPixmapItem *pixel_buffer_pixmap_item = nullptr;
-    QImage pixel_buffer;
+    std::vector<std::uint32_t> pixel_buffer;
     QGraphicsView *pixel_buffer_view;
     QGraphicsScene *pixel_buffer_scene = nullptr;
     QGraphicsTextItem *fps_text = nullptr;
@@ -88,11 +91,7 @@ private:
     
     // For showing FPS
     bool show_fps = false;
-    clock::time_point last_frame_time;
-    float fps_denominator; // fps time
-    int fps_numerator; // fps count
-    void calculate_frame_rate() noexcept;
-    void reset_fps_counter(bool update_text) noexcept;
+    float last_fps = -1.0;
     
     // Audio
     QAudioOutput *audio_output;
@@ -116,10 +115,9 @@ private:
     
     void reload_devices();
     
-    // Save path
-    std::string save_path;
+//     // Save path
+    std::filesystem::path save_path;
     bool exit_without_save = false;
-    bool frameskip = false;
     QAction *exit_without_saving;
     bool save_if_loaded() noexcept;
     
@@ -151,7 +149,6 @@ private slots:
     void action_set_scaling() noexcept;
     void action_toggle_showing_fps() noexcept;
     void action_toggle_pause() noexcept;
-    void action_toggle_pause_in_menu() noexcept;
     void action_open_rom() noexcept;
     void action_open_recent_rom();
     void action_reset() noexcept;

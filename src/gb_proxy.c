@@ -45,30 +45,64 @@ static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, 
     }
 }
 
-uint8_t get_8_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r) {
-    return *get_8_bit_gb_register_address(gb, r);
+static inline uint8_t get_8_bit_gb_register(const struct GB_gameboy_s *gb, gbz80_register r) {
+    return *get_8_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
 }
-uint16_t get_16_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r) {
-    return *get_16_bit_gb_register_address(gb, r);
+static inline uint16_t get_16_bit_gb_register(const struct GB_gameboy_s *gb, gbz80_register r) {
+    return *get_16_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
 }
 
-void set_8_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint8_t v) {
+static void set_8_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint8_t v) {
     *get_8_bit_gb_register_address(gb, r) = v;
 }
-void set_16_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint16_t v) {
+static void set_16_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint16_t v) {
     *get_16_bit_gb_register_address(gb, r) = v;
 }
 
-uint32_t get_gb_backtrace_size(struct GB_gameboy_s *gb) {
+uint16_t get_gb_register(const struct GB_gameboy_s *gb, gbz80_register r) {
+    switch(r) {
+        case GBZ80_REG_A:
+        case GBZ80_REG_B:
+        case GBZ80_REG_C:
+        case GBZ80_REG_D:
+        case GBZ80_REG_E:
+        case GBZ80_REG_F:
+            return get_8_bit_gb_register(gb, r);
+        case GBZ80_REG_HL:
+        case GBZ80_REG_PC:
+            return get_16_bit_gb_register(gb, r);
+        default:
+            abort();
+    }
+}
+
+void set_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint16_t v) {
+    switch(r) {
+        case GBZ80_REG_A:
+        case GBZ80_REG_B:
+        case GBZ80_REG_C:
+        case GBZ80_REG_D:
+        case GBZ80_REG_E:
+        case GBZ80_REG_F:
+            return set_8_bit_gb_register(gb, r, v);
+        case GBZ80_REG_HL:
+        case GBZ80_REG_PC:
+            return set_16_bit_gb_register(gb, r, v);
+        default:
+            abort();
+    }
+}
+
+uint32_t get_gb_backtrace_size(const struct GB_gameboy_s *gb) {
     return gb->backtrace_size;
 }
-uint16_t get_gb_backtrace_address(struct GB_gameboy_s *gb, uint32_t bt) {
+uint16_t get_gb_backtrace_address(const struct GB_gameboy_s *gb, uint32_t bt) {
     return gb->backtrace_returns[bt].addr;
 }
 
-uint32_t get_gb_breakpoint_size(struct GB_gameboy_s *gb) {
+uint32_t get_gb_breakpoint_size(const struct GB_gameboy_s *gb) {
     return gb->n_breakpoints;
 }
-uint16_t get_gb_breakpoint_address(struct GB_gameboy_s *gb, uint32_t bt) {
+uint16_t get_gb_breakpoint_address(const struct GB_gameboy_s *gb, uint32_t bt) {
     return gb->breakpoints[bt].addr;
 }

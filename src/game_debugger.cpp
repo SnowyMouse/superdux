@@ -29,24 +29,8 @@ public:
     void mouseDoubleClickEvent(QMouseEvent *event) override {
         auto *item = this->itemAt(event->pos());
         if(item) {
-            int r = item->data(Qt::UserRole).toInt();
-            auto *gameboy = this->window->get_gameboy();
-            auto bt_size = get_gb_backtrace_size(gameboy);
-            
-            // Go there
-            if(r >= 0 && r <= bt_size) {
-                std::uint16_t addr;
-                
-                // Topmost should just be the current instruction since that's what is shown
-                if(r == 0) {
-                    addr = get_16_bit_gb_register(gameboy, gbz80_register::GBZ80_REG_PC);
-                }
-                else {
-                    addr = get_gb_backtrace_address(gameboy, bt_size - r);
-                }
-                
-                this->window->disassembler->go_to(addr);
-            }
+            unsigned int r = item->data(Qt::UserRole).toUInt();
+            this->window->disassembler->go_to(r);
         }
     }
     
@@ -145,11 +129,6 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     backtrace_frame->setLayout(backtrace_layout);
     right_view_layout->addWidget(backtrace_frame);
     
-    // Set callbacks
-    auto *gameboy = this->get_gameboy();
-    GB_set_log_callback(gameboy, log_callback);
-    GB_set_input_callback(gameboy, input_callback);
-    
     // Done
     layout->addWidget(this->right_view);
     this->right_view->setMaximumWidth(300);
@@ -160,102 +139,43 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
 }
 
 void GameDebugger::action_break() {
-    GB_debugger_break(this->get_gameboy());
+    this->get_instance().break_immediately();
 }
 
 void GameDebugger::action_continue() {
-    this->continue_break("continue");
+    this->get_instance().unbreak("continue");
+    this->set_known_breakpoint(false);
 }
 
 void GameDebugger::action_step() {
-    this->continue_break("step");
+    this->get_instance().unbreak("step");
+    this->set_known_breakpoint(false);
 }
 
 void GameDebugger::action_step_over() {
-    this->continue_break("next");
+    this->get_instance().unbreak("next");
+    this->set_known_breakpoint(false);
 }
 
 void GameDebugger::action_finish() {
-    this->continue_break("finish");
+    this->get_instance().unbreak("finish");
+    this->set_known_breakpoint(false);
 }
 
-void GameDebugger::continue_break(const char *command_to_execute) {
-    this->debug_breakpoint_pause = false;
-    this->command_to_execute_on_unbreak = command_to_execute ? command_to_execute : "continue";
-}
-
-// this is called when hitting a breakpoint
-char *GameDebugger::input_callback(GB_gameboy_s *gb) noexcept {
-    // TODO: don't do this messy thing
-    auto *debugger = resolve_debugger(gb);
-    auto &pause = debugger->debug_breakpoint_pause;
-    pause = true;
-    debugger->break_button->setEnabled(false);
-    
-    // Figure out the address
-    debugger->disassembler->set_address_to_current_breakpoint();
-    debugger->right_view->setEnabled(true);
-    
-    // Enable these
-    debugger->continue_button->setEnabled(true);
-    debugger->step_button->setEnabled(true);
-    debugger->step_over_button->setEnabled(true);
-    debugger->finish_fn_button->setEnabled(true);
-    
-    // Reset this
-    debugger->game_window->reset_fps_counter(true);
-    debugger->game_window->redraw_pixel_buffer();
-    
-    // Disable these
-    debugger->game_window->set_loading_other_roms_enabled(false);
-    
-    while(pause) {
-        QCoreApplication::processEvents();
-        debugger->refresh_view();
+void GameDebugger::set_known_breakpoint(bool known_breakpoint) {
+    if(this->known_breakpoint != known_breakpoint) {
+        this->known_breakpoint = known_breakpoint;
+        this->right_view->setEnabled(known_breakpoint);
+        this->break_button->setEnabled(!known_breakpoint);
+        this->continue_button->setEnabled(known_breakpoint);
+        this->step_button->setEnabled(known_breakpoint);
+        this->step_over_button->setEnabled(known_breakpoint);
+        this->finish_fn_button->setEnabled(known_breakpoint);
+        
+        if(known_breakpoint) {
+            this->disassembler->go_to(this->get_instance().get_register_value(gbz80_register::GBZ80_REG_PC));
+        }
     }
-    
-    debugger->game_window->set_loading_other_roms_enabled(true);
-    debugger->right_view->setEnabled(false);
-    debugger->break_button->setEnabled(true);
-    debugger->continue_button->setEnabled(false);
-    debugger->step_button->setEnabled(false);
-    debugger->step_over_button->setEnabled(false);
-    debugger->finish_fn_button->setEnabled(false);
-    
-    // If the command we want to execute is empty, simply continue
-    if(debugger->command_to_execute_on_unbreak.empty()) {
-        return nullptr;
-    }
-    
-    // Otherwise, execute it
-    char *cmd;
-    asprintf(&cmd, "%s", debugger->command_to_execute_on_unbreak.c_str());
-    debugger->command_to_execute_on_unbreak.clear();
-    return cmd;
-}
-
-std::string GameDebugger::execute_debugger_command(const char *command) {
-    // Create a copy that can be free()'d
-    char *cmd = nullptr;
-    asprintf(&cmd, "%s", command);
-    
-    // Retain logs
-    this->push_retain_logs();
-    
-    // Copy old retained logs (in case logs are currently being retained
-    auto old_logs = std::move(this->retained_logs);
-    this->retained_logs.clear();
-    
-    // Execute command
-    GB_debugger_execute_command(this->get_gameboy(), cmd);
-    std::string result = std::move(this->retained_logs);
-    
-    // Copy back old retained logs
-    this->retained_logs = std::move(old_logs);
-    this->pop_retain_logs();
-    
-    // Done
-    return result;
 }
 
 void GameDebugger::refresh_view() {
@@ -264,36 +184,38 @@ void GameDebugger::refresh_view() {
         return;
     }
     
-    auto *gameboy = this->get_gameboy();
-    this->disassembler->refresh_view();
-    this->clear_breakpoints_button->setEnabled(get_gb_breakpoint_size(gameboy) > 0);
+    auto &instance = this->get_instance();
+    bool bp_pause = instance.is_paused_from_breakpoint();
     
-    if(!this->debug_breakpoint_pause) {
-        #define PROCESS_REGISTER_FIELD(name, size, field, fmt) {\
+    this->disassembler->refresh_view();
+    this->breakpoints_copy = instance.get_breakpoints();
+    this->clear_breakpoints_button->setEnabled(this->breakpoints_copy.size() > 0);
+    this->backtrace_copy = instance.get_backtrace();
+    
+    if(!bp_pause || this->known_breakpoint != bp_pause) {
+        #define PROCESS_REGISTER_FIELD(name, field, fmt) {\
             char str[8]; \
-            std::snprintf(str, sizeof(str), fmt, get_##size##_bit_gb_register(gameboy, gbz80_register::GBZ80_REG_##name)); \
+            std::snprintf(str, sizeof(str), fmt, instance.get_register_value(gbz80_register::GBZ80_REG_##name)); \
             this->field->blockSignals(true); \
             this->field->setText(str); \
             this->field->blockSignals(false); \
         }
 
-        PROCESS_REGISTER_FIELD(A, 8, register_a, "$%02x");
-        PROCESS_REGISTER_FIELD(B, 8, register_b, "$%02x");
-        PROCESS_REGISTER_FIELD(C, 8, register_c, "$%02x");
-        PROCESS_REGISTER_FIELD(D, 8, register_d, "$%02x");
-        PROCESS_REGISTER_FIELD(E, 8, register_e, "$%02x");
-        PROCESS_REGISTER_FIELD(F, 8, register_f, "$%02x");
-        PROCESS_REGISTER_FIELD(HL, 16, register_hl, "$%04x");
-        PROCESS_REGISTER_FIELD(PC, 16, register_pc, "$%04x");
+        PROCESS_REGISTER_FIELD(A, register_a, "$%02x");
+        PROCESS_REGISTER_FIELD(B, register_b, "$%02x");
+        PROCESS_REGISTER_FIELD(C, register_c, "$%02x");
+        PROCESS_REGISTER_FIELD(D, register_d, "$%02x");
+        PROCESS_REGISTER_FIELD(E, register_e, "$%02x");
+        PROCESS_REGISTER_FIELD(F, register_f, "$%02x");
+        PROCESS_REGISTER_FIELD(HL, register_hl, "$%04x");
+        PROCESS_REGISTER_FIELD(PC, register_pc, "$%04x");
         
         #undef PROCESS_REGISTER_FIELD
-        
-        auto logs = QString::fromStdString(this->execute_debugger_command("backtrace")).split('\n');
-        
-        this->backtrace->setRowCount(logs.length());
+    
         int row = 0;
-        for(auto &l : logs) {
-            auto l_trimmed = l.trimmed();
+        this->backtrace->setRowCount(this->backtrace_copy.size());
+        for(auto &l : this->backtrace_copy) {
+            auto l_trimmed = QString::fromStdString(l.first).trimmed();
             if(l_trimmed.isEmpty()) {
                 continue;
             }
@@ -301,81 +223,50 @@ void GameDebugger::refresh_view() {
             item->setToolTip(l_trimmed);
             item->setFlags(item->flags() & ~Qt::ItemIsEditable);
             this->backtrace->setItem(row, 0, item);
-            item->setData(Qt::UserRole, row);
+            item->setData(Qt::UserRole, l.second);
             row++;
         }
-        this->backtrace->setRowCount(row);
     }
+    
+    this->set_known_breakpoint(bp_pause);
 }
 
 void GameDebugger::action_clear_breakpoints() noexcept {
-    this->execute_debugger_command("delete");
+    this->get_instance().execute_command("delete");
 }
 
 void GameDebugger::action_update_registers() noexcept {
-    if(!this->debug_breakpoint_pause || this->right_view->isHidden()) {
+    auto &instance = this->get_instance();
+    
+    if(!instance.is_paused_from_breakpoint() || this->right_view->isHidden()) {
         return;
     }
     
-    auto *gameboy = this->get_gameboy();
-    
-    #define PROCESS_REGISTER_FIELD(name, size, field) {\
-        auto value = this->evaluate_expression(this->field->text().toUtf8().data());\
+    #define PROCESS_REGISTER_FIELD(name, field) {\
+        auto value = instance.evaluate_expression(this->field->text().toUtf8().data());\
         if(value.has_value()) {\
-            set_##size##_bit_gb_register(gameboy, gbz80_register::GBZ80_REG_##name, *value);\
+            instance.set_register_value(gbz80_register::GBZ80_REG_##name, *value);\
         }\
     }
 
-    PROCESS_REGISTER_FIELD(A, 8, register_a);
-    PROCESS_REGISTER_FIELD(B, 8, register_b);
-    PROCESS_REGISTER_FIELD(C, 8, register_c);
-    PROCESS_REGISTER_FIELD(D, 8, register_d);
-    PROCESS_REGISTER_FIELD(E, 8, register_e);
-    PROCESS_REGISTER_FIELD(F, 8, register_f);
-    PROCESS_REGISTER_FIELD(HL, 16, register_hl);
+    PROCESS_REGISTER_FIELD(A, register_a);
+    PROCESS_REGISTER_FIELD(B, register_b);
+    PROCESS_REGISTER_FIELD(C, register_c);
+    PROCESS_REGISTER_FIELD(D, register_d);
+    PROCESS_REGISTER_FIELD(E, register_e);
+    PROCESS_REGISTER_FIELD(F, register_f);
+    PROCESS_REGISTER_FIELD(HL, register_hl);
     //PROCESS_REGISTER_FIELD(pc, register_pc); // changing this is very bad
     
     #undef PROCESS_REGISTER_FIELD
 }
 
-std::optional<std::uint16_t> GameDebugger::evaluate_expression(const char *expression) {
-    std::optional<std::uint16_t> result;
-    std::uint16_t result_maybe;
-    
-    auto *gameboy = this->get_gameboy();
-    
-    if(GB_debugger_evaluate(gameboy, expression, &result_maybe, nullptr)) {
-        auto logs = this->execute_debugger_command("backtrace");
-        if(!logs.empty()) {
-            QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", logs.c_str()).exec();
-            logs.clear();
-        }
-        else {
-            QMessageBox(QMessageBox::Icon::Critical, "Error evaluating expression", QString("Could not evaulate expression ") + expression).exec();
-        }
-    }
-    else {
-        result = result_maybe;
-    }
-    
-    return result;
+void GameDebugger::closeEvent(QCloseEvent *) {
+    this->disassembler->clear();
+    this->backtrace->clear();
 }
 
 GameDebugger::~GameDebugger() {}
-
-GameDebugger *GameDebugger::resolve_debugger(GB_gameboy_s *gb) noexcept {
-    return reinterpret_cast<GameWindow *>(GB_get_user_data(gb))->debugger_window;
-}
-
-void GameDebugger::log_callback(GB_gameboy_s *gb, const char *text, GB_log_attributes) {
-    auto *debugger_window = resolve_debugger(gb);
-    if(debugger_window->retain_logs > 0) {
-        debugger_window->retained_logs += text;
-        return;
-    }
-    
-    std::printf("%s", text); // todo: implement a console
-}
 
 void GameDebugger::format_table(QTableWidget *widget) {
     widget->horizontalHeader()->setStretchLastSection(true);
