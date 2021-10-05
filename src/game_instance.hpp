@@ -138,14 +138,14 @@ public: // all public functions assume the mutex is not locked
     void transfer_sample_buffer(std::vector<std::int16_t> &destination) noexcept;
     
     /**
-     * Set whether or not to use vblank buffering. This ensures the pixel buffer in read_pixel_buffer() is complete but may incur input lag.
+     * Set whether or not to use vblank buffering. This ensures the pixel buffer in read_pixel_buffer() is complete and is the default setting.
      * 
      * @param enabled use buffering
      */
     void set_vblank_buffering_enabled(bool enabled) noexcept { this->vblank_buffering = enabled; }
     
     /**
-     * Get whether or not buffering is enabled.
+     * Get whether or not vblank buffering is enabled.
      * 
      * @return vblank buffer enabled
      */
@@ -278,7 +278,7 @@ private: // all private functions assume the mutex is locked by the caller
     bool vblank_hit = false;
     
     // Use buffering
-    std::atomic_bool vblank_buffering = false;
+    std::atomic_bool vblank_buffering = true;
     
     // Is a ROM loaded?
     std::atomic_bool rom_loaded = false;

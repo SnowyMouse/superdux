@@ -35,7 +35,6 @@
 #define SETTINGS_MUTE "mute"
 #define SETTINGS_RECENT_ROMS "recent_roms"
 #define SETTINGS_GB_MODEL "gb_model"
-#define SETTINGS_SYNC_TO_VBLANK "sync_to_vblank"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -103,7 +102,7 @@ GameWindow::GameWindow() {
     
     // Instantiate the gameboy
     this->instance = std::make_unique<GameInstance>(this->gb_model);
-    this->instance->set_vblank_buffering_enabled(settings.value(SETTINGS_SYNC_TO_VBLANK, true).toBool());
+    this->instance->set_vblank_buffering_enabled(true);
     
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
@@ -770,7 +769,6 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_MUTE, this->muted);
     settings.setValue(SETTINGS_RECENT_ROMS, this->recent_roms);
     settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
-    settings.setValue(SETTINGS_SYNC_TO_VBLANK, static_cast<bool>(this->instance->is_vblank_buffering_enabled()));
     
     QApplication::quit();
 }
