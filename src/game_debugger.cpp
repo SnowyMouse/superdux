@@ -70,6 +70,7 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     bar->addSeparator();
     
     this->clear_breakpoints_button = bar->addAction("Clear Breakpoints");
+    this->clear_breakpoints_button->setEnabled(false);
     connect(this->clear_breakpoints_button, &QAction::triggered, this, &GameDebugger::action_clear_breakpoints);
     
     auto *central_widget = new QWidget(this);
