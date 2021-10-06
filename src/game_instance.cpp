@@ -500,7 +500,6 @@ int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::opt
     
     // If successful, load the battery and symbol files
     if(result == 0) {
-        this->rom_loaded = true;
         this->load_save_and_symbols(sram_path, symbol_path);
     }
     
@@ -531,6 +530,7 @@ int GameInstance::load_isx(const std::filesystem::path &isx_path, const std::opt
 
 void GameInstance::load_save_and_symbols(const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) {
     GB_debugger_clear_symbols(&this->gameboy);
+    this->rom_loaded = true;
     
     if(sram_path.has_value()) {
         GB_load_battery(&this->gameboy, sram_path->string().c_str());
