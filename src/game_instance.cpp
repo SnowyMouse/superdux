@@ -66,6 +66,7 @@ GameInstance::GameInstance(GB_model_t model) {
     GB_set_vblank_callback(&this->gameboy, GameInstance::on_vblank);
     GB_set_log_callback(&this->gameboy, GameInstance::on_log);
     GB_set_input_callback(&this->gameboy, GameInstance::on_input_requested);
+    GB_apu_set_sample_callback(&this->gameboy, GameInstance::on_sample);
     
     this->update_pixel_buffer_size();
 }
@@ -77,6 +78,7 @@ GameInstance::~GameInstance() {
 
 char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     auto *instance = resolve_instance(gameboy);
+    instance->pause_sdl_audio();
     
     // Indicate we've paused
     instance->bp_paused = true;
@@ -318,8 +320,38 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
     auto *instance = resolve_instance(gameboy);
     if(instance->audio_enabled) {
         auto &buffer = instance->sample_buffer;
-        buffer.emplace_back(sample->left);
-        buffer.emplace_back(sample->right);
+        int left = sample->left;
+        int right = sample->right;
+
+        // Do we have to modify any samples?
+        if(instance->volume < 100 || instance->force_mono) {
+            // Convert to mono if we want
+            if(instance->force_mono) {
+                left = (left + right) / 2;
+                right = left;
+            }
+
+            // Scale samples (logarithm to linear)
+            if(instance->volume < 100 && instance->volume >= 0) {
+                left *= instance->volume_scale;
+                right *= instance->volume_scale;
+            }
+        }
+
+        // Add our samples
+        buffer.emplace_back(left);
+        buffer.emplace_back(right);
+
+        // Send them to SDL if we need to
+        if(instance->sdl_audio_device.has_value()) {
+            int len = instance->sdl_audio_buffer_size;
+
+            if(buffer.size() >= len) {
+                SDL_QueueAudio(instance->sdl_audio_device.value(), buffer.data(), len * sizeof(*buffer.data()));
+                instance->unpause_sdl_audio();
+                buffer.erase(buffer.begin(), buffer.begin() + len);
+            }
+        }
     }
 }
 
@@ -328,13 +360,22 @@ void GameInstance::set_audio_enabled(bool enabled, std::uint32_t sample_rate) no
     this->sample_buffer.clear();
     
     if(enabled) {
-        this->sample_buffer.reserve(sample_rate); // reserve one second
-        GB_set_sample_rate(&this->gameboy, sample_rate);
-        GB_apu_set_sample_callback(&this->gameboy, GameInstance::on_sample);
+        if(!this->sdl_audio_device.has_value()) {
+            this->sample_buffer.reserve(sample_rate); // reserve one second
+            GB_set_sample_rate(&this->gameboy, sample_rate);
+        }
     }
-    
+
+    this->pause_sdl_audio();
     this->audio_enabled = enabled;
     this->mutex.unlock();
+}
+
+bool GameInstance::is_audio_enabled() noexcept {
+    this->mutex.lock();
+    bool e = this->audio_enabled;
+    this->mutex.unlock();
+    return e;
 }
 
 std::size_t GameInstance::get_pixel_buffer_size() noexcept {
@@ -403,6 +444,9 @@ void GameInstance::assign_work_buffer() noexcept {
 
 int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept {
     this->mutex.lock();
+
+    // Pause SDL audio
+    this->pause_sdl_audio();
     
     // Reset the gameboy
     GB_reset(&this->gameboy);
@@ -426,6 +470,9 @@ int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::opt
 
 int GameInstance::load_isx(const std::filesystem::path &isx_path, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept {
     this->mutex.lock();
+
+    // Pause the audio
+    this->pause_sdl_audio();
     
     // Reset the gameboy
     GB_reset(&this->gameboy);
@@ -517,4 +564,65 @@ bool GameInstance::is_paused_manually() noexcept {
     bool result = this->manual_paused;
     this->mutex.unlock();
     return result;
+}
+
+bool GameInstance::set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buffer_size) noexcept {
+    this->mutex.lock();
+
+    SDL_AudioSpec request = {}, result = {};
+    request.freq = sample_rate;
+    request.format = AUDIO_S16SYS;
+    request.channels = 2;
+    request.samples = buffer_size;
+    request.userdata = this;
+
+    auto device = SDL_OpenAudioDevice(0, 0, &request, &result, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
+    if(device != 0) {
+        this->sdl_audio_device = device;
+        this->sdl_audio_buffer_size = result.samples;
+        this->sample_buffer.reserve(sample_rate); // reserve one second
+        GB_set_sample_rate(&this->gameboy, result.freq);
+    }
+
+    this->mutex.unlock();
+    return device > 0;
+}
+
+void GameInstance::set_volume(int volume) noexcept {
+    this->mutex.lock();
+    this->volume = std::min(100, std::max(0, volume)); // clamp from 0 to 100
+    this->volume_scale = std::pow(100.0, this->volume / 100.0) / 100.0 - 0.01 * (100.0 - this->volume) / 100.0; // convert between logarithmic volume and linear volume
+    this->mutex.unlock();
+}
+
+int GameInstance::get_volume() noexcept {
+    this->mutex.lock();
+    int v = this->volume;
+    this->mutex.unlock();
+    return v;
+}
+
+bool GameInstance::is_mono_forced() noexcept {
+    this->mutex.lock();
+    int m = this->force_mono;
+    this->mutex.unlock();
+    return m;
+}
+
+void GameInstance::set_mono_forced(bool mono) noexcept {
+    this->mutex.lock();
+    this->force_mono = mono;
+    this->mutex.unlock();
+}
+
+void GameInstance::pause_sdl_audio() noexcept {
+    if(this->sdl_audio_device.has_value()) {
+        SDL_PauseAudioDevice(*this->sdl_audio_device, 1);
+        SDL_ClearQueuedAudio(*this->sdl_audio_device);
+    }
+}
+void GameInstance::unpause_sdl_audio() noexcept {
+    if(this->sdl_audio_device.has_value()) {
+        SDL_PauseAudioDevice(*this->sdl_audio_device, 0);
+    }
 }

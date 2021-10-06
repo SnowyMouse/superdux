@@ -13,6 +13,7 @@ extern "C" {
 #include <optional>
 #include <filesystem>
 #include <chrono>
+#include <SDL2/SDL.h>
 
 class GameInstance {
 public: // all public functions assume the mutex is not locked
@@ -35,9 +36,26 @@ public: // all public functions assume the mutex is not locked
      * Set whether or not audio is enabled
      * 
      * @param enabled     audio is enabled
-     * @param sample_rate optional sample rate to use (ignored if disabling)
+     * @param sample_rate set sample rate (optional - only needed if not using SDL audio)
      */
-    void set_audio_enabled(bool enabled, std::uint32_t sample_rate = 44100) noexcept;
+    void set_audio_enabled(bool enabled, std::uint32_t sample_rate = 0) noexcept;
+
+    /**
+     * Set up SDL audio
+     *
+     * @param sample_rate preferred sample rate to use in Hz
+     * @param buffer_size preferred buffer size
+     *
+     * @return success
+     */
+    bool set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buffer_size = 1024) noexcept;
+
+    /**
+     * Set whether or not audio is enabled
+     *
+     * @return audio is enabled
+     */
+    bool is_audio_enabled() noexcept;
     
     /**
      * Load the ROM at the given path
@@ -85,6 +103,34 @@ public: // all public functions assume the mutex is not locked
      * Reset the gameboy. Note that this does not unload the ROMs, save data, etc.
      */
     void reset() noexcept;
+
+    /**
+     * Set the volume (clamped between 0 and 100)
+     *
+     * @param volume to set to
+     */
+    void set_volume(int volume) noexcept;
+
+    /**
+     * Get the volume
+     *
+     * @return volume
+     */
+    int get_volume() noexcept;
+
+    /**
+     * Get whether mono is forced
+     *
+     * @return mono is forced
+     */
+    bool is_mono_forced() noexcept;
+
+    /**
+     * Set whether mono is forced
+     *
+     * @param mono mono is forced
+     */
+    void set_mono_forced(bool mono) noexcept;
     
     /**
      * Reset the gameboy and switch models.
@@ -234,6 +280,20 @@ public: // all public functions assume the mutex is not locked
      * @return         result of disassembly
      */
     std::string disassemble_address(std::uint16_t address, std::uint8_t count);
+
+    /**
+     * Get the audio buffer size
+     *
+     * @return audio buffer size
+     */
+    std::size_t get_sdl_audio_buffer_size() noexcept;
+
+    /**
+     * Set the audio buffer size
+     *
+     * @param buffer_size audio buffer size
+     */
+    void set_sdl_audio_buffer_size(std::size_t buffer_size) noexcept;
     
     /**
      * Resolve the expression
@@ -267,6 +327,10 @@ private: // all private functions assume the mutex is locked by the caller
     
     // Pixel buffer - holds the current pixels
     std::vector<std::uint32_t> pixel_buffer[4];
+
+    // SDL audio device
+    std::optional<SDL_AudioDeviceID> sdl_audio_device;
+    std::size_t sdl_audio_buffer_size;
     
     // Index of the work buffer
     std::size_t work_buffer = 0;
@@ -285,7 +349,7 @@ private: // all private functions assume the mutex is locked by the caller
     
     // Paused
     bool manual_paused = false;
-    
+
     // Paused from breakpoint
     std::atomic_bool bp_paused = false;
     
@@ -320,6 +384,9 @@ private: // all private functions assume the mutex is locked by the caller
     static void on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample);
     bool audio_enabled = false;
     std::vector<std::int16_t> sample_buffer;
+    bool force_mono = false;
+    int volume = 100;
+    double volume_scale = 1.0;
     
     // Set whether or not to retain logs into a buffer instead of printing to the console
     void retain_logs(bool retain) noexcept { this->log_buffer_retained = retain; }
@@ -344,6 +411,10 @@ private: // all private functions assume the mutex is locked by the caller
     
     // Get the pixel buffer size without locking the mutex.
     std::size_t get_pixel_buffer_size_without_mutex() noexcept;
+
+    // Pause/unpause SDL audio
+    void pause_sdl_audio() noexcept;
+    void unpause_sdl_audio() noexcept;
 };
 
 #endif

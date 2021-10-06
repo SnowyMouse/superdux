@@ -33,6 +33,8 @@
 #define SETTINGS_MUTE "mute"
 #define SETTINGS_RECENT_ROMS "recent_roms"
 #define SETTINGS_GB_MODEL "gb_model"
+#define SETTINGS_SAMPLE_BUFFER_SIZE "sample_buffer_size"
+#define SETTINGS_SAMPLE_RATE "sample_rate"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -90,11 +92,8 @@ public:
 GameWindow::GameWindow() {
     // Load settings
     QSettings settings;
-    this->volume = settings.value(SETTINGS_VOLUME, this->volume).toInt();
     this->scaling = settings.value(SETTINGS_SCALE, this->scaling).toInt();
     this->show_fps = settings.value(SETTINGS_SHOW_FPS, this->show_fps).toBool();
-    this->mono = settings.value(SETTINGS_MONO, this->mono).toBool();
-    this->muted = settings.value(SETTINGS_MUTE, this->muted).toBool();
     this->gb_model = static_cast<decltype(this->gb_model)>(settings.value(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model)).toInt());
     this->recent_roms = settings.value(SETTINGS_RECENT_ROMS).toStringList();
     
@@ -171,7 +170,8 @@ GameWindow::GameWindow() {
     connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
     mute->setIcon(GET_ICON("audio-volume-muted"));
     mute->setCheckable(true);
-    mute->setChecked(this->muted);
+    bool muted = settings.value(SETTINGS_MUTE, false).toBool();
+    mute->setChecked(muted);
     
     auto *raise_volume = volume->addAction("Increase Volume");
     raise_volume->setIcon(GET_ICON("audio-volume-high"));
@@ -184,6 +184,9 @@ GameWindow::GameWindow() {
     reduce_volume->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::Key_Down));
     reduce_volume->setData(-10);
     connect(reduce_volume, &QAction::triggered, this, &GameWindow::action_add_volume);
+
+    this->instance->set_mono_forced(settings.value(SETTINGS_MONO, this->instance->is_mono_forced()).toBool());
+    this->instance->set_volume(settings.value(SETTINGS_VOLUME, this->instance->get_volume()).toInt());
     
     volume->addSeparator();
     for(int i = 100; i >= 0; i-=10) {
@@ -193,7 +196,7 @@ GameWindow::GameWindow() {
         action->setData(i);
         connect(action, &QAction::triggered, this, &GameWindow::action_set_volume);
         action->setCheckable(true);
-        action->setChecked(i == this->volume);
+        action->setChecked(i == this->instance->get_volume());
         this->volume_options.emplace_back(action);
     }
     
@@ -202,13 +205,13 @@ GameWindow::GameWindow() {
     auto *stereo = channel_count->addAction("Stereo");
     stereo->setData(2);
     stereo->setCheckable(true);
-    stereo->setChecked(!this->mono);
+    stereo->setChecked(!this->instance->is_mono_forced());
     connect(stereo, &QAction::triggered, this, &GameWindow::action_set_channel_count);
     
     auto *mono = channel_count->addAction("Mono");
     mono->setData(1);
     mono->setCheckable(true);
-    mono->setChecked(this->mono);
+    mono->setChecked(this->instance->is_mono_forced());
     connect(mono, &QAction::triggered, this, &GameWindow::action_set_channel_count);
     this->channel_count_options = { mono, stereo };
     
@@ -293,18 +296,9 @@ GameWindow::GameWindow() {
     this->setCentralWidget(central_widget);
 
     // Audio
-    SDL_AudioSpec request = {}, result = {};
-    request.freq = 96000;
-    request.format = AUDIO_S16SYS;
-    request.channels = 2;
-    request.samples = 512;
-    this->audio_device_id = SDL_OpenAudioDevice(0, 0, &request, &result, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
-    this->sample_rate = result.freq;
-    this->instance->set_audio_enabled(true, this->sample_rate);
-    
-    if(this->muted) {
-        this->instance->set_audio_enabled(false);
-    }
+    this->sample_rate = 48000;
+    this->instance->set_up_sdl_audio(this->sample_rate, settings.value(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count).toUInt());
+    this->instance->set_audio_enabled(!muted);
     
     // Detect gamepads changing
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::reload_devices);
@@ -320,7 +314,7 @@ void GameWindow::action_set_volume() {
     // Uses the user data from the sender to get volume
     auto *action = qobject_cast<QAction *>(sender());
     int volume = action->data().toInt(); 
-    this->volume = volume;
+    this->instance->set_volume(volume);
     this->show_new_volume_text();
 }
 
@@ -328,7 +322,7 @@ void GameWindow::action_set_channel_count() noexcept {
     // Uses the user data from the sender to get volume
     auto *action = qobject_cast<QAction *>(sender());
     int channel_count = action->data().toInt(); 
-    this->mono = channel_count == 1;
+    this->instance->set_mono_forced(channel_count == 1);
     
     for(auto &i : this->channel_count_options) {
         i->setChecked(i->data().toInt() == channel_count);
@@ -336,8 +330,7 @@ void GameWindow::action_set_channel_count() noexcept {
 }
 
 void GameWindow::increment_volume(int amount) {
-    int volume = this->volume + amount; 
-    this->volume = std::max(std::min(volume, 100), 0);
+    this->instance->set_volume(this->instance->get_volume() + amount);
     this->show_new_volume_text();
 }
 
@@ -349,24 +342,14 @@ void GameWindow::action_add_volume() {
 
 void GameWindow::show_new_volume_text() {
     char volume_text[256];
-    std::snprintf(volume_text, sizeof(volume_text), "Volume: %i%%", volume);
+    int new_volume = this->instance->get_volume();
+    std::snprintf(volume_text, sizeof(volume_text), "Volume: %i%%", new_volume);
     
     this->show_status_text(volume_text);
     
     for(auto *i : this->volume_options) {
-        i->setChecked(volume == i->data().toInt());
+        i->setChecked(new_volume == i->data().toInt());
     }
-}
-
-void GameWindow::play_audio_buffer() {
-    auto &buffer = this->sample_buffer;
-    
-    std::size_t sample_count = buffer.size();
-    auto *sample_data = buffer.data();
-    
-    SDL_QueueAudio(this->audio_device_id, sample_data, sample_count * sizeof(*sample_data));
-    SDL_PauseAudioDevice(this->audio_device_id, 0);
-    buffer.clear();
 }
 
 void GameWindow::load_rom(const char *rom_path) noexcept {
@@ -503,36 +486,7 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
 }
 
 void GameWindow::game_loop() {
-    // If we have any audio, let's get that
-    std::size_t sample_buffer_end = this->sample_buffer.size();
-    this->instance->transfer_sample_buffer(this->sample_buffer);
-    
-    // Do we have to change anything?
-    if(this->volume < 100 || this->mono) {
-        std::size_t sample_buffer_new_end = this->sample_buffer.size();
-        for(std::size_t s = sample_buffer_end; s < sample_buffer_new_end; s += 2) {
-            // Get our samples
-            std::int16_t &left = this->sample_buffer[s];
-            std::int16_t &right = this->sample_buffer[s + 1];
-            
-            // Convert to mono if we want
-            if(this->mono) {
-                left = (left + right) / 2;
-                right = left;
-            }
-            
-            // Scale samples (logarithm to linear)
-            if(this->volume < 100 && this->volume >= 0) {
-                double scale = std::pow(100.0, this->volume / 100.0) / 100.0 - 0.01 * (100.0 - this->volume) / 100.0;
-                left *= scale;
-                right *= scale;
-            }
-        }
-    }
-    
-    this->play_audio_buffer();
     this->redraw_pixel_buffer();
-    
     this->debugger_window->refresh_view();
 }
 
@@ -594,11 +548,12 @@ void GameWindow::action_reset() noexcept {
 }
 
 void GameWindow::action_toggle_audio() noexcept {
-    this->muted = !this->muted;
-    this->sample_buffer.clear();
-    this->instance->set_audio_enabled(!this->muted, this->sample_rate);
+    auto muted = !this->instance->is_audio_enabled();
+    muted = !muted;
+
+    this->instance->set_audio_enabled(!muted);
     
-    if(this->muted) {
+    if(muted) {
         this->show_status_text("Muted");
     }
     else {
@@ -733,13 +688,15 @@ void GameWindow::closeEvent(QCloseEvent *) {
     }
     
     QSettings settings;
-    settings.setValue(SETTINGS_VOLUME, this->volume);
+    settings.setValue(SETTINGS_VOLUME, this->instance->get_volume());
     settings.setValue(SETTINGS_SCALE, this->scaling);
     settings.setValue(SETTINGS_SHOW_FPS, this->show_fps);
-    settings.setValue(SETTINGS_MONO, this->mono);
-    settings.setValue(SETTINGS_MUTE, this->muted);
+    settings.setValue(SETTINGS_MONO, this->instance->is_mono_forced());
+    settings.setValue(SETTINGS_MUTE, !this->instance->is_audio_enabled());
     settings.setValue(SETTINGS_RECENT_ROMS, this->recent_roms);
     settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
+    settings.setValue(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count);
+    settings.setValue(SETTINGS_SAMPLE_RATE, this->sample_rate);
     
     QApplication::quit();
 }

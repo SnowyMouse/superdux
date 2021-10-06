@@ -59,11 +59,9 @@ private:
     QMenu *gameboy_model_menu;
     std::vector<QAction *> gb_model_actions;
     
-    // Audio
-    bool muted = false;
-    bool mono = false;
-    char volume = 100;
-    SDL_AudioDeviceID audio_device_id;
+    // Audio settings
+    unsigned int sample_count = 1024;
+    unsigned int sample_rate = 96000;
     std::vector<QAction *> channel_count_options;
     
     // Emulation
@@ -90,11 +88,6 @@ private:
     // For showing FPS
     bool show_fps = false;
     float last_fps = -1.0;
-    
-    // Audio
-    std::vector<std::int16_t> sample_buffer;
-    std::uint32_t sample_rate;
-    void play_audio_buffer();
     
     void show_status_text(const char *text);
     QGraphicsTextItem *status_text = nullptr;
