@@ -267,9 +267,7 @@ bool GameInstance::read_pixel_buffer(std::uint32_t *destination, std::size_t des
                 auto *a = reinterpret_cast<std::uint8_t *>(destination);
                 auto *b = reinterpret_cast<std::uint8_t *>(this->pixel_buffer[this->previous_buffer_second].data());
                 for(std::size_t q = 0; q < bytes; q++) {
-                    auto aq = a[q] / 2;
-                    auto bq = b[q] / 2;
-                    a[q] = aq + bq;
+                    a[q] = (static_cast<unsigned int>(a[q]) + static_cast<unsigned int>(b[q])) / 2;
                 }
                 break;
         }
