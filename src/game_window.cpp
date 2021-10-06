@@ -297,8 +297,9 @@ GameWindow::GameWindow() {
     
     // Create the debugger now that everything else is set up
     this->debugger_window = new GameDebugger(this);
-    auto *show_debugger = view_menu->addAction("Show Debugger");
-    connect(show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
+    this->show_debugger = view_menu->addAction("Show Debugger");
+    connect(this->show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
+    this->show_debugger->setEnabled(false);
 
     // If showing FPS, trigger it
     if(this->show_fps) {
@@ -390,6 +391,9 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     
     // Reset
     int r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
+
+    // Set timer and UI
+    this->show_debugger->setEnabled(true);
     this->game_thread_timer.start();
     
     // Start thread

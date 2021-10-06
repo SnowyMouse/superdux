@@ -116,6 +116,7 @@ private:
     bool save_if_loaded() noexcept;
     
     // Debugging
+    QAction *show_debugger;
     GameDebugger *debugger_window;
     
     // Recent ROMs
