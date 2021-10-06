@@ -299,7 +299,7 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
                 return false;
             };
             
-            add_follow("CALL ", false) || add_follow("RST ", false) || add_follow("JP ", true) || add_follow("JR ", true);
+            add_follow("CALL ", true) || add_follow("RST ", false) || add_follow("JP ", true) || add_follow("JR ", true);
         }
         else {
             instruction.is_marker = true;
