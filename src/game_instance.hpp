@@ -412,8 +412,10 @@ private: // all private functions assume the mutex is locked by the caller
     // Get the pixel buffer size without locking the mutex.
     std::size_t get_pixel_buffer_size_without_mutex() noexcept;
 
-    // Pause/unpause SDL audio
-    void pause_sdl_audio() noexcept;
+    // Reset audio buffer (prevents high latency)
+    void reset_audio() noexcept;
+
+    // Unpause SDL audio
     void unpause_sdl_audio() noexcept;
 };
 

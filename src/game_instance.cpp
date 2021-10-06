@@ -78,7 +78,7 @@ GameInstance::~GameInstance() {
 
 char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     auto *instance = resolve_instance(gameboy);
-    instance->pause_sdl_audio();
+    instance->reset_audio();
     
     // Indicate we've paused
     instance->bp_paused = true;
@@ -122,12 +122,14 @@ float GameInstance::get_frame_rate() noexcept {
 void GameInstance::reset() noexcept {
     this->mutex.lock();
     GB_reset(&this->gameboy);
+    this->reset_audio();
     this->mutex.unlock();
 }
 
 void GameInstance::set_model(GB_model_t model) {
     this->mutex.lock();
     GB_switch_model_and_reset(&this->gameboy, model);
+    this->reset_audio();
     this->update_pixel_buffer_size();
     this->mutex.unlock();
 }
@@ -321,8 +323,8 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
     if(instance->audio_enabled) {
         auto &buffer = instance->sample_buffer;
 
-        int left = sample->left;
-        int right = sample->right;
+        auto &left = sample->left;
+        auto &right = sample->right;
 
         // Do we have to modify any samples?
         if(instance->volume < 100 || instance->force_mono) {
@@ -375,7 +377,7 @@ void GameInstance::set_audio_enabled(bool enabled, std::uint32_t sample_rate) no
         }
     }
 
-    this->pause_sdl_audio();
+    this->reset_audio();
     this->audio_enabled = enabled;
     this->mutex.unlock();
 }
@@ -455,7 +457,7 @@ int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::opt
     this->mutex.lock();
 
     // Pause SDL audio
-    this->pause_sdl_audio();
+    this->reset_audio();
     
     // Reset the gameboy
     GB_reset(&this->gameboy);
@@ -481,7 +483,7 @@ int GameInstance::load_isx(const std::filesystem::path &isx_path, const std::opt
     this->mutex.lock();
 
     // Pause the audio
-    this->pause_sdl_audio();
+    this->reset_audio();
     
     // Reset the gameboy
     GB_reset(&this->gameboy);
@@ -624,14 +626,16 @@ void GameInstance::set_mono_forced(bool mono) noexcept {
     this->mutex.unlock();
 }
 
-void GameInstance::pause_sdl_audio() noexcept {
-    if(this->sdl_audio_device.has_value()) {
-        SDL_PauseAudioDevice(*this->sdl_audio_device, 1);
-        SDL_ClearQueuedAudio(*this->sdl_audio_device);
-    }
-}
 void GameInstance::unpause_sdl_audio() noexcept {
     if(this->sdl_audio_device.has_value()) {
         SDL_PauseAudioDevice(*this->sdl_audio_device, 0);
     }
+}
+
+void GameInstance::reset_audio() noexcept {
+    if(this->sdl_audio_device.has_value()) {
+        SDL_PauseAudioDevice(*this->sdl_audio_device, 1);
+        SDL_ClearQueuedAudio(*this->sdl_audio_device);
+    }
+    this->sample_buffer.clear();
 }
