@@ -314,9 +314,14 @@ GameWindow::GameWindow() {
     this->setCentralWidget(central_widget);
 
     // Audio
-    this->sample_rate = 48000;
-    this->instance->set_up_sdl_audio(this->sample_rate, settings.value(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count).toUInt());
-    this->instance->set_audio_enabled(!muted);
+    bool result = this->instance->set_up_sdl_audio(this->sample_rate, settings.value(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count).toUInt());
+    if(!result) {
+        std::printf("Debug) Failed to start up audio with SDL: %s\n", SDL_GetError());
+    }
+    else {
+        this->instance->set_audio_enabled(!muted);
+        std::printf("(Debug) Sample rate: %u Hz\n", this->instance->get_current_sample_rate());
+    }
     
     // Detect gamepads changing
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::reload_devices);

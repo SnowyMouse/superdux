@@ -62,6 +62,13 @@ public: // all public functions assume the mutex is not locked
     bool set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buffer_size = 1024) noexcept;
 
     /**
+     * Get the current sample rate on the gameboy instance
+     *
+     * @return sample rate or 0 if not applicable
+     */
+    std::uint32_t get_current_sample_rate() noexcept { return this->current_sample_rate; }
+
+    /**
      * Set whether or not audio is enabled
      *
      * @return audio is enabled
@@ -401,6 +408,7 @@ private: // all private functions assume the mutex is locked by the caller
     static void on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample);
     bool audio_enabled = false;
     std::vector<std::int16_t> sample_buffer;
+    std::atomic<std::uint32_t> current_sample_rate = 0;
     bool force_mono = false;
     int volume = 100;
     double volume_scale = 1.0;
@@ -434,6 +442,9 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Unpause SDL audio
     void unpause_sdl_audio() noexcept;
+
+    // Close the SDL audio device if one is open
+    void close_sdl_audio_device() noexcept;
 };
 
 #endif

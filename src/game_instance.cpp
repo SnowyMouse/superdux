@@ -75,6 +75,7 @@ GameInstance::GameInstance(GB_model_t model) {
 
 GameInstance::~GameInstance() {
     this->end_game_loop();
+    this->close_sdl_audio_device();
     GB_free(&this->gameboy);
 }
 
@@ -396,9 +397,13 @@ void GameInstance::set_audio_enabled(bool enabled, std::uint32_t sample_rate) no
     
     if(enabled) {
         if(!this->sdl_audio_device.has_value()) {
+            this->current_sample_rate = sample_rate;
             this->sample_buffer.reserve(sample_rate); // reserve one second
             GB_set_sample_rate(&this->gameboy, sample_rate);
         }
+    }
+    else if(!this->sdl_audio_device.has_value()) {
+        this->current_sample_rate = 0;
     }
 
     this->reset_audio();
@@ -603,7 +608,6 @@ bool GameInstance::is_paused_manually() noexcept {
 
 bool GameInstance::set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buffer_size) noexcept {
     this->mutex.lock();
-
     SDL_AudioSpec request = {}, result = {};
     request.freq = sample_rate;
     request.format = AUDIO_S16SYS;
@@ -613,10 +617,14 @@ bool GameInstance::set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buf
 
     auto device = SDL_OpenAudioDevice(0, 0, &request, &result, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
     if(device != 0) {
+        this->close_sdl_audio_device();
+
+        // Now...
+        this->current_sample_rate = result.freq;
         this->sdl_audio_device = device;
         this->sdl_audio_buffer_size = result.samples;
-        this->sample_buffer.reserve(sample_rate); // reserve one second
-        GB_set_sample_rate(&this->gameboy, result.freq);
+        this->sample_buffer.reserve(this->current_sample_rate); // reserve one second
+        GB_set_sample_rate(&this->gameboy, this->current_sample_rate);
     }
 
     this->mutex.unlock();
@@ -675,4 +683,12 @@ GameInstance::PixelBufferMode GameInstance::get_pixel_buffering_mode() noexcept 
     auto m = this->pixel_buffer_mode;
     this->mutex.unlock();
     return m;
+}
+
+void GameInstance::close_sdl_audio_device() noexcept {
+    if(this->sdl_audio_device.has_value()) {
+        SDL_CloseAudioDevice(*this->sdl_audio_device);
+        this->sdl_audio_device = std::nullopt;
+        this->current_sample_rate = 0;
+    }
 }
