@@ -368,23 +368,44 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
         if(instance->sdl_audio_device.has_value()) {
             auto dev = instance->sdl_audio_device.value();
 
-            // If we aren't actively playing audio, store into a buffer
-            if(SDL_GetQueuedAudioSize(dev) == 0) {
-                // Add our samples
-                buffer.emplace_back(left);
-                buffer.emplace_back(right);
+            // Doing these checks can be kinda hacky, but sameboy does not send samples at precisely the sample rate, and in some cases (such as SGB/SGB2's intro), sends way too many samples
 
-                if(buffer.size() + 2 >= instance->sdl_audio_buffer_size * 4) {
-                    SDL_QueueAudio(dev, buffer.data(), buffer.size() * sizeof(*buffer.data()));
-                    instance->unpause_sdl_audio();
-                    buffer.clear();
-                }
+            // Check how many frames queued
+            std::size_t frames_queued = SDL_GetQueuedAudioSize(dev) / sizeof(*sample);
+            auto buffer_size = instance->sdl_audio_buffer_size;
+            std::size_t max_frames_queued = buffer_size * 8;
+
+            // If we have too many frames queued, don't queue anymore (causes popping but reduces delay)
+            if(frames_queued > max_frames_queued) {
+                return;
             }
 
-            // Otherwise, send audio as we get it
-            else {
-                SDL_QueueAudio(dev, sample, sizeof(*sample));
+            // Add our samples
+            instance->sample_buffer.emplace_back(left);
+            instance->sample_buffer.emplace_back(right);
+
+            std::size_t required_buffered_frames = frames_queued == 0 ? buffer_size * 2 : buffer_size;
+            std::size_t actual_buffered_frames = instance->sample_buffer.size() / 2;
+
+            if(required_buffered_frames >= actual_buffered_frames) {
+                SDL_QueueAudio(dev, instance->sample_buffer.data(), instance->sample_buffer.size() * sizeof(*instance->sample_buffer.data()));
+                instance->sample_buffer.clear();
+                instance->unpause_sdl_audio();
             }
+
+            /*
+            static int q = 0;
+            if(q++ > instance->current_sample_rate * 2) {
+                q = 0;
+                std::printf("Debug: %zu/%zu samples queued (%f milliseconds buffer)\n", frames_queued, max_frames_queued, static_cast<double>(frames_queued) / instance->current_sample_rate * 1000.0);
+            }
+            */
+        }
+
+        // Otherwise, just emplace it
+        else {
+            buffer.emplace_back(left);
+            buffer.emplace_back(right);
         }
     }
 }
@@ -395,13 +416,13 @@ void GameInstance::set_audio_enabled(bool enabled, std::uint32_t sample_rate) no
     
     if(enabled) {
         if(!this->sdl_audio_device.has_value()) {
-            this->current_sample_rate = sample_rate;
+            this->set_current_sample_rate(sample_rate);
             this->sample_buffer.reserve(sample_rate); // reserve one second
             GB_set_sample_rate(&this->gameboy, sample_rate);
         }
     }
     else if(!this->sdl_audio_device.has_value()) {
-        this->current_sample_rate = 0;
+        this->set_current_sample_rate(0);
     }
 
     this->reset_audio();
@@ -618,7 +639,7 @@ bool GameInstance::set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buf
         this->close_sdl_audio_device();
 
         // Now...
-        this->current_sample_rate = result.freq;
+        this->set_current_sample_rate(result.freq);
         this->sdl_audio_device = device;
         this->sdl_audio_buffer_size = result.samples;
         this->sample_buffer.reserve(this->current_sample_rate); // reserve one second
@@ -689,4 +710,8 @@ void GameInstance::close_sdl_audio_device() noexcept {
         this->sdl_audio_device = std::nullopt;
         this->current_sample_rate = 0;
     }
+}
+
+void GameInstance::set_current_sample_rate(std::uint32_t new_sample_rate) noexcept {
+    this->current_sample_rate = new_sample_rate;
 }

@@ -445,6 +445,9 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Close the SDL audio device if one is open
     void close_sdl_audio_device() noexcept;
+
+    // Set the current sample rate
+    void set_current_sample_rate(std::uint32_t new_sample_rate) noexcept;
 };
 
 #endif
