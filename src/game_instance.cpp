@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <cstring>
+#include <thread>
 
 // Copy the string into a buffer allocated with malloc() since GB_gameboy_s deallocates it with free()
 static char *malloc_string(const char *string) {
@@ -106,6 +107,9 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
         
         // Unlock
         instance->mutex.unlock();
+
+        // Keep CPU usage low here
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     
     // Unpause (mutex is locked from loop)
@@ -175,6 +179,13 @@ void GameInstance::start_game_loop(GameInstance *instance) noexcept {
                 // Done
                 instance->vblank_hit = false;
             }
+        }
+
+        // If we're paused, we can sleep
+        else {
+            instance->mutex.unlock();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            instance->mutex.lock();
         }
         
         // Are we getting done?

@@ -18,6 +18,7 @@ extern "C" {
 #include <optional>
 #include <QStringList>
 #include <QSettings>
+#include <QTimer>
 
 #include <thread>
 
@@ -52,6 +53,9 @@ private:
     
     std::unique_ptr<GameInstance> instance;
     std::thread instance_thread;
+
+    // Game thread timer
+    QTimer game_thread_timer;
     
     // Gameboy itself
     GB_model_t gb_model = GB_model_t::GB_MODEL_CGB_C;

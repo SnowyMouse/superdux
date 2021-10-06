@@ -321,10 +321,8 @@ GameWindow::GameWindow() {
     connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::reload_devices);
     this->reload_devices();
     
-    // Fire game_loop as often as possible
-    QTimer *timer = new QTimer(this);
-    timer->callOnTimeout(this, &GameWindow::game_loop);
-    timer->start();
+    // Fire game_loop repeatedly
+    this->game_thread_timer.callOnTimeout(this, &GameWindow::game_loop);
 }
 
 void GameWindow::action_set_volume() {
@@ -392,6 +390,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     
     // Reset
     int r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
+    this->game_thread_timer.start();
     
     // Start thread
     if(r == 0 && !instance_thread.joinable()) {
@@ -505,6 +504,16 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
 void GameWindow::game_loop() {
     this->redraw_pixel_buffer();
     this->debugger_window->refresh_view();
+
+    // If we're paused, we don't need to fire as often since not as much information is being changed
+    if(this->instance->is_paused()) {
+        this->game_thread_timer.setInterval(50);
+    }
+
+    // Otherwise, we should fire quickly
+    else {
+        this->game_thread_timer.setInterval(5);
+    }
 }
 
 void GameWindow::action_set_scaling() noexcept {
