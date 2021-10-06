@@ -320,6 +320,7 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
     auto *instance = resolve_instance(gameboy);
     if(instance->audio_enabled) {
         auto &buffer = instance->sample_buffer;
+
         int left = sample->left;
         int right = sample->right;
 
@@ -338,18 +339,26 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
             }
         }
 
-        // Add our samples
-        buffer.emplace_back(left);
-        buffer.emplace_back(right);
-
         // Send them to SDL if we need to
         if(instance->sdl_audio_device.has_value()) {
-            int len = instance->sdl_audio_buffer_size;
+            auto dev = instance->sdl_audio_device.value();
 
-            if(buffer.size() >= len) {
-                SDL_QueueAudio(instance->sdl_audio_device.value(), buffer.data(), len * sizeof(*buffer.data()));
-                instance->unpause_sdl_audio();
-                buffer.erase(buffer.begin(), buffer.begin() + len);
+            // If we aren't actively playing audio, store into a buffer
+            if(SDL_GetQueuedAudioSize(dev) == 0) {
+                // Add our samples
+                buffer.emplace_back(left);
+                buffer.emplace_back(right);
+
+                if(buffer.size() + 2 >= instance->sdl_audio_buffer_size * 4) {
+                    SDL_QueueAudio(dev, buffer.data(), buffer.size() * sizeof(*buffer.data()));
+                    instance->unpause_sdl_audio();
+                    buffer.clear();
+                }
+            }
+
+            // Otherwise, send audio as we get it
+            else {
+                SDL_QueueAudio(dev, sample, sizeof(*sample));
             }
         }
     }
