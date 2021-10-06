@@ -344,7 +344,7 @@ private: // all private functions assume the mutex is locked by the caller
     void update_pixel_buffer_size();
     
     // Pixel buffer - holds the current pixels
-    std::vector<std::uint32_t> pixel_buffer[4];
+    std::vector<std::uint32_t> pixel_buffer[3];
 
     // SDL audio device
     std::optional<SDL_AudioDeviceID> sdl_audio_device;

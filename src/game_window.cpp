@@ -804,7 +804,7 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             break;
         case InputDevice::Input_Turbo:
             if(input > 0.1) {
-                this->instance->set_speed_multiplier(1.0 + 3.0 * ((input - 0.1) / 0.9)); // TODO: allow you to set the maximum turbo
+                this->instance->set_speed_multiplier(1.0 + 30.0 * ((input - 0.1) / 0.9)); // TODO: allow you to set the maximum turbo
             }
             else {
                 this->instance->set_speed_multiplier(1.0);
