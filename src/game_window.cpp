@@ -390,7 +390,14 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->save_path = std::filesystem::path(path).replace_extension(".sav");
     
     // Reset
-    int r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
+    int r;
+
+    if(path.extension() == ".isx") {
+        r = this->instance->load_isx(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
+    }
+    else {
+        r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
+    }
 
     // Set timer and UI
     this->show_debugger->setEnabled(true);
