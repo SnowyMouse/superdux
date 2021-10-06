@@ -50,6 +50,7 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     auto *instance = resolve_instance(gameboy);
     
     // Increment the work buffer index by 1, wrapping around to 0 when we've hit the number of buffers
+    instance->previous_buffer_second = instance->previous_buffer;
     instance->previous_buffer = instance->work_buffer;
     instance->work_buffer = (instance->work_buffer + 1) % (sizeof(instance->pixel_buffer) / sizeof(instance->pixel_buffer[0]));
     instance->assign_work_buffer();
@@ -236,22 +237,33 @@ std::vector<std::uint16_t> GameInstance::get_breakpoints() {
 }
 
 bool GameInstance::read_pixel_buffer(std::uint32_t *destination, std::size_t destination_length) noexcept {
-    // Get the buffer to copy from (safe without mutex since the address to the vector, itself, never changes, and is_vblank_buffering_enabled uses an atomic bool)
-    const std::vector<std::uint32_t> *source;
-    if(this->is_vblank_buffering_enabled()) {
-        source = &(this->pixel_buffer[this->previous_buffer]);
-    }
-    else {
-        source = &(this->pixel_buffer[this->work_buffer]);
-    }
-    
-    // Lock mutex and copy data
     this->mutex.lock();
-    auto required_length = source->size();
+    auto required_length = this->pixel_buffer[0].size();
     bool success = required_length == destination_length;
+
     if(success) {
-        std::memcpy(destination, source->data(), required_length * sizeof(*source->data()));
+        std::size_t bytes = required_length * sizeof(*this->pixel_buffer[0].data());
+        switch(this->pixel_buffer_mode) {
+            case PixelBufferMode::PixelBufferSingle:
+                std::memcpy(destination, this->pixel_buffer[this->work_buffer].data(), bytes);
+                break;
+            case PixelBufferMode::PixelBufferDouble:
+                std::memcpy(destination, this->pixel_buffer[this->previous_buffer].data(), bytes);
+                break;
+            case PixelBufferMode::PixelBufferDoubleBlend:
+                std::memcpy(destination, this->pixel_buffer[this->previous_buffer].data(), bytes);
+                auto *a = reinterpret_cast<std::uint8_t *>(destination);
+                auto *b = reinterpret_cast<std::uint8_t *>(this->pixel_buffer[this->previous_buffer_second].data());
+                for(std::size_t q = 0; q < bytes; q++) {
+                    auto aq = a[q] / 2;
+                    auto bq = b[q] / 2;
+                    a[q] = aq + bq;
+                }
+                break;
+        }
     }
+
+    // Done
     this->mutex.unlock();
     
     // Done
@@ -299,6 +311,7 @@ void GameInstance::update_pixel_buffer_size() {
         i = std::vector<std::uint32_t>(this->get_pixel_buffer_size_without_mutex(), 0xFFFFFFFF);
         this->work_buffer = 0;
         this->previous_buffer = 0;
+        this->previous_buffer_second = 0;
         this->assign_work_buffer();
     }
 }
@@ -638,4 +651,17 @@ void GameInstance::reset_audio() noexcept {
         SDL_ClearQueuedAudio(*this->sdl_audio_device);
     }
     this->sample_buffer.clear();
+}
+
+void GameInstance::set_pixel_buffering_mode(PixelBufferMode mode) noexcept {
+    this->mutex.lock();
+    this->pixel_buffer_mode = mode;
+    this->mutex.unlock();
+}
+
+GameInstance::PixelBufferMode GameInstance::get_pixel_buffering_mode() noexcept {
+    this->mutex.lock();
+    auto m = this->pixel_buffer_mode;
+    this->mutex.unlock();
+    return m;
 }

@@ -75,6 +75,7 @@ private:
     // Video
     int scaling = 2;
     std::vector<QAction *> scaling_options;
+    std::vector<QAction *> pixel_buffer_options;
     bool vblank = false;
     QPixmap pixel_buffer_pixmap;
     QGraphicsPixmapItem *pixel_buffer_pixmap_item = nullptr;
@@ -142,6 +143,7 @@ private slots:
     void action_open_recent_rom();
     void action_reset() noexcept;
     void action_edit_controls() noexcept;
+    void action_set_buffer_mode() noexcept;
     
     void action_toggle_audio() noexcept;
     void action_set_volume();

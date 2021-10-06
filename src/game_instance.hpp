@@ -21,6 +21,17 @@ public: // all public functions assume the mutex is not locked
     
     GameInstance(GB_model_t model);
     ~GameInstance();
+
+    enum PixelBufferMode {
+        /** Use single buffering. Calls to read_pixel_buffer() will give you the work buffer. This will result in slightly less visual latency, but in most cases, this will result in heavy tearing that will look terrible on any LCD display. */
+        PixelBufferSingle,
+
+        /** Use double buffering (default). Calls to read_pixel_buffer() will give you the last completed buffer. */
+        PixelBufferDouble,
+
+        /** Use interframe blending. Calls to read_pixel_buffer() will give you an average of the last two completed buffers. */
+        PixelBufferDoubleBlend
+    };
     
     /**
      * Execute the game loop. This function will not return until end_game_loop is run().
@@ -182,20 +193,20 @@ public: // all public functions assume the mutex is not locked
      * @param destination vector to empty buffer into
      */
     void transfer_sample_buffer(std::vector<std::int16_t> &destination) noexcept;
-    
+
     /**
-     * Set whether or not to use vblank buffering. This ensures the pixel buffer in read_pixel_buffer() is complete and is the default setting.
-     * 
-     * @param enabled use buffering
+     * Set the pixel buffer mode setting.
+     *
+     * @param mode mode to set to
      */
-    void set_vblank_buffering_enabled(bool enabled) noexcept { this->vblank_buffering = enabled; }
-    
+    void set_pixel_buffering_mode(PixelBufferMode mode) noexcept;
+
     /**
-     * Get whether or not vblank buffering is enabled.
-     * 
-     * @return vblank buffer enabled
+     * Get the current pixel buffer mode setting.
+     *
+     * @return current pixel buffer setting
      */
-    bool is_vblank_buffering_enabled() const noexcept { return this->vblank_buffering; }
+    PixelBufferMode get_pixel_buffering_mode() noexcept;
     
     /**
      * Set the button state of the Game Boy instance
@@ -337,10 +348,13 @@ private: // all private functions assume the mutex is locked by the caller
     
     // Index of the previous buffer
     std::size_t previous_buffer = 0;
+
+    // Index of the second previous buffer
+    std::size_t previous_buffer_second = 0;
     
     // Vblank hit - calculate frame rate
     bool vblank_hit = false;
-    
+
     // Use buffering
     std::atomic_bool vblank_buffering = true;
     
@@ -367,6 +381,9 @@ private: // all private functions assume the mutex is locked by the caller
     clock::time_point last_frame_time;
     std::size_t frame_time_index = 0;
     float frame_times[30] = {};
+
+    // Pixel buffer  mode
+    PixelBufferMode pixel_buffer_mode = PixelBufferMode::PixelBufferDouble;
     
     // Assign the gameboy to the current buffer
     void assign_work_buffer() noexcept;

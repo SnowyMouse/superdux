@@ -35,6 +35,7 @@
 #define SETTINGS_GB_MODEL "gb_model"
 #define SETTINGS_SAMPLE_BUFFER_SIZE "sample_buffer_size"
 #define SETTINGS_SAMPLE_RATE "sample_rate"
+#define SETTINGS_BUFFER_MODE "buffer_mode"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -99,7 +100,7 @@ GameWindow::GameWindow() {
     
     // Instantiate the gameboy
     this->instance = std::make_unique<GameInstance>(this->gb_model);
-    this->instance->set_vblank_buffering_enabled(true);
+    this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
     
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
@@ -160,7 +161,7 @@ GameWindow::GameWindow() {
         connect(action, &QAction::triggered, this, &GameWindow::action_set_model);
         this->gb_model_actions.emplace_back(action);
     }
-    
+
     edit_menu->addSeparator();
     
     // Volume list (increase/decrease and set volumes from 0 to 100)
@@ -227,7 +228,23 @@ GameWindow::GameWindow() {
         connect(action, &QAction::triggered, this, &GameWindow::action_set_scaling);
         action->setCheckable(true);
         action->setChecked(i == this->scaling);
-        scaling_options.emplace_back(action);
+        this->scaling_options.emplace_back(action);
+    }
+
+    // Buffer modes
+    auto *buffer_modes = edit_menu->addMenu("Pixel Buffer Mode");
+    std::pair<const char *, GameInstance::PixelBufferMode> buffers[] = {
+        {"Single Buffer", GameInstance::PixelBufferMode::PixelBufferSingle},
+        {"Double Buffer", GameInstance::PixelBufferMode::PixelBufferDouble},
+        {"Double Buffer + Interframe Blending", GameInstance::PixelBufferMode::PixelBufferDoubleBlend},
+    };
+    for(auto &i : buffers) {
+        auto *action = buffer_modes->addAction(i.first);
+        action->setData(i.second);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_buffer_mode);
+        action->setCheckable(true);
+        action->setChecked(i.second == this->instance->get_pixel_buffering_mode());
+        this->pixel_buffer_options.emplace_back(action);
     }
     
     edit_menu->addSeparator();
@@ -697,6 +714,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
     settings.setValue(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count);
     settings.setValue(SETTINGS_SAMPLE_RATE, this->sample_rate);
+    settings.setValue(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode());
     
     QApplication::quit();
 }
@@ -786,5 +804,15 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             }
             break;
         default: break;
+    }
+}
+
+void GameWindow::action_set_buffer_mode() noexcept {
+    auto *action = qobject_cast<QAction *>(sender());
+    auto mode = static_cast<GameInstance::PixelBufferMode>(action->data().toInt());
+    this->instance->set_pixel_buffering_mode(mode);
+
+    for(auto &i : this->pixel_buffer_options) {
+        i->setChecked(i->data().toInt() == mode);
     }
 }
