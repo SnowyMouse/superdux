@@ -437,7 +437,7 @@ void GameWindow::action_open_recent_rom() {
 void GameWindow::redraw_pixel_buffer() {
     std::uint32_t width, height;
     this->instance->get_dimensions(width, height);
-    this->pixel_buffer.resize(width * height, 0xFFFFFFFF);
+    this->pixel_buffer.resize(width * height, 0xFF000000);
     this->instance->read_pixel_buffer(this->pixel_buffer.data(), this->pixel_buffer.size());
     
     this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), width, height, QImage::Format::Format_ARGB32));

@@ -320,7 +320,7 @@ void GameInstance::get_dimensions(std::uint32_t &width, std::uint32_t &height) n
 
 void GameInstance::update_pixel_buffer_size() {
     for(auto &i : this->pixel_buffer) {
-        i = std::vector<std::uint32_t>(this->get_pixel_buffer_size_without_mutex(), 0xFFFFFFFF);
+        i = std::vector<std::uint32_t>(this->get_pixel_buffer_size_without_mutex(), 0xFF000000);
         this->work_buffer = 0;
         this->previous_buffer = 0;
         this->previous_buffer_second = 0;
