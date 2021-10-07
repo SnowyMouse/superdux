@@ -366,6 +366,11 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
 
         // Send them to SDL if we need to
         if(instance->sdl_audio_device.has_value()) {
+            // Audio seems to get messed up at around this. If we are running >2x speed, mute.
+            if(static_cast<double>(GB_get_clock_rate(&instance->gameboy)) / GB_get_unmultiplied_clock_rate(&instance->gameboy) > 2.0) {
+                return;
+            }
+
             auto dev = instance->sdl_audio_device.value();
 
             // Doing these checks can be kinda hacky, but sameboy does not send samples at precisely the sample rate, and in some cases (such as SGB/SGB2's intro ), sends way too many samples
