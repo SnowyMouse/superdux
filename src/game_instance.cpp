@@ -368,15 +368,16 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
         if(instance->sdl_audio_device.has_value()) {
             auto dev = instance->sdl_audio_device.value();
 
-            // Doing these checks can be kinda hacky, but sameboy does not send samples at precisely the sample rate, and in some cases (such as SGB/SGB2's intro), sends way too many samples
+            // Doing these checks can be kinda hacky, but sameboy does not send samples at precisely the sample rate, and in some cases (such as SGB/SGB2's intro ), sends way too many samples
 
             // Check how many frames queued
             std::size_t frames_queued = SDL_GetQueuedAudioSize(dev) / sizeof(*sample);
             auto buffer_size = instance->sdl_audio_buffer_size;
             std::size_t max_frames_queued = buffer_size * 8;
 
-            // If we have too many frames queued, don't queue anymore (causes popping but reduces delay)
+            // If we have too many frames queued, flush the buffer (causes popping but prevents high delay)
             if(frames_queued > max_frames_queued) {
+                instance->reset_audio();
                 return;
             }
 
@@ -384,22 +385,19 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
             instance->sample_buffer.emplace_back(left);
             instance->sample_buffer.emplace_back(right);
 
-            std::size_t required_buffered_frames = frames_queued == 0 ? buffer_size * 2 : buffer_size;
+            std::size_t required_buffered_frames = frames_queued < buffer_size * 2 ? buffer_size * 4 : buffer_size;
             std::size_t actual_buffered_frames = instance->sample_buffer.size() / 2;
 
-            if(required_buffered_frames >= actual_buffered_frames) {
+            if(actual_buffered_frames >= required_buffered_frames) {
                 SDL_QueueAudio(dev, instance->sample_buffer.data(), instance->sample_buffer.size() * sizeof(*instance->sample_buffer.data()));
                 instance->sample_buffer.clear();
                 instance->unpause_sdl_audio();
             }
 
-            /*
-            static int q = 0;
-            if(q++ > instance->current_sample_rate * 2) {
-                q = 0;
-                std::printf("Debug: %zu/%zu samples queued (%f milliseconds buffer)\n", frames_queued, max_frames_queued, static_cast<double>(frames_queued) / instance->current_sample_rate * 1000.0);
-            }
-            */
+            //static std::atomic_uint16_t counter = 0;
+            //if(counter++ == 0) {
+            //    std::printf("Debug: %zu/%zu samples queued (%f milliseconds buffer)\n", frames_queued, max_frames_queued, static_cast<double>(frames_queued) / instance->current_sample_rate * 1000.0);
+            //}
         }
 
         // Otherwise, just emplace it
