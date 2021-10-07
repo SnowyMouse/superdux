@@ -642,6 +642,8 @@ void GameInstance::set_paused_manually(bool paused) noexcept MAKE_SETTER(this->m
 GameInstance::PixelBufferMode GameInstance::get_pixel_buffering_mode() noexcept MAKE_GETTER(this->pixel_buffer_mode)
 void GameInstance::set_pixel_buffering_mode(PixelBufferMode mode) noexcept MAKE_SETTER(this->pixel_buffer_mode = mode)
 
+void GameInstance::set_rtc_mode(GB_rtc_mode_t mode) noexcept MAKE_SETTER(GB_set_rtc_mode(&this->gameboy, mode))
+
 void GameInstance::unpause_sdl_audio() noexcept {
     if(this->sdl_audio_device.has_value()) {
         SDL_PauseAudioDevice(*this->sdl_audio_device, 0);

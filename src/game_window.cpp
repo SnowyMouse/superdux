@@ -36,6 +36,7 @@
 #define SETTINGS_SAMPLE_BUFFER_SIZE "sample_buffer_size"
 #define SETTINGS_SAMPLE_RATE "sample_rate"
 #define SETTINGS_BUFFER_MODE "buffer_mode"
+#define SETTINGS_RTC_MODE "rtc_mode"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -160,6 +161,23 @@ GameWindow::GameWindow() {
         action->setChecked(m.second == this->gb_model);
         connect(action, &QAction::triggered, this, &GameWindow::action_set_model);
         this->gb_model_actions.emplace_back(action);
+    }
+
+    // RTC modes
+    this->rtc_mode = static_cast<decltype(this->rtc_mode)>(settings.value(SETTINGS_RTC_MODE, static_cast<int>(this->rtc_mode)).toInt());
+    this->instance->set_rtc_mode(this->rtc_mode);
+    auto *rtc_mode = edit_menu->addMenu("Real-Time Clock Mode");
+    std::pair<const char *, GB_rtc_mode_t> rtc_modes[] = {
+        {"Accurate", GB_rtc_mode_t::GB_RTC_MODE_ACCURATE},
+        {"Synced to Host", GB_rtc_mode_t::GB_RTC_MODE_SYNC_TO_HOST},
+    };
+    for(auto &i : rtc_modes) {
+        auto *action = rtc_mode->addAction(i.first);
+        action->setData(i.second);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_rtc_mode);
+        action->setCheckable(true);
+        action->setChecked(i.second == this->rtc_mode);
+        this->rtc_mode_options.emplace_back(action);
     }
 
     edit_menu->addSeparator();
@@ -740,6 +758,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count);
     settings.setValue(SETTINGS_SAMPLE_RATE, this->sample_rate);
     settings.setValue(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode());
+    settings.setValue(SETTINGS_RTC_MODE, this->rtc_mode);
     
     QApplication::quit();
 }
@@ -838,6 +857,17 @@ void GameWindow::action_set_buffer_mode() noexcept {
     this->instance->set_pixel_buffering_mode(mode);
 
     for(auto &i : this->pixel_buffer_options) {
+        i->setChecked(i->data().toInt() == mode);
+    }
+}
+
+void GameWindow::action_set_rtc_mode() noexcept {
+    auto *action = qobject_cast<QAction *>(sender());
+    auto mode = static_cast<GB_rtc_mode_t>(action->data().toInt());
+    this->instance->set_rtc_mode(mode);
+    this->rtc_mode = mode;
+
+    for(auto &i : this->rtc_mode_options) {
         i->setChecked(i->data().toInt() == mode);
     }
 }

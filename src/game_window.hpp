@@ -71,6 +71,8 @@ private:
     // Emulation
     QAction *pause_action;
     void game_loop();
+    std::vector<QAction *> rtc_mode_options;
+    GB_rtc_mode_t rtc_mode = GB_rtc_mode_t::GB_RTC_MODE_ACCURATE;
     
     // Pause if menu is open?
     bool menu_open = false;
@@ -149,6 +151,7 @@ private slots:
     void action_reset() noexcept;
     void action_edit_controls() noexcept;
     void action_set_buffer_mode() noexcept;
+    void action_set_rtc_mode() noexcept;
     
     void action_toggle_audio() noexcept;
     void action_set_volume();

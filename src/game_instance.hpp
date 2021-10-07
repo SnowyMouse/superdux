@@ -320,6 +320,13 @@ public: // all public functions assume the mutex is not locked
      * @return           result of expression, if found
      */
     std::optional<std::uint16_t> evaluate_expression(const char *expression) noexcept;
+
+    /**
+     * Set the real-time clock mode
+     *
+     * @param mode mode to set to
+     */
+    void set_rtc_mode(GB_rtc_mode_t mode) noexcept;
     
     /**
      * Breakpoint immediately
