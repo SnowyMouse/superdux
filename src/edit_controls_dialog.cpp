@@ -5,15 +5,22 @@
 
 class EditControlsDialog::InputLineEdit : public QLineEdit {
 public:
-    InputLineEdit(QWidget *parent, EditControlsDialog *dialog) : QLineEdit(parent), dialog(dialog) {}
+    InputLineEdit(QWidget *parent, EditControlsDialog *dialog) : QLineEdit(parent), dialog(dialog) {
+
+    }
     ~InputLineEdit() {}
     
     void keyPressEvent(QKeyEvent *event) override {
         event->ignore(); // this should not be directly edited
     }
-    void mousePressEvent(QMouseEvent *) override {
-        this->setText("");
-        this->dialog->save_settings();
+    void mousePressEvent(QMouseEvent *event) override {
+        if(event->button() == Qt::MouseButton::RightButton) {
+            this->setText("");
+            this->dialog->save_settings();
+        }
+    }
+    void contextMenuEvent(QContextMenuEvent *event) override {
+        event->ignore();
     }
     
     EditControlsDialog *dialog;
@@ -55,7 +62,7 @@ EditControlsDialog::EditControlsDialog() : QDialog() {
     // Lastly an OK button
     auto *ok = new QWidget(this);
     auto *ok_layout = new QHBoxLayout(ok);
-    ok_layout->addWidget(new QWidget(ok));
+    ok_layout->addWidget(new QLabel("To bind, left click a textbox and press a button. To unbind, right click a textbox."));
     ok_layout->setContentsMargins(0,0,0,0);
     
     auto *button = new QPushButton("OK", ok);
