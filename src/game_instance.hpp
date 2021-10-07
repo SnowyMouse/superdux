@@ -339,6 +339,14 @@ public: // all public functions assume the mutex is not locked
      * @param command command to run to unbreak (default is "continue")
      */
     void unbreak(const char *command = "continue");
+
+    /**
+     * Set turbo mode. Ratio is a fraction (1.0 = 100%, 2.0 = 200%, etc.)
+     *
+     * @param turbo       enable turbo mode
+     * @param speed_ratio speed ratio to use (ignored if turbo mode is off)
+     */
+    void set_turbo_mode(bool turbo, float speed_ratio = 1.0) noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -455,6 +463,11 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Set the current sample rate
     void set_current_sample_rate(std::uint32_t new_sample_rate) noexcept;
+
+    // Turbo mode and turbo mode speed
+    bool turbo_mode_enabled = false;
+    float turbo_mode_speed_ratio = 1.0;
+    clock::time_point next_expected_frame = {};
 };
 
 #endif

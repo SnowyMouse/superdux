@@ -62,6 +62,13 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
 
 void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     auto *instance = resolve_instance(gameboy);
+
+    // If we need to wait for a frame, do it
+    if(instance->turbo_mode_enabled) {
+        while(clock::now() < instance->next_expected_frame) {
+        }
+        instance->next_expected_frame = clock::now() + std::chrono::microseconds(static_cast<unsigned long>(1000000.0 / GB_get_usual_frame_rate(&instance->gameboy) / instance->turbo_mode_speed_ratio));
+    }
     
     // Increment the work buffer index by 1, wrapping around to 0 when we've hit the number of buffers
     instance->previous_buffer_second = instance->previous_buffer;
@@ -370,11 +377,6 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
 
         // Send them to SDL if we need to
         if(instance->sdl_audio_device.has_value()) {
-            // Audio seems to get messed up at around this. If we are running >2x speed, mute.
-            if(static_cast<double>(GB_get_clock_rate(&instance->gameboy)) / GB_get_unmultiplied_clock_rate(&instance->gameboy) > 2.0) {
-                return;
-            }
-
             auto dev = instance->sdl_audio_device.value();
 
             // Doing these checks can be kinda hacky, but sameboy does not send samples at precisely the sample rate, and in some cases (such as SGB/SGB2's intro ), sends way too many samples
@@ -382,11 +384,14 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
             // Check how many frames queued
             std::size_t frames_queued = SDL_GetQueuedAudioSize(dev) / sizeof(*sample);
             auto buffer_size = instance->sdl_audio_buffer_size;
-            std::size_t max_frames_queued = buffer_size * 8;
+            bool turbo_mode = instance->turbo_mode_enabled;
+            std::size_t max_frames_queued = buffer_size * (turbo_mode ? 4 : 8);
 
             // If we have too many frames queued, flush the buffer (causes popping but prevents high delay)
             if(frames_queued > max_frames_queued) {
-                instance->reset_audio();
+                if(!turbo_mode) {
+                    instance->reset_audio();
+                }
                 return;
             }
 
@@ -394,7 +399,12 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
             instance->sample_buffer.emplace_back(left);
             instance->sample_buffer.emplace_back(right);
 
-            std::size_t required_buffered_frames = frames_queued < buffer_size * 2 ? buffer_size * 4 : buffer_size;
+            // If in turbo mode, send samples as we get them. Otherwise, buffer them and send when ready.
+            std::size_t required_buffered_frames = turbo_mode ? 0 :
+                                                   (
+                                                       frames_queued < buffer_size * 2 ? buffer_size * 4 : // if we have no frames queued, send a large buffer to ensure we always have samples (prevents popping)
+                                                                                         buffer_size
+                                                   );
             std::size_t actual_buffered_frames = instance->sample_buffer.size() / 2;
 
             if(actual_buffered_frames >= required_buffered_frames) {
@@ -402,11 +412,6 @@ void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
                 instance->sample_buffer.clear();
                 instance->unpause_sdl_audio();
             }
-
-            //static std::atomic_uint16_t counter = 0;
-            //if(counter++ == 0) {
-            //    std::printf("Debug: %zu/%zu samples queued (%f milliseconds buffer)\n", frames_queued, max_frames_queued, static_cast<double>(frames_queued) / instance->current_sample_rate * 1000.0);
-            //}
         }
 
         // Otherwise, just emplace it
@@ -668,4 +673,12 @@ void GameInstance::close_sdl_audio_device() noexcept {
 
 void GameInstance::set_current_sample_rate(std::uint32_t new_sample_rate) noexcept {
     this->current_sample_rate = new_sample_rate;
+}
+
+void GameInstance::set_turbo_mode(bool turbo, float ratio) noexcept {
+    this->mutex.lock();
+    GB_set_turbo_mode(&this->gameboy, turbo, true);
+    this->turbo_mode_enabled = turbo;
+    this->turbo_mode_speed_ratio = ratio; // SameBoy runs the game uncapped if turbo mode is enabled, so we need to make our own frame rate limiter
+    this->mutex.unlock();
 }

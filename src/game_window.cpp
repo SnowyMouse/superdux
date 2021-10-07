@@ -823,15 +823,17 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             break;
         case InputDevice::Input_Turbo:
             if(input > 0.1) {
-                this->instance->set_speed_multiplier(1.0 + 30.0 * ((input - 0.1) / 0.9)); // TODO: allow you to set the maximum turbo
+                float max_turbo = 8.0;
+                this->instance->set_turbo_mode(true, 1.0 + max_turbo * ((input - 0.1) / 0.9));
             }
             else {
-                this->instance->set_speed_multiplier(1.0);
+                this->instance->set_turbo_mode(false);
             }
             break;
         case InputDevice::Input_Slowmo:
             if(input > 0.1) {
-                this->instance->set_speed_multiplier(1.0 / (1.0 + 3.0 * ((input - 0.1) / 0.9))); // TODO: allow you to set the maximum slowmotion
+                float max_slowmo = 4.0;
+                this->instance->set_speed_multiplier(1.0 / (1.0 + max_slowmo * ((input - 0.1) / 0.9))); // TODO: allow you to set the maximum slowmotion
             }
             else {
                 this->instance->set_speed_multiplier(1.0);
