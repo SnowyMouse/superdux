@@ -177,7 +177,7 @@ public: // all public functions assume the mutex is not locked
      * @param  reg register to probe
      * @return     register value
      */
-    std::uint16_t get_register_value(gbz80_register reg) const noexcept;
+    std::uint16_t get_register_value(gbz80_register reg) noexcept;
     
     /**
      * Set the current value of the given register

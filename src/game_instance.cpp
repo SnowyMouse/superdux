@@ -10,6 +10,19 @@
 #include <cstring>
 #include <thread>
 
+#define MAKE_GETTER(what) { \
+    this->mutex.lock(); \
+    auto r = what; \
+    this->mutex.unlock(); \
+    return r; \
+}
+
+#define MAKE_SETTER(...) { \
+    this->mutex.lock(); \
+    __VA_ARGS__; \
+    this->mutex.unlock(); \
+}
+
 // Copy the string into a buffer allocated with malloc() since GB_gameboy_s deallocates it with free()
 static char *malloc_string(const char *string) {
     auto string_length = std::strlen(string);
@@ -118,12 +131,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     return continue_text;
 }
 
-float GameInstance::get_frame_rate() noexcept {
-    this->mutex.lock();
-    float r = this->frame_rate;
-    this->mutex.unlock();
-    return r;
-}
+float GameInstance::get_frame_rate() noexcept MAKE_GETTER(this->frame_rate)
 
 void GameInstance::reset() noexcept {
     this->mutex.lock();
@@ -303,11 +311,7 @@ void GameInstance::end_game_loop() noexcept {
     this->mutex.unlock();
 }
 
-void GameInstance::set_button_state(GB_key_t button, bool pressed) {
-    this->mutex.lock();
-    GB_set_key_state(&this->gameboy, button, pressed);
-    this->mutex.unlock();
-}
+void GameInstance::set_button_state(GB_key_t button, bool pressed) MAKE_SETTER(GB_set_key_state(&this->gameboy, button, pressed))
 
 void GameInstance::get_dimensions(std::uint32_t &width, std::uint32_t &height) noexcept {
     this->mutex.lock();
@@ -433,12 +437,8 @@ void GameInstance::set_audio_enabled(bool enabled, std::uint32_t sample_rate) no
     this->mutex.unlock();
 }
 
-bool GameInstance::is_audio_enabled() noexcept {
-    this->mutex.lock();
-    bool e = this->audio_enabled;
-    this->mutex.unlock();
-    return e;
-}
+void GameInstance::set_speed_multiplier(double speed_multiplier) noexcept MAKE_SETTER(GB_set_clock_multiplier(&this->gameboy, speed_multiplier))
+bool GameInstance::is_audio_enabled() noexcept MAKE_GETTER(this->audio_enabled)
 
 std::size_t GameInstance::get_pixel_buffer_size() noexcept {
     std::uint32_t height, width;
@@ -463,10 +463,6 @@ std::string GameInstance::clear_log_buffer() {
     return buffer_copy;
 }
 
-void GameInstance::set_speed_multiplier(double speed_multiplier) noexcept {
-    GB_set_clock_multiplier(&this->gameboy, speed_multiplier);
-}
-
 void GameInstance::break_immediately() noexcept {
     this->mutex.lock();
     GB_debugger_break(&this->gameboy);
@@ -482,13 +478,8 @@ void GameInstance::unbreak(const char *command) {
     }
 }
 
-std::uint16_t GameInstance::get_register_value(gbz80_register reg) const noexcept {
-    return get_gb_register(&this->gameboy, reg);
-}
-
-void GameInstance::set_register_value(gbz80_register reg, std::uint16_t value) noexcept {
-    return set_gb_register(&this->gameboy, reg, value);
-}
+std::uint16_t GameInstance::get_register_value(gbz80_register reg) noexcept MAKE_GETTER(get_gb_register(&this->gameboy, reg))
+void GameInstance::set_register_value(gbz80_register reg, std::uint16_t value) noexcept MAKE_SETTER(set_gb_register(&this->gameboy, reg, value))
 
 std::optional<std::uint16_t> GameInstance::evaluate_expression(const char *expression) noexcept {
     std::uint16_t result_maybe;
@@ -563,12 +554,7 @@ void GameInstance::load_save_and_symbols(const std::optional<std::filesystem::pa
 }
 
 
-int GameInstance::save_sram(const std::filesystem::path &path) noexcept {
-    this->mutex.lock();
-    int result = GB_save_battery(&this->gameboy, path.string().c_str());
-    this->mutex.unlock();
-    return result;
-}
+int GameInstance::save_sram(const std::filesystem::path &path) noexcept MAKE_GETTER(GB_save_battery(&this->gameboy, path.string().c_str()))
 
 std::string GameInstance::execute_command_without_mutex(char *command) {
     this->retain_logs(true);
@@ -614,20 +600,6 @@ std::string GameInstance::disassemble_address(std::uint16_t address, std::uint8_
 std::size_t GameInstance::get_pixel_buffer_size_without_mutex() noexcept {
     return GB_get_screen_width(&this->gameboy) * GB_get_screen_height(&this->gameboy);
 }
-
-void GameInstance::set_paused_manually(bool paused) noexcept {
-    this->mutex.lock();
-    this->manual_paused = paused;
-    this->mutex.unlock();
-}
-
-bool GameInstance::is_paused_manually() noexcept {
-    this->mutex.lock();
-    bool result = this->manual_paused;
-    this->mutex.unlock();
-    return result;
-}
-
 bool GameInstance::set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buffer_size) noexcept {
     this->mutex.lock();
     SDL_AudioSpec request = {}, result = {};
@@ -653,6 +625,7 @@ bool GameInstance::set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buf
     return device > 0;
 }
 
+int GameInstance::get_volume() noexcept MAKE_GETTER(this->volume)
 void GameInstance::set_volume(int volume) noexcept {
     this->mutex.lock();
     this->volume = std::min(100, std::max(0, volume)); // clamp from 0 to 100
@@ -660,25 +633,14 @@ void GameInstance::set_volume(int volume) noexcept {
     this->mutex.unlock();
 }
 
-int GameInstance::get_volume() noexcept {
-    this->mutex.lock();
-    int v = this->volume;
-    this->mutex.unlock();
-    return v;
-}
+bool GameInstance::is_mono_forced() noexcept MAKE_GETTER(this->force_mono)
+void GameInstance::set_mono_forced(bool mono) noexcept MAKE_SETTER(this->force_mono = mono)
 
-bool GameInstance::is_mono_forced() noexcept {
-    this->mutex.lock();
-    int m = this->force_mono;
-    this->mutex.unlock();
-    return m;
-}
+bool GameInstance::is_paused_manually() noexcept MAKE_GETTER(this->manual_paused)
+void GameInstance::set_paused_manually(bool paused) noexcept MAKE_SETTER(this->manual_paused = paused)
 
-void GameInstance::set_mono_forced(bool mono) noexcept {
-    this->mutex.lock();
-    this->force_mono = mono;
-    this->mutex.unlock();
-}
+GameInstance::PixelBufferMode GameInstance::get_pixel_buffering_mode() noexcept MAKE_GETTER(this->pixel_buffer_mode)
+void GameInstance::set_pixel_buffering_mode(PixelBufferMode mode) noexcept MAKE_SETTER(this->pixel_buffer_mode = mode)
 
 void GameInstance::unpause_sdl_audio() noexcept {
     if(this->sdl_audio_device.has_value()) {
@@ -692,19 +654,6 @@ void GameInstance::reset_audio() noexcept {
         SDL_ClearQueuedAudio(*this->sdl_audio_device);
     }
     this->sample_buffer.clear();
-}
-
-void GameInstance::set_pixel_buffering_mode(PixelBufferMode mode) noexcept {
-    this->mutex.lock();
-    this->pixel_buffer_mode = mode;
-    this->mutex.unlock();
-}
-
-GameInstance::PixelBufferMode GameInstance::get_pixel_buffering_mode() noexcept {
-    this->mutex.lock();
-    auto m = this->pixel_buffer_mode;
-    this->mutex.unlock();
-    return m;
 }
 
 void GameInstance::close_sdl_audio_device() noexcept {
