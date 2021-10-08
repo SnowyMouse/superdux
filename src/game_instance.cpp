@@ -5,6 +5,7 @@
 #include <cgb_boot.h>
 #include <dmg_boot.h>
 #include <sgb2_boot.h>
+#include <cgb_boot_fast.h>
 
 #include <chrono>
 #include <cstring>
@@ -34,8 +35,10 @@ static char *malloc_string(const char *string) {
 void GameInstance::load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept {
     auto *instance = reinterpret_cast<GameInstance *>(GB_get_user_data(gb));
 
+    bool fast_override = instance->fast_boot_rom;
+
     // If a boot rom is set, load that... unless it fails
-    if(instance->boot_rom_path.has_value()) {
+    if(!fast_override && instance->boot_rom_path.has_value()) {
         if(GB_load_boot_rom(gb, instance->boot_rom_path->string().c_str()) == 0) {
             return;
         }
@@ -61,7 +64,12 @@ void GameInstance::load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept 
             break;
         case GB_BOOT_ROM_CGB0:
         case GB_BOOT_ROM_CGB:
-            GB_load_boot_rom_from_buffer(gb, cgb_boot, sizeof(cgb_boot));
+            if(fast_override) {
+                GB_load_boot_rom_from_buffer(gb, cgb_boot_fast, sizeof(cgb_boot_fast));
+            }
+            else {
+                GB_load_boot_rom_from_buffer(gb, cgb_boot, sizeof(cgb_boot));
+            }
             break;
         default:
             std::fprintf(stderr, "Unable to find a suitable boot ROM for GB_boot_rom_t type %i\n", type);
@@ -711,3 +719,4 @@ void GameInstance::set_turbo_mode(bool turbo, float ratio) noexcept {
 }
 
 void GameInstance::set_boot_rom_path(const std::optional<std::filesystem::path> &boot_rom_path) MAKE_SETTER(this->boot_rom_path = boot_rom_path)
+void GameInstance::set_use_fast_boot_rom(bool fast_boot_rom) noexcept MAKE_SETTER(this->fast_boot_rom = fast_boot_rom)

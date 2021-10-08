@@ -127,8 +127,9 @@ private:
 
     GB_model_t model_for_type(GameBoyType type) const noexcept;
     const std::optional<std::filesystem::path> &boot_rom_for_type(GameBoyType type) const noexcept;
+    bool use_fast_boot_rom_for_type(GameBoyType type) const noexcept;
 
-    bool gb_skip_intro = false, gbc_skip_intro = false, gba_skip_intro = false;
+    bool gbc_fast_boot_rom = false;
     std::optional<std::filesystem::path> gb_boot_rom_path, gbc_boot_rom_path, gba_boot_rom_path, sgb_boot_rom_path, sgb2_boot_rom_path;
 
     

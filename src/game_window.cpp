@@ -47,6 +47,14 @@
 #define SETTINGS_SGB_BOOT_ROM "sgb_boot_rom"
 #define SETTINGS_SGB2_BOOT_ROM "sgb2_boot_rom"
 
+#define SETTINGS_GB_REVISION "gb_model_revision"
+#define SETTINGS_GBC_REVISION "gbc_model_revision"
+#define SETTINGS_GBA_REVISION "gba_model_revision"
+#define SETTINGS_SGB_REVISION "sgb_model_revision"
+#define SETTINGS_SGB2_REVISION "sgb2_model_revision"
+
+#define SETTINGS_GBC_FAST_BOOT "gbc_fast_boot_rom"
+
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
 #else
@@ -132,6 +140,23 @@ const std::optional<std::filesystem::path> &GameWindow::boot_rom_for_type(GameBo
     }
 }
 
+bool GameWindow::use_fast_boot_rom_for_type(GameBoyType type) const noexcept {
+    switch(type) {
+        case GameBoyType::GameBoyGB:
+            return false;
+        case GameBoyType::GameBoyGBC:
+            return this->gbc_fast_boot_rom;
+        case GameBoyType::GameBoyGBA:
+            return false;
+        case GameBoyType::GameBoySGB:
+            return false;
+        case GameBoyType::GameBoySGB2:
+            return false;
+        default:
+            std::terminate();
+    }
+}
+
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
@@ -162,9 +187,18 @@ GameWindow::GameWindow() {
     set_boot_rom_path(this->gba_boot_rom_path, settings.value(SETTINGS_GBA_BOOT_ROM).toString().toStdString());
     set_boot_rom_path(this->sgb_boot_rom_path, settings.value(SETTINGS_SGB_BOOT_ROM).toString().toStdString());
     set_boot_rom_path(this->sgb2_boot_rom_path, settings.value(SETTINGS_SGB2_BOOT_ROM).toString().toStdString());
+
+    this->gb_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GB_REVISION, this->gb_rev).toInt());
+    this->gbc_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GBC_REVISION, this->gbc_rev).toInt());
+    this->gba_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GBA_REVISION, this->gba_rev).toInt());
+    this->sgb_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_REVISION, this->sgb_rev).toInt());
+    this->sgb2_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_REVISION, this->sgb2_rev).toInt());
+
+    this->gbc_fast_boot_rom = settings.value(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom).toBool();
     
     // Instantiate the gameboy
     this->instance = std::make_unique<GameInstance>(this->model_for_type(this->gb_type));
+    this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
     
@@ -779,6 +813,7 @@ void GameWindow::action_set_model() noexcept {
     auto *action = qobject_cast<QAction *>(sender());
     this->gb_type = static_cast<decltype(this->gb_type)>(action->data().toInt());
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
+    this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_model(this->model_for_type(this->gb_type));
     
     for(auto &i : this->gb_model_actions) {
@@ -836,6 +871,14 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_GBA_BOOT_ROM, this->gba_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_SGB_BOOT_ROM, this->sgb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_SGB2_BOOT_ROM, this->sgb2_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
+
+    settings.setValue(SETTINGS_GB_REVISION, this->gb_rev);
+    settings.setValue(SETTINGS_GBC_REVISION, this->gbc_rev);
+    settings.setValue(SETTINGS_GBA_REVISION, this->gba_rev);
+    settings.setValue(SETTINGS_SGB_REVISION, this->sgb_rev);
+    settings.setValue(SETTINGS_SGB2_REVISION, this->sgb2_rev);
+
+    settings.setValue(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom);
 
     QApplication::quit();
 }
@@ -1021,6 +1064,27 @@ void GameWindow::action_show_advanced_model_options() noexcept {
         revisions_widget->setLayout(revisions_layout);
         layout->addWidget(revisions_widget);
 
+        // Use fast boot rom?
+        if(use_fast_boot_rom) {
+            auto *fast_boot_rom_widget = new QWidget(w);
+            fast_boot_rom_widget->setFixedHeight(revisions_widget->sizeHint().height());
+            auto *fast_boot_rom_layout = new QHBoxLayout(fast_boot_rom_widget);
+            fast_boot_rom_layout->setContentsMargins(0,0,0,0);
+            auto *fast_boot_rom_label = new QLabel("Skip Intro:", fast_boot_rom_widget);
+            fast_boot_rom_label->setMinimumWidth(label_width);
+            fast_boot_rom_layout->addWidget(fast_boot_rom_label);
+
+            *use_fast_boot_rom = new QCheckBox(fast_boot_rom_widget);
+            (*use_fast_boot_rom)->setChecked(use_fast_boot_rom_b);
+            fast_boot_rom_layout->addWidget(*use_fast_boot_rom);
+            fast_boot_rom_layout->addWidget(new QLabel("(overrides boot ROM)", fast_boot_rom_widget));
+
+            fast_boot_rom_layout->addStretch(1);
+            fast_boot_rom_widget->setLayout(fast_boot_rom_layout);
+
+            layout->addWidget(fast_boot_rom_widget);
+        }
+
         layout->addStretch(1);
         w->setLayout(layout);
         tab_widget->addTab(w, title);
@@ -1030,18 +1094,18 @@ void GameWindow::action_show_advanced_model_options() noexcept {
     // Add each model
     QLineEdit *gb_boot_rom_le, *gbc_boot_rom_le, *gba_boot_rom_le, *sgb_boot_rom_le, *sgb2_boot_rom_le;
     QComboBox *gb_rev, *gbc_rev, *gba_rev, *sgb_rev, *sgb2_rev;
-    QCheckBox *gb_fast_cb, *gbc_fast_cb, *gba_fast_cb;
+    QCheckBox *gbc_fast_cb;
 
     add_tab("Game Boy", &gb_boot_rom_le, this->gb_boot_rom_path, &gb_rev, {
                 {"DMG_B", GB_model_t::GB_MODEL_DMG_B}
-            }, this->gb_rev, &gb_fast_cb, this->gb_skip_intro);
+            }, this->gb_rev, nullptr, false);
     add_tab("Game Boy Color", &gbc_boot_rom_le, this->gbc_boot_rom_path, &gbc_rev, {
                 {"CGB_C", GB_model_t::GB_MODEL_CGB_C},
                 {"CGB_E", GB_model_t::GB_MODEL_CGB_E}
-            }, this->gbc_rev, &gbc_fast_cb, this->gbc_skip_intro);
+            }, this->gbc_rev, &gbc_fast_cb, this->gbc_fast_boot_rom);
     add_tab("Game Boy Advance", &gba_boot_rom_le, this->gba_boot_rom_path, &gba_rev, {
                 {"AGB", GB_model_t::GB_MODEL_AGB}
-            }, this->gba_rev, &gba_fast_cb, this->gba_skip_intro);
+            }, this->gba_rev, nullptr, false);
     add_tab("Super Game Boy", &sgb_boot_rom_le, this->sgb_boot_rom_path, &sgb_rev, {
                 {"NTSC", GB_model_t::GB_MODEL_SGB_NTSC},
                 {"PAL", GB_model_t::GB_MODEL_SGB_PAL}
@@ -1070,6 +1134,7 @@ void GameWindow::action_show_advanced_model_options() noexcept {
 
         auto current_revision = this->model_for_type(this->gb_type);
         auto current_boot_rom = this->boot_rom_for_type(this->gb_type).value_or(std::filesystem::path()).string();
+        auto current_fast_boot_rom = this->use_fast_boot_rom_for_type(this->gb_type);
 
         if(instance->is_rom_loaded()) {
             switch(this->gb_type) {
@@ -1077,7 +1142,10 @@ void GameWindow::action_show_advanced_model_options() noexcept {
                     requires_reset = (current_boot_rom != gb_boot_rom_le->text().toStdString()) || (current_revision != gb_rev->currentData().toInt());
                     break;
                 case GameBoyType::GameBoyGBC:
-                    requires_reset = (current_boot_rom != gbc_boot_rom_le->text().toStdString()) || (current_revision != gbc_rev->currentData().toInt());
+                    requires_reset = (current_revision != gbc_rev->currentData().toInt()) || (                  // if we change revisions, yes we should reset always BUT...
+                        (current_fast_boot_rom != gbc_fast_cb->isChecked()) ||                                  // if not, then we should only reset if the fast rom setting is changed
+                        (!current_fast_boot_rom && (current_boot_rom != gbc_boot_rom_le->text().toStdString())) // OR if we aren't using a fast ROM, then if the boot ROM was changed
+                    );
                     break;
                 case GameBoyType::GameBoyGBA:
                     requires_reset = (current_boot_rom != gba_boot_rom_le->text().toStdString()) || (current_revision != gba_rev->currentData().toInt());
@@ -1105,8 +1173,9 @@ void GameWindow::action_show_advanced_model_options() noexcept {
         this->gb_rev = static_cast<GB_model_t>(gb_rev->currentData().toInt());
         this->gbc_rev = static_cast<GB_model_t>(gbc_rev->currentData().toInt());
         this->gba_rev = static_cast<GB_model_t>(gba_rev->currentData().toInt());
-        this->sgb_rev = static_cast<GB_model_t>(sgb2_rev->currentData().toInt());
+        this->sgb_rev = static_cast<GB_model_t>(sgb_rev->currentData().toInt());
         this->sgb2_rev = static_cast<GB_model_t>(sgb2_rev->currentData().toInt());
+        this->gbc_fast_boot_rom = gbc_fast_cb->isChecked();
 
         // If empty, set to nullopt
         auto set_possible_path = [](std::optional<std::filesystem::path> &path, const QString &str) {
@@ -1125,6 +1194,7 @@ void GameWindow::action_show_advanced_model_options() noexcept {
 
         if(requires_reset) {
             this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
+            this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
             this->instance->set_model(this->model_for_type(this->gb_type));
         }
     }

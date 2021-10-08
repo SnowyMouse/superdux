@@ -21,6 +21,7 @@ target_compile_definitions(sameboy-core
 set(BOOT_ROMS
     "agb_boot"
     "cgb_boot"
+    "cgb_boot_fast"
     "dmg_boot"
     "sgb_boot"
     "sgb2_boot"
@@ -44,7 +45,7 @@ foreach(ROM ${BOOT_ROMS})
     set(ROM_ASM_DEP "${SAMEBOY_SOURCE_DIR}/BootROMs/${ROM}.asm")
     
     # ROMs that depend on other sources
-    if("${ROM}" EQUAL "agb_boot")
+    if(("${ROM}" EQUAL "agb_boot") OR ("${ROM}" EQUAL "cgb_boot_fast"))
         set(ROM_ASM_DEP
             ${ROM_ASM_DEP}
             "${SAMEBOY_SOURCE_DIR}/BootROMs/cgb_boot.asm"

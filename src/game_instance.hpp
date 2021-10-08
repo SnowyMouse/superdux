@@ -354,6 +354,13 @@ public: // all public functions assume the mutex is not locked
      * @param boot_rom_path boot rom to set to (if nullopt, use built-in)
      */
     void set_boot_rom_path(const std::optional<std::filesystem::path> &boot_rom_path = std::nullopt);
+
+    /**
+     * Set whether or not to use a fast boot ROM variant (if available)
+     *
+     * @param fast_boot_rom use fast ROM
+     */
+    void set_use_fast_boot_rom(bool fast_boot_rom) noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -479,6 +486,7 @@ private: // all private functions assume the mutex is locked by the caller
     // Boot ROM callback
     static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept;
     std::optional<std::filesystem::path> boot_rom_path;
+    bool fast_boot_rom;
 };
 
 #endif
