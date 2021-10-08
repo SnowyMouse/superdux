@@ -64,8 +64,8 @@ private:
     std::vector<QAction *> gb_model_actions;
     
     // Audio settings
-    unsigned int sample_count = 1024;
-    unsigned int sample_rate = 96000;
+    unsigned int sample_count = 0;
+    unsigned int sample_rate = 1024; // using 1024 as the default instead of 0 is deliberate - SDL sometimes defaults to 4096 which has terrible audio delay
     std::vector<QAction *> channel_count_options;
     
     // Emulation

@@ -54,12 +54,12 @@ public: // all public functions assume the mutex is not locked
     /**
      * Set up SDL audio
      *
-     * @param sample_rate preferred sample rate to use in Hz
-     * @param buffer_size preferred buffer size
+     * @param sample_rate preferred sample rate to use in Hz (if 0, it will use the system's preferred sample rate)
+     * @param buffer_size preferred buffer size (If 0, it will use the system's preferred buffer size)
      *
      * @return success
      */
-    bool set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buffer_size = 1024) noexcept;
+    bool set_up_sdl_audio(std::uint32_t sample_rate = 0, std::uint32_t buffer_size = 1024) noexcept;
 
     /**
      * Get the current sample rate on the gameboy instance

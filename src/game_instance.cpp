@@ -607,14 +607,28 @@ std::size_t GameInstance::get_pixel_buffer_size_without_mutex() noexcept {
 }
 bool GameInstance::set_up_sdl_audio(std::uint32_t sample_rate, std::uint32_t buffer_size) noexcept {
     this->mutex.lock();
-    SDL_AudioSpec request = {}, result = {};
-    request.freq = sample_rate;
+    SDL_AudioSpec request = {}, result = {}, preferred = {};
     request.format = AUDIO_S16SYS;
     request.channels = 2;
-    request.samples = buffer_size;
     request.userdata = this;
 
-    auto device = SDL_OpenAudioDevice(0, 0, &request, &result, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE);
+    SDL_GetAudioDeviceSpec(0, 0, &preferred);
+    request.freq = preferred.freq;
+    request.samples = preferred.samples;
+
+    int flags = 0;
+
+    if(sample_rate != 0) {
+        request.freq = sample_rate;
+        flags |= SDL_AUDIO_ALLOW_FREQUENCY_CHANGE;
+    }
+
+    if(buffer_size != 0) {
+        request.samples = buffer_size;
+        flags |= SDL_AUDIO_ALLOW_SAMPLES_CHANGE;
+    }
+
+    auto device = SDL_OpenAudioDevice(0, 0, &request, &result, flags);
     if(device != 0) {
         this->close_sdl_audio_device();
 

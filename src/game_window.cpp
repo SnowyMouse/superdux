@@ -332,8 +332,9 @@ GameWindow::GameWindow() {
     this->setCentralWidget(central_widget);
 
     // Audio
-    this->sample_rate = settings.value(SETTINGS_SAMPLE_RATE, 44100).toInt();
-    bool result = this->instance->set_up_sdl_audio(this->sample_rate, settings.value(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count).toUInt());
+    this->sample_rate = settings.value(SETTINGS_SAMPLE_RATE, this->sample_rate).toInt();
+    this->sample_count = settings.value(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count).toUInt();
+    bool result = this->instance->set_up_sdl_audio(this->sample_rate, this->sample_count);
     if(!result) {
         std::printf("Debug) Failed to start up audio with SDL: %s\n", SDL_GetError());
     }
