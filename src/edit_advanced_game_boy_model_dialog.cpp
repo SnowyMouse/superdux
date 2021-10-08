@@ -31,10 +31,9 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
             const std::vector<std::pair<const char *, GB_model_t>> &revisions,
             GB_model_t revision_v,
 
-            QCheckBox **use_fast_boot_rom,
-            bool use_fast_boot_rom_b,
+            auto find_rom_fn,
 
-            auto find_rom_fn
+            const std::vector<std::pair<QString, std::vector<QWidget *>>> &additional_controls = {}
         ) -> QVBoxLayout * {
         auto *w = new QWidget(tab_widget);
         auto *layout = new QVBoxLayout(w);
@@ -85,25 +84,23 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
         revisions_widget->setLayout(revisions_layout);
         layout->addWidget(revisions_widget);
 
-        // Use fast boot rom?
-        if(use_fast_boot_rom) {
-            auto *fast_boot_rom_widget = new QWidget(w);
-            fast_boot_rom_widget->setFixedHeight(revisions_widget->sizeHint().height());
-            auto *fast_boot_rom_layout = new QHBoxLayout(fast_boot_rom_widget);
-            fast_boot_rom_layout->setContentsMargins(0,0,0,0);
-            auto *fast_boot_rom_label = new QLabel("Skip Intro:", fast_boot_rom_widget);
-            fast_boot_rom_label->setMinimumWidth(label_width);
-            fast_boot_rom_layout->addWidget(fast_boot_rom_label);
+        for(auto &i : additional_controls) {
+            auto *c_widget = new QWidget(w);
+            c_widget->setFixedHeight(revisions_widget->sizeHint().height());
+            auto *c_widget_layout = new QHBoxLayout(c_widget);
+            c_widget_layout->setContentsMargins(0,0,0,0);
+            auto *c_widget_label = new QLabel(i.first, c_widget);
+            c_widget_label->setMinimumWidth(label_width);
+            c_widget_layout->addWidget(c_widget_label);
 
-            *use_fast_boot_rom = new QCheckBox(fast_boot_rom_widget);
-            (*use_fast_boot_rom)->setChecked(use_fast_boot_rom_b);
-            fast_boot_rom_layout->addWidget(*use_fast_boot_rom);
-            fast_boot_rom_layout->addWidget(new QLabel("(overrides boot ROM)", fast_boot_rom_widget));
+            for(auto &j : i.second) {
+                c_widget_layout->addWidget(j);
+            }
 
-            fast_boot_rom_layout->addStretch(1);
-            fast_boot_rom_widget->setLayout(fast_boot_rom_layout);
+            c_widget_layout->addStretch(1);
+            c_widget->setLayout(c_widget_layout);
 
-            layout->addWidget(fast_boot_rom_widget);
+            layout->addWidget(c_widget);
         }
 
         layout->addStretch(1);
@@ -115,21 +112,36 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
     // Add each model
     add_tab("Game Boy", &this->gb_boot_rom_le, this->window->gb_boot_rom_path, &gb_rev, {
                 {"DMG_B", GB_model_t::GB_MODEL_DMG_B}
-            }, this->window->gb_rev, nullptr, false, &EditAdvancedGameBoyModelDialog::find_gb_boot_rom);
+            }, this->window->gb_rev, &EditAdvancedGameBoyModelDialog::find_gb_boot_rom);
+
+
     add_tab("Game Boy Color", &this->gbc_boot_rom_le, this->window->gbc_boot_rom_path, &this->gbc_rev, {
                 {"CGB_C", GB_model_t::GB_MODEL_CGB_C},
                 {"CGB_E", GB_model_t::GB_MODEL_CGB_E}
-            }, this->window->gbc_rev, &this->gbc_fast_cb, this->window->gbc_fast_boot_rom, &EditAdvancedGameBoyModelDialog::find_gbc_boot_rom);
+            }, this->window->gbc_rev, &EditAdvancedGameBoyModelDialog::find_gbc_boot_rom, {
+                { "Skip intro:", {this->gbc_fast_cb = new QCheckBox(), new QLabel("(overrides boot ROM)")} }
+            });
+    this->gbc_fast_cb->setChecked(window->gbc_fast_boot_rom);
+
     add_tab("Game Boy Advance", &this->gba_boot_rom_le, this->window->gba_boot_rom_path, &this->gba_rev, {
                 {"AGB", GB_model_t::GB_MODEL_AGB}
-            }, this->window->gba_rev, nullptr, false, &EditAdvancedGameBoyModelDialog::find_gba_boot_rom);
+            }, this->window->gba_rev, &EditAdvancedGameBoyModelDialog::find_gba_boot_rom);
+
     add_tab("Super Game Boy", &this->sgb_boot_rom_le, this->window->sgb_boot_rom_path, &this->sgb_rev, {
                 {"NTSC", GB_model_t::GB_MODEL_SGB_NTSC},
                 {"PAL", GB_model_t::GB_MODEL_SGB_PAL}
-            }, this->window->sgb_rev, nullptr, false, &EditAdvancedGameBoyModelDialog::find_sgb_boot_rom);
+            }, this->window->sgb_rev, &EditAdvancedGameBoyModelDialog::find_sgb_boot_rom, {
+                { "Crop borders:", {this->sgb_crop_borders_cb = new QCheckBox()} }
+            });
     add_tab("Super Game Boy 2", &this->sgb2_boot_rom_le, this->window->sgb2_boot_rom_path, &this->sgb2_rev, {
                 {"SGB2", GB_model_t::GB_MODEL_SGB2}
-            }, this->window->sgb2_rev, nullptr, false, &EditAdvancedGameBoyModelDialog::find_sgb2_boot_rom);
+            }, this->window->sgb2_rev, &EditAdvancedGameBoyModelDialog::find_sgb2_boot_rom, {
+                { "Crop borders:", {this->sgb2_crop_borders_cb = new QCheckBox()} }
+            });
+
+    this->sgb_crop_borders_cb->setChecked(window->sgb_crop_borders);
+    this->sgb2_crop_borders_cb->setChecked(window->sgb2_crop_borders);
+
     layout->addWidget(tab_widget);
 
     // OK/cancel buttons
@@ -194,6 +206,8 @@ void EditAdvancedGameBoyModelDialog::perform_accept() {
     this->window->sgb_rev = static_cast<GB_model_t>(this->sgb_rev->currentData().toInt());
     this->window->sgb2_rev = static_cast<GB_model_t>(this->sgb2_rev->currentData().toInt());
     this->window->gbc_fast_boot_rom = this->gbc_fast_cb->isChecked();
+    this->window->sgb_crop_borders = this->sgb_crop_borders_cb->isChecked();
+    this->window->sgb2_crop_borders = this->sgb2_crop_borders_cb->isChecked();
 
     // If empty, set to nullopt
     auto set_possible_path = [](std::optional<std::filesystem::path> &path, const QString &str) {
@@ -216,6 +230,9 @@ void EditAdvancedGameBoyModelDialog::perform_accept() {
         this->window->instance->set_use_fast_boot_rom(this->window->use_fast_boot_rom_for_type(this->window->gb_type));
         this->window->instance->set_model(this->window->model_for_type(this->window->gb_type));
     }
+
+    // Reset scaling
+    this->window->set_pixel_view_scaling(this->window->scaling);
 
     this->accept();
 }

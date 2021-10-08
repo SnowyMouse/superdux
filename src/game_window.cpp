@@ -48,7 +48,15 @@
 #define SETTINGS_SGB_REVISION "sgb_model_revision"
 #define SETTINGS_SGB2_REVISION "sgb2_model_revision"
 
+#define SETTINGS_SGB_CROP_BORDERS "sgb_crop_borders"
+#define SETTINGS_SGB2_CROP_BORDERS "sgb2_crop_borders"
+
 #define SETTINGS_GBC_FAST_BOOT "gbc_fast_boot_rom"
+
+#define SGB_WIDTH 256
+#define SGB_HEIGHT 224
+#define GB_WIDTH 160
+#define GB_HEIGHT 144
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -152,6 +160,23 @@ bool GameWindow::use_fast_boot_rom_for_type(GameBoyType type) const noexcept {
     }
 }
 
+bool GameWindow::use_crop_borders_for_type(GameBoyType type) const noexcept {
+    switch(type) {
+        case GameBoyType::GameBoyGB:
+            return false;
+        case GameBoyType::GameBoyGBC:
+            return false;
+        case GameBoyType::GameBoyGBA:
+            return false;
+        case GameBoyType::GameBoySGB:
+            return this->sgb_crop_borders;
+        case GameBoyType::GameBoySGB2:
+            return this->sgb2_crop_borders;
+        default:
+            std::terminate();
+    }
+}
+
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
@@ -188,6 +213,9 @@ GameWindow::GameWindow() {
     this->gba_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GBA_REVISION, this->gba_rev).toInt());
     this->sgb_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_REVISION, this->sgb_rev).toInt());
     this->sgb2_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_REVISION, this->sgb2_rev).toInt());
+
+    this->sgb_crop_borders = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_CROP_BORDERS, this->sgb_crop_borders).toBool());
+    this->sgb2_crop_borders = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_CROP_BORDERS, this->sgb2_crop_borders).toBool());
 
     this->gbc_fast_boot_rom = settings.value(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom).toBool();
     
@@ -556,8 +584,26 @@ void GameWindow::redraw_pixel_buffer() {
     this->instance->get_dimensions(width, height);
     this->pixel_buffer.resize(width * height, 0xFF000000);
     this->instance->read_pixel_buffer(this->pixel_buffer.data(), this->pixel_buffer.size());
-    
-    this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), width, height, QImage::Format::Format_ARGB32));
+
+    // If we aren't cropping SGB borders, just output the pixel buffer
+    if(!this->use_crop_borders_for_type(this->gb_type)) {
+        this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), width, height, QImage::Format::Format_ARGB32));
+    }
+
+    // Otherwise, crop it
+    else {
+        assert(width == SGB_WIDTH && height == SGB_HEIGHT);
+
+        // Perform the crop
+        for(std::uint32_t y = 0; y < GB_HEIGHT; y++) {
+            for(std::uint32_t x = 0; x < GB_WIDTH; x++) {
+                this->pixel_buffer[x + y * GB_WIDTH] = this->pixel_buffer[x + (SGB_WIDTH - GB_WIDTH) / 2 + (y + (SGB_HEIGHT - GB_HEIGHT) / 2) * SGB_WIDTH];
+            }
+        }
+
+        // Boom
+        this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), GB_WIDTH, GB_HEIGHT, QImage::Format::Format_ARGB32));
+    }
     pixel_buffer_pixmap_item->setPixmap(this->pixel_buffer_pixmap);
     
     // Handle status text fade
@@ -619,6 +665,13 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     
     std::uint32_t width, height;
     this->instance->get_dimensions(width, height);
+
+    // If cropping borders, override
+    if(this->use_crop_borders_for_type(this->gb_type)) {
+        width = GB_WIDTH;
+        height = GB_HEIGHT;
+    }
+
     this->pixel_buffer_view->setMinimumSize(width * this->scaling, height * this->scaling);
     this->pixel_buffer_view->setMaximumSize(width * this->scaling, height * this->scaling);
     this->pixel_buffer_view->setTransform(QTransform::fromScale(scaling, scaling));
@@ -872,6 +925,9 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_GBA_REVISION, this->gba_rev);
     settings.setValue(SETTINGS_SGB_REVISION, this->sgb_rev);
     settings.setValue(SETTINGS_SGB2_REVISION, this->sgb2_rev);
+
+    settings.setValue(SETTINGS_SGB_CROP_BORDERS, this->sgb_crop_borders);
+    settings.setValue(SETTINGS_SGB2_CROP_BORDERS, this->sgb2_crop_borders);
 
     settings.setValue(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom);
 
