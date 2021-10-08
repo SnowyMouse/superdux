@@ -12,7 +12,7 @@ Build requirements:
 * [SameBoy]\*
     * [RGBDS] (for building SameBoy's boot ROMs)
 
-[libsdl]:  https://www.libsdl.org/
+[SDL]:     https://www.libsdl.org/
 [SameBoy]: https://github.com/LIJI32/SameBoy
 [RGBDS]:   https://github.com/gbdev/rgbds
 
