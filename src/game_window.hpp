@@ -28,11 +28,13 @@ extern "C" {
 
 class QGamepad;
 class GameDebugger;
+class EditAdvancedGameBoyModelDialog;
 
 class GameWindow : public QMainWindow {
     Q_OBJECT
     
     friend GameDebugger;
+    friend EditAdvancedGameBoyModelDialog;
     
 public:
     GameWindow();
