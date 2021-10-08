@@ -21,6 +21,9 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QLineEdit>
+#include <QGroupBox>
+#include <QPushButton>
+#include <QCheckBox>
 
 #include <QLabel>
 
@@ -37,6 +40,12 @@
 #define SETTINGS_SAMPLE_RATE "sample_rate"
 #define SETTINGS_BUFFER_MODE "buffer_mode"
 #define SETTINGS_RTC_MODE "rtc_mode"
+
+#define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
+#define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
+#define SETTINGS_GBA_BOOT_ROM "gba_boot_rom"
+#define SETTINGS_SGB_BOOT_ROM "sgb_boot_rom"
+#define SETTINGS_SGB2_BOOT_ROM "sgb2_boot_rom"
 
 #ifdef DEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
@@ -89,6 +98,40 @@ public:
     GameWindow *window;
 };
 
+GB_model_t GameWindow::model_for_type(GameBoyType type) const noexcept {
+    switch(type) {
+        case GameBoyType::GameBoyGB:
+            return this->gb_rev;
+        case GameBoyType::GameBoyGBC:
+            return this->gbc_rev;
+        case GameBoyType::GameBoyGBA:
+            return this->gba_rev;
+        case GameBoyType::GameBoySGB:
+            return this->sgb_rev;
+        case GameBoyType::GameBoySGB2:
+            return this->sgb2_rev;
+        default:
+            std::terminate();
+    }
+}
+
+const std::optional<std::filesystem::path> &GameWindow::boot_rom_for_type(GameBoyType type) const noexcept {
+    switch(type) {
+        case GameBoyType::GameBoyGB:
+            return this->gb_boot_rom_path;
+        case GameBoyType::GameBoyGBC:
+            return this->gbc_boot_rom_path;
+        case GameBoyType::GameBoyGBA:
+            return this->gba_boot_rom_path;
+        case GameBoyType::GameBoySGB:
+            return this->sgb_boot_rom_path;
+        case GameBoyType::GameBoySGB2:
+            return this->sgb2_boot_rom_path;
+        default:
+            std::terminate();
+    }
+}
+
 #define GET_ICON(what) QIcon::fromTheme(QStringLiteral(what))
 
 GameWindow::GameWindow() {
@@ -96,11 +139,33 @@ GameWindow::GameWindow() {
     QSettings settings;
     this->scaling = settings.value(SETTINGS_SCALE, this->scaling).toInt();
     this->show_fps = settings.value(SETTINGS_SHOW_FPS, this->show_fps).toBool();
-    this->gb_model = static_cast<decltype(this->gb_model)>(settings.value(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model)).toInt());
+    auto gb_type_maybe = static_cast<decltype(this->gb_type)>(settings.value(SETTINGS_GB_MODEL, static_cast<int>(this->gb_type)).toInt());
+    if(gb_type_maybe < 0 || gb_type_maybe >= GameBoyType::GameBoy_END) {
+        std::fprintf(stderr, "Invalid Game Boy type in config - defaulting to GBC\n");
+        this->gb_type = GameBoyType::GameBoyGBC;
+    }
+    else {
+        this->gb_type = gb_type_maybe;
+    }
+
     this->recent_roms = settings.value(SETTINGS_RECENT_ROMS).toStringList();
+
+    // Set boot ROM path
+    auto set_boot_rom_path = [](std::optional<std::filesystem::path> &path, const std::string &str) {
+        if(!str.empty()) {
+            path = std::filesystem::path(str);
+        }
+    };
+
+    set_boot_rom_path(this->gb_boot_rom_path, settings.value(SETTINGS_GB_BOOT_ROM).toString().toStdString());
+    set_boot_rom_path(this->gbc_boot_rom_path, settings.value(SETTINGS_GBC_BOOT_ROM).toString().toStdString());
+    set_boot_rom_path(this->gba_boot_rom_path, settings.value(SETTINGS_GBA_BOOT_ROM).toString().toStdString());
+    set_boot_rom_path(this->sgb_boot_rom_path, settings.value(SETTINGS_SGB_BOOT_ROM).toString().toStdString());
+    set_boot_rom_path(this->sgb2_boot_rom_path, settings.value(SETTINGS_SGB2_BOOT_ROM).toString().toStdString());
     
     // Instantiate the gameboy
-    this->instance = std::make_unique<GameInstance>(this->gb_model);
+    this->instance = std::make_unique<GameInstance>(this->model_for_type(this->gb_type));
+    this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
     
     // Set window title and enable drag-n-dropping files
@@ -147,21 +212,24 @@ GameWindow::GameWindow() {
     connect(edit_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
     this->gameboy_model_menu = edit_menu->addMenu("Game Boy Model");
-    std::pair<const char *, GB_model_t> models[] = {
-        {"Game Boy", GB_model_t::GB_MODEL_DMG_B},
-        {"Game Boy Color", GB_model_t::GB_MODEL_CGB_C},
-        {"Game Boy Advance (GBC mode)", GB_model_t::GB_MODEL_AGB},
-        {"Super Game Boy", GB_model_t::GB_MODEL_SGB},
-        {"Super Game Boy 2", GB_model_t::GB_MODEL_SGB2},
+    std::pair<const char *, GameBoyType> models[] = {
+        {"Game Boy", GameBoyType::GameBoyGB},
+        {"Game Boy Color", GameBoyType::GameBoyGBC},
+        {"Game Boy Advance (GBC mode)", GameBoyType::GameBoyGBA},
+        {"Super Game Boy", GameBoyType::GameBoySGB},
+        {"Super Game Boy 2", GameBoyType::GameBoySGB2},
     };
     for(auto &m : models) {
         auto *action = this->gameboy_model_menu->addAction(m.first);
         action->setData(static_cast<int>(m.second));
         action->setCheckable(true);
-        action->setChecked(m.second == this->gb_model);
+        action->setChecked(m.second == this->gb_type);
         connect(action, &QAction::triggered, this, &GameWindow::action_set_model);
         this->gb_model_actions.emplace_back(action);
     }
+    gameboy_model_menu->addSeparator();
+    auto *advanced_options = gameboy_model_menu->addAction("Advanced Options...");
+    connect(advanced_options, &QAction::triggered, this, &GameWindow::action_show_advanced_model_options);
 
     // RTC modes
     this->rtc_mode = static_cast<decltype(this->rtc_mode)>(settings.value(SETTINGS_RTC_MODE, static_cast<int>(this->rtc_mode)).toInt());
@@ -268,7 +336,7 @@ GameWindow::GameWindow() {
     edit_menu->addSeparator();
     
     // Add controls options
-    auto *controls = edit_menu->addAction("Controls");
+    auto *controls = edit_menu->addAction("Configure Controls...");
     connect(controls, &QAction::triggered, this, &GameWindow::action_edit_controls);
     
     
@@ -709,18 +777,19 @@ void GameWindow::action_save_sram() noexcept {
 void GameWindow::action_set_model() noexcept {
     // Uses the user data from the sender to get model
     auto *action = qobject_cast<QAction *>(sender());
-    this->gb_model = static_cast<decltype(this->gb_model)>(action->data().toInt());
-    this->instance->set_model(this->gb_model);
+    this->gb_type = static_cast<decltype(this->gb_type)>(action->data().toInt());
+    this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
+    this->instance->set_model(this->model_for_type(this->gb_type));
     
     for(auto &i : this->gb_model_actions) {
-        i->setChecked(i->data().toInt() == this->gb_model);
+        i->setChecked(i->data().toInt() == this->gb_type);
     }
     
     this->set_pixel_view_scaling(this->scaling);
 }
 
 void GameWindow::action_quit_without_saving() noexcept {
-    QMessageBox qmb(QMessageBox::Icon::Question, "Are you sure?", "This will close the emulator without saving your SRAM.\n\nAny save data that has not been saved to disk will be lost.", QMessageBox::Cancel | QMessageBox::Ok);
+    QMessageBox qmb(QMessageBox::Icon::Question, "Are You Sure?", "This will close the emulator without saving your SRAM.\n\nAny save data that has not been saved to disk will be lost.", QMessageBox::Cancel | QMessageBox::Ok);
     qmb.setDefaultButton(QMessageBox::Cancel);
     
     if(qmb.exec() == QMessageBox::Ok) {
@@ -756,12 +825,18 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_MONO, this->instance->is_mono_forced());
     settings.setValue(SETTINGS_MUTE, !this->instance->is_audio_enabled());
     settings.setValue(SETTINGS_RECENT_ROMS, this->recent_roms);
-    settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_model));
+    settings.setValue(SETTINGS_GB_MODEL, static_cast<int>(this->gb_type));
     settings.setValue(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count);
     settings.setValue(SETTINGS_SAMPLE_RATE, this->sample_rate);
     settings.setValue(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode());
     settings.setValue(SETTINGS_RTC_MODE, this->rtc_mode);
-    
+
+    settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
+    settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
+    settings.setValue(SETTINGS_GBA_BOOT_ROM, this->gba_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
+    settings.setValue(SETTINGS_SGB_BOOT_ROM, this->sgb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
+    settings.setValue(SETTINGS_SGB2_BOOT_ROM, this->sgb2_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
+
     QApplication::quit();
 }
 
@@ -873,5 +948,184 @@ void GameWindow::action_set_rtc_mode() noexcept {
 
     for(auto &i : this->rtc_mode_options) {
         i->setChecked(i->data().toInt() == mode);
+    }
+}
+
+void GameWindow::action_show_advanced_model_options() noexcept {
+    QDialog dialog;
+    dialog.setWindowTitle("Advanced Game Boy Model Settings");
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setSizeConstraint(QLayout::SetFixedSize);
+
+    auto *tab_widget = new QTabWidget(&dialog);
+
+    auto add_tab = [&tab_widget, &dialog] (
+            const char *title,
+
+            QLineEdit **boot_rom_path,
+            const std::optional<std::filesystem::path> &boot_rom_path_path,
+
+            QComboBox **revision,
+            const std::vector<std::pair<const char *, GB_model_t>> &revisions,
+            GB_model_t revision_v,
+
+            QCheckBox **use_fast_boot_rom,
+            bool use_fast_boot_rom_b
+        ) -> QVBoxLayout * {
+        auto *w = new QWidget(tab_widget);
+        auto *layout = new QVBoxLayout(w);
+
+        // Boot ROM
+        auto *boot_rom_widget = new QWidget(w);
+        auto *boot_rom_layout = new QHBoxLayout(boot_rom_widget);
+        boot_rom_layout->setContentsMargins(0,0,0,0);
+        auto *boot_rom_label = new QLabel("Boot ROM Path:", boot_rom_widget);
+        boot_rom_layout->addWidget(boot_rom_label);
+        *boot_rom_path = new QLineEdit(boot_rom_widget);
+
+        if(boot_rom_path_path.has_value()) {
+            (*boot_rom_path)->setText((*boot_rom_path_path).string().c_str());
+        }
+
+        (*boot_rom_path)->setPlaceholderText("Use built-in boot ROM");
+        (*boot_rom_path)->setMinimumWidth(400);
+        boot_rom_layout->addWidget(*boot_rom_path);
+        auto *pb = new QPushButton("Find...", boot_rom_widget);
+        boot_rom_layout->addWidget(pb);
+        layout->addWidget(boot_rom_widget);
+
+        // Use this for sizing other labels so it looks nice
+        int label_width = boot_rom_label->sizeHint().width();
+
+        // Revisions
+        auto *revisions_widget = new QWidget(w);
+        auto *revisions_layout = new QHBoxLayout(revisions_widget);
+        revisions_layout->setContentsMargins(0,0,0,0);
+        auto *revisions_label = new QLabel("Revision:", revisions_widget);
+        revisions_label->setFixedWidth(label_width);
+        revisions_layout->addWidget(revisions_label);
+        (*revision) = new QComboBox(w);
+        revisions_layout->addWidget((*revision));
+        auto rev_count = revisions.size();
+        std::size_t rev_index = 0;
+        for(std::size_t i = 0; i < rev_count; i++) {
+            auto &r = revisions[i];
+            (*revision)->addItem(r.first, r.second);
+            if(r.second == revision_v) {
+                rev_index = i;
+            }
+        }
+        (*revision)->setCurrentIndex(static_cast<int>(rev_index)); // select current revision
+        (*revision)->setEnabled(revisions.size() > 1); // if there is only one option, then you can't change it obviously
+        revisions_widget->setLayout(revisions_layout);
+        layout->addWidget(revisions_widget);
+
+        layout->addStretch(1);
+        w->setLayout(layout);
+        tab_widget->addTab(w, title);
+        return layout;
+    };
+
+    // Add each model
+    QLineEdit *gb_boot_rom_le, *gbc_boot_rom_le, *gba_boot_rom_le, *sgb_boot_rom_le, *sgb2_boot_rom_le;
+    QComboBox *gb_rev, *gbc_rev, *gba_rev, *sgb_rev, *sgb2_rev;
+    QCheckBox *gb_fast_cb, *gbc_fast_cb, *gba_fast_cb;
+
+    add_tab("Game Boy", &gb_boot_rom_le, this->gb_boot_rom_path, &gb_rev, {
+                {"DMG_B", GB_model_t::GB_MODEL_DMG_B}
+            }, this->gb_rev, &gb_fast_cb, this->gb_skip_intro);
+    add_tab("Game Boy Color", &gbc_boot_rom_le, this->gbc_boot_rom_path, &gbc_rev, {
+                {"CGB_C", GB_model_t::GB_MODEL_CGB_C},
+                {"CGB_E", GB_model_t::GB_MODEL_CGB_E}
+            }, this->gbc_rev, &gbc_fast_cb, this->gbc_skip_intro);
+    add_tab("Game Boy Advance", &gba_boot_rom_le, this->gba_boot_rom_path, &gba_rev, {
+                {"AGB", GB_model_t::GB_MODEL_AGB}
+            }, this->gba_rev, &gba_fast_cb, this->gba_skip_intro);
+    add_tab("Super Game Boy", &sgb_boot_rom_le, this->sgb_boot_rom_path, &sgb_rev, {
+                {"NTSC", GB_model_t::GB_MODEL_SGB_NTSC},
+                {"PAL", GB_model_t::GB_MODEL_SGB_PAL}
+            }, this->sgb_rev, nullptr, false);
+    add_tab("Super Game Boy 2", &sgb2_boot_rom_le, this->sgb2_boot_rom_path, &sgb2_rev, {
+                {"SGB2", GB_model_t::GB_MODEL_SGB2}
+            }, this->sgb2_rev, nullptr, false);
+    layout->addWidget(tab_widget);
+
+    // OK/cancel buttons
+    auto *ok = new QWidget(&dialog);
+    auto *ok_layout = new QHBoxLayout(ok);
+    ok_layout->setContentsMargins(0,0,0,0);
+    ok_layout->addWidget(new QWidget(ok));
+    auto *ok_button = new QPushButton("OK", ok);
+    ok_button->setSizePolicy(QSizePolicy::Policy::Maximum, QSizePolicy::Policy::Maximum);
+    ok_layout->addWidget(ok_button);
+    layout->addWidget(ok);
+    connect(ok_button, &QPushButton::clicked, &dialog, &QDialog::accept);
+
+    dialog.setLayout(layout);
+
+    if(dialog.exec() == QDialog::Accepted) {
+        // Check if we need to reset?
+        bool requires_reset = false;
+
+        auto current_revision = this->model_for_type(this->gb_type);
+        auto current_boot_rom = this->boot_rom_for_type(this->gb_type).value_or(std::filesystem::path()).string();
+
+        if(instance->is_rom_loaded()) {
+            switch(this->gb_type) {
+                case GameBoyType::GameBoyGB:
+                    requires_reset = (current_boot_rom != gb_boot_rom_le->text().toStdString()) || (current_revision != gb_rev->currentData().toInt());
+                    break;
+                case GameBoyType::GameBoyGBC:
+                    requires_reset = (current_boot_rom != gbc_boot_rom_le->text().toStdString()) || (current_revision != gbc_rev->currentData().toInt());
+                    break;
+                case GameBoyType::GameBoyGBA:
+                    requires_reset = (current_boot_rom != gba_boot_rom_le->text().toStdString()) || (current_revision != gba_rev->currentData().toInt());
+                    break;
+                case GameBoyType::GameBoySGB:
+                    requires_reset = (current_boot_rom != sgb_boot_rom_le->text().toStdString()) || (current_revision != sgb_rev->currentData().toInt());
+                    break;
+                case GameBoyType::GameBoySGB2:
+                    requires_reset = (current_boot_rom != sgb2_boot_rom_le->text().toStdString()) || (current_revision != sgb2_rev->currentData().toInt());
+                    break;
+                default:
+                    requires_reset = false;
+            }
+        }
+
+        // If we require reset and the user says "no", disregard everything
+        if(requires_reset) {
+            QMessageBox qmb(QMessageBox::Icon::Question, "Are You Sure?", "You have a game currently running.\n\nThese changes will require resetting the instance.\n\nUnsaved data will be lost.", QMessageBox::Cancel | QMessageBox::Ok);
+            if(qmb.exec() == QMessageBox::Cancel) {
+                return; // cancelled
+            }
+        }
+
+        // Set our settings
+        this->gb_rev = static_cast<GB_model_t>(gb_rev->currentData().toInt());
+        this->gbc_rev = static_cast<GB_model_t>(gbc_rev->currentData().toInt());
+        this->gba_rev = static_cast<GB_model_t>(gba_rev->currentData().toInt());
+        this->sgb_rev = static_cast<GB_model_t>(sgb2_rev->currentData().toInt());
+        this->sgb2_rev = static_cast<GB_model_t>(sgb2_rev->currentData().toInt());
+
+        // If empty, set to nullopt
+        auto set_possible_path = [](std::optional<std::filesystem::path> &path, const QString &str) {
+            if(str.isEmpty()) {
+                path = std::nullopt;
+            }
+            else {
+                path = str.toStdString();
+            }
+        };
+        set_possible_path(this->gb_boot_rom_path, gb_boot_rom_le->text());
+        set_possible_path(this->gbc_boot_rom_path, gbc_boot_rom_le->text());
+        set_possible_path(this->gba_boot_rom_path, gba_boot_rom_le->text());
+        set_possible_path(this->sgb_boot_rom_path, sgb_boot_rom_le->text());
+        set_possible_path(this->sgb2_boot_rom_path, sgb2_boot_rom_le->text());
+
+        if(requires_reset) {
+            this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
+            this->instance->set_model(this->model_for_type(this->gb_type));
+        }
     }
 }

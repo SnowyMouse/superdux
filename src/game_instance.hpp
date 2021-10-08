@@ -347,6 +347,13 @@ public: // all public functions assume the mutex is not locked
      * @param speed_ratio speed ratio to use (ignored if turbo mode is off)
      */
     void set_turbo_mode(bool turbo, float speed_ratio = 1.0) noexcept;
+
+    /**
+     * Set the boot rom path
+     *
+     * @param boot_rom_path boot rom to set to (if nullopt, use built-in)
+     */
+    void set_boot_rom_path(const std::optional<std::filesystem::path> &boot_rom_path = std::nullopt);
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -468,6 +475,10 @@ private: // all private functions assume the mutex is locked by the caller
     bool turbo_mode_enabled = false;
     float turbo_mode_speed_ratio = 1.0;
     clock::time_point next_expected_frame = {};
+
+    // Boot ROM callback
+    static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept;
+    std::optional<std::filesystem::path> boot_rom_path;
 };
 
 #endif

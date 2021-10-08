@@ -58,7 +58,6 @@ private:
     QTimer game_thread_timer;
     
     // Gameboy itself
-    GB_model_t gb_model = GB_model_t::GB_MODEL_CGB_C;
     QAction *open_roms_action;
     QMenu *gameboy_model_menu;
     std::vector<QAction *> gb_model_actions;
@@ -108,6 +107,30 @@ private:
     void keyReleaseEvent(QKeyEvent *) override;
     void handle_keyboard_key(QKeyEvent *event, bool press);
     std::vector<std::unique_ptr<InputDevice>> devices;
+
+    // Revisions
+    enum GameBoyType {
+        GameBoyGB,
+        GameBoyGBC,
+        GameBoyGBA,
+        GameBoySGB,
+        GameBoySGB2,
+        GameBoy_END
+    };
+    GameBoyType gb_type = GameBoyType::GameBoyGB;
+
+    GB_model_t gb_rev = GB_model_t::GB_MODEL_DMG_B;
+    GB_model_t gbc_rev = GB_model_t::GB_MODEL_CGB_C;
+    GB_model_t gba_rev = GB_model_t::GB_MODEL_AGB;
+    GB_model_t sgb_rev = GB_model_t::GB_MODEL_SGB_NTSC;
+    GB_model_t sgb2_rev = GB_model_t::GB_MODEL_SGB2;
+
+    GB_model_t model_for_type(GameBoyType type) const noexcept;
+    const std::optional<std::filesystem::path> &boot_rom_for_type(GameBoyType type) const noexcept;
+
+    bool gb_skip_intro = false, gbc_skip_intro = false, gba_skip_intro = false;
+    std::optional<std::filesystem::path> gb_boot_rom_path, gbc_boot_rom_path, gba_boot_rom_path, sgb_boot_rom_path, sgb2_boot_rom_path;
+
     
     void reload_devices();
     
@@ -152,6 +175,7 @@ private slots:
     void action_edit_controls() noexcept;
     void action_set_buffer_mode() noexcept;
     void action_set_rtc_mode() noexcept;
+    void action_show_advanced_model_options() noexcept;
     
     void action_toggle_audio() noexcept;
     void action_set_volume();

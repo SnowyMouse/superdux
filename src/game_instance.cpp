@@ -31,7 +31,20 @@ static char *malloc_string(const char *string) {
     return str;
 }
 
-static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) {
+void GameInstance::load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept {
+    auto *instance = reinterpret_cast<GameInstance *>(GB_get_user_data(gb));
+
+    // If a boot rom is set, load that... unless it fails
+    if(instance->boot_rom_path.has_value()) {
+        if(GB_load_boot_rom(gb, instance->boot_rom_path->string().c_str()) == 0) {
+            return;
+        }
+        else {
+            std::fprintf(stderr, "Boot ROM loading failed - using internal boot ROM instead\n");
+        }
+    }
+
+    // Otherwise, load a built-in one
     switch(type) {
         case GB_BOOT_ROM_DMG0:
         case GB_BOOT_ROM_DMG:
@@ -83,7 +96,7 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
 GameInstance::GameInstance(GB_model_t model) {
     GB_init(&this->gameboy, model);
     GB_set_user_data(&this->gameboy, this);
-    GB_set_boot_rom_load_callback(&this->gameboy, load_boot_rom);
+    GB_set_boot_rom_load_callback(&this->gameboy, GameInstance::load_boot_rom);
     GB_set_rgb_encode_callback(&this->gameboy, rgb_encode);
     GB_set_vblank_callback(&this->gameboy, GameInstance::on_vblank);
     GB_set_log_callback(&this->gameboy, GameInstance::on_log);
@@ -696,3 +709,5 @@ void GameInstance::set_turbo_mode(bool turbo, float ratio) noexcept {
     this->turbo_mode_speed_ratio = ratio; // SameBoy runs the game uncapped if turbo mode is enabled, so we need to make our own frame rate limiter
     this->mutex.unlock();
 }
+
+void GameInstance::set_boot_rom_path(const std::optional<std::filesystem::path> &boot_rom_path) MAKE_SETTER(this->boot_rom_path = boot_rom_path)
