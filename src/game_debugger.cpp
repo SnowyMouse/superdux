@@ -107,10 +107,7 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     ADD_REGISTER_FIELD("A", register_a, "F", register_f);
     ADD_REGISTER_FIELD("B", register_b, "C", register_c);
     ADD_REGISTER_FIELD("D", register_d, "E", register_e);
-    ADD_REGISTER_FIELD("HL", register_hl, "PC", register_pc);
-    
-    // Disable editing PC value
-    this->register_pc->setDisabled(true);
+    ADD_REGISTER_FIELD("HL", register_hl, "SP", register_sp);
     
     #undef ADD_REGISTER_FIELD
     
@@ -209,7 +206,7 @@ void GameDebugger::refresh_view() {
         PROCESS_REGISTER_FIELD(E, register_e, "$%02x");
         PROCESS_REGISTER_FIELD(F, register_f, "$%02x");
         PROCESS_REGISTER_FIELD(HL, register_hl, "$%04x");
-        PROCESS_REGISTER_FIELD(PC, register_pc, "$%04x");
+        PROCESS_REGISTER_FIELD(SP, register_sp, "$%04x");
         
         #undef PROCESS_REGISTER_FIELD
     
@@ -257,7 +254,7 @@ void GameDebugger::action_update_registers() noexcept {
     PROCESS_REGISTER_FIELD(E, register_e);
     PROCESS_REGISTER_FIELD(F, register_f);
     PROCESS_REGISTER_FIELD(HL, register_hl);
-    //PROCESS_REGISTER_FIELD(pc, register_pc); // changing this is very bad
+    PROCESS_REGISTER_FIELD(SP, register_sp);
     
     #undef PROCESS_REGISTER_FIELD
 }

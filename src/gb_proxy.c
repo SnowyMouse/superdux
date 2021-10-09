@@ -40,6 +40,8 @@ static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, 
             return &gb->hl;
         case GBZ80_REG_PC:
             return &gb->pc;
+        case GBZ80_REG_SP:
+            return &gb->sp;
         default:
             return NULL;
     }
@@ -70,6 +72,7 @@ uint16_t get_gb_register(const struct GB_gameboy_s *gb, gbz80_register r) {
             return get_8_bit_gb_register(gb, r);
         case GBZ80_REG_HL:
         case GBZ80_REG_PC:
+        case GBZ80_REG_SP:
             return get_16_bit_gb_register(gb, r);
         default:
             abort();
@@ -87,6 +90,7 @@ void set_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint16_t v) {
             return set_8_bit_gb_register(gb, r, v);
         case GBZ80_REG_HL:
         case GBZ80_REG_PC:
+        case GBZ80_REG_SP:
             return set_16_bit_gb_register(gb, r, v);
         default:
             abort();

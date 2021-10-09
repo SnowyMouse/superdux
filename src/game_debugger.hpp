@@ -75,7 +75,7 @@ private:
     QAction *finish_fn_button;
     QAction *clear_breakpoints_button;
     
-    QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_pc;
+    QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_sp;
     QTableWidget *backtrace;
     GameWindow *game_window;
     

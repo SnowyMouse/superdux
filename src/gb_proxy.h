@@ -18,6 +18,7 @@ typedef enum {
     GBZ80_REG_F,
     GBZ80_REG_HL,
     GBZ80_REG_PC,
+    GBZ80_REG_SP,
 } gbz80_register;
 
 uint16_t get_gb_register(const struct GB_gameboy_s *gb, gbz80_register r);
