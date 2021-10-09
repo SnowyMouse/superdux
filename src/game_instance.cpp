@@ -128,8 +128,19 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     bool bnt = false;
     if(instance->current_break_and_trace_remaining > 0) {
         bnt = (--instance->current_break_and_trace_remaining) > 0;
+        if(bnt) {
+            auto pc = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_PC);
+            for(auto i : instance->get_breakpoints()) {
+                if(i == pc) {
+                    bnt = false; // if we hit a breakpoint in the middle of breaking and tracing, end prematurely
+                    break;
+                }
+            }
+        }
     }
-    else {
+
+    // If that didn't satisfy it, maybe we have something set here?
+    if(!bnt) {
         for(auto b = instance->break_and_trace_breakpoints.begin(); b != instance->break_and_trace_breakpoints.end(); b++) {
             auto pc = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_PC);
             if(pc == std::get<0>(*b)) {
