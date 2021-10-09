@@ -231,15 +231,57 @@ void GameDebugger::refresh_view() {
                 instance.clear_break_and_trace_results();
                 std::printf("Begin %zu BNT result(s)\n", bnt.size());
 
+                std::vector<ProcessedBNTResult> results;
+
                 // Strip address pointer, newlines, and comment from instruction
                 for(auto &b : bnt) {
+                    auto &r = results.emplace_back();
+                    static_cast<GameInstance::BreakAndTraceResult &>(r) = b;
+
                     auto d = QString(b.disassembly.c_str()).split("\n");
                     auto d_second_to_last = d.at(d.size() - 2);
                     d_second_to_last.replace("->", "");
                     d_second_to_last = d_second_to_last.mid(d_second_to_last.indexOf(":") + 1);
                     d_second_to_last = d_second_to_last.mid(0, d_second_to_last.indexOf(" ;")).trimmed();
-                    b.disassembly = d_second_to_last.toStdString();
-                    std::printf("$%04x - %s\n", b.pc, b.disassembly.c_str()); // TODO: show in window and add exporting
+                    r.instruction = d_second_to_last.toStdString();
+
+                    auto comma_index = d_second_to_last.indexOf(",");
+
+                    bool is_call = !r.step_over && d_second_to_last.startsWith("CALL "); // ignore calls if stepping over
+                    bool is_call_conditional = is_call && comma_index > 0;
+
+                    bool is_ret = d_second_to_last.startsWith("RET"); // never ignore returning
+                    bool is_ret_conditional = is_ret && d_second_to_last.startsWith("RET ");
+
+                    if(is_call || is_ret) {
+                        if(is_call_conditional || is_ret_conditional) {
+                            QString condition;
+                            if(is_call) {
+                                condition = d_second_to_last.mid(0, comma_index).replace("CALL ", "");
+                            }
+                            else if(is_ret) {
+                                condition = d_second_to_last.replace("RET ", "");
+                            }
+
+                            auto condition_met = (condition == "Z" && r.zero) &&
+                                                 (condition == "NZ" && !r.zero) &&
+                                                 (condition == "C" && r.carry) &&
+                                                 (condition == "NC" && !r.carry);
+                            if(!condition_met) {
+                                is_call = false;
+                                is_ret = false;
+                            }
+                        }
+
+                        if(is_call) {
+                            r.direction = 1;
+                        }
+                        else if(is_ret) {
+                            r.direction = -1;
+                        }
+                    }
+
+                    std::printf("$%04x - %s - %i\n", b.pc, r.instruction.c_str(), r.direction); // TODO: show in window and add exporting
                 }
 
                 std::printf("End of %zu BNT result(s)\n", bnt.size());

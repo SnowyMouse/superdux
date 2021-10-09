@@ -20,6 +20,11 @@ class GameDebugger : public QMainWindow {
     Q_OBJECT
     
 public:
+    struct ProcessedBNTResult : GameInstance::BreakAndTraceResult {
+        std::string instruction;
+        int direction = 0; // -1 = return; 1 = call
+    };
+
     GameDebugger(GameWindow *window);
     ~GameDebugger() override;
     

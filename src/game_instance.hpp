@@ -392,6 +392,7 @@ public: // all public functions assume the mutex is not locked
 
     struct BreakAndTraceResult {
         std::uint8_t a,b,c,d,e,f;
+        bool step_over;
         std::uint16_t hl, sp, pc;
         bool carry, half_carry, subtract, zero; // C, H, N, Z
         std::string disassembly;
@@ -543,6 +544,9 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Disassemble without that mutex
     std::string disassemble_without_mutex(std::uint16_t address, std::uint8_t count);
+
+    // Get the backtrace without a mutex
+    std::vector<std::uint16_t> get_breakpoints_without_mutex();
 };
 
 #endif

@@ -130,7 +130,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
         bnt = (--instance->current_break_and_trace_remaining) > 0;
         if(bnt) {
             auto pc = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_PC);
-            for(auto i : instance->get_breakpoints()) {
+            for(auto i : instance->get_breakpoints_without_mutex()) {
                 if(i == pc) {
                     bnt = false; // if we hit a breakpoint in the middle of breaking and tracing, end prematurely
                     break;
@@ -177,6 +177,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
         b.half_carry = b.f & GB_HALF_CARRY_FLAG;
         b.subtract = b.f & GB_SUBTRACT_FLAG;
         b.zero = b.f & GB_ZERO_FLAG;
+        b.step_over = instance->current_break_and_trace_step_over;
 
         b.disassembly = instance->disassemble_without_mutex(b.pc, 1);
 
@@ -303,11 +304,11 @@ void GameInstance::start_game_loop(GameInstance *instance) noexcept {
 }
 
 std::vector<std::pair<std::string, std::uint16_t>> GameInstance::get_backtrace() {
-    std::vector<std::pair<std::string, std::uint16_t>> backtrace;
-    auto *cmd = malloc_string("backtrace");
-    
     // Get the backtrace string
     this->mutex.lock();
+
+    std::vector<std::pair<std::string, std::uint16_t>> backtrace;
+    auto *cmd = malloc_string("backtrace");
     auto backtrace_str = execute_command_without_mutex(cmd);
     std::size_t bt_count = get_gb_backtrace_size(&this->gameboy);
     backtrace.resize(bt_count);
@@ -317,8 +318,9 @@ std::vector<std::pair<std::string, std::uint16_t>> GameInstance::get_backtrace()
     if(bt_count > 0) {
         backtrace[0].second = get_gb_register(&this->gameboy, gbz80_register::GBZ80_REG_PC);
     }
+
     this->mutex.unlock();
-    
+
     // Process the backtraces now that the mutex has unlocked
     std::size_t backtrace_str_len = backtrace_str.size();
     std::size_t str_start = 0;
@@ -330,23 +332,21 @@ std::vector<std::pair<std::string, std::uint16_t>> GameInstance::get_backtrace()
             backtrace_line++;
         }
     }
-    
+
     return backtrace;
 }
 
-std::vector<std::uint16_t> GameInstance::get_breakpoints() {
+std::vector<std::uint16_t> GameInstance::get_breakpoints_without_mutex() {
     std::vector<std::uint16_t> breakpoints;
-    
-    this->mutex.lock();
     std::size_t bp_count = get_gb_breakpoint_size(&this->gameboy);
     breakpoints.resize(bp_count);
     for(std::size_t b = 0; b < bp_count; b++) {
         breakpoints[b] = get_gb_breakpoint_address(&this->gameboy, b);
     }
-    this->mutex.unlock();
-    
     return breakpoints;
 }
+
+std::vector<std::uint16_t> GameInstance::get_breakpoints() MAKE_GETTER(this->get_breakpoints_without_mutex())
 
 bool GameInstance::read_pixel_buffer(std::uint32_t *destination, std::size_t destination_length) noexcept {
     this->mutex.lock();
