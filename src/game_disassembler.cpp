@@ -7,7 +7,13 @@
 #include <QScrollBar>
 #include <QKeyEvent>
 #include <QApplication>
+#include <QGridLayout>
 #include <QPalette>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
 
 #include "gb_proxy.h"
 #include "game_disassembler.hpp"
@@ -69,15 +75,73 @@ void GameDisassembler::set_address_to_current_breakpoint() {
 }
 
 void GameDisassembler::add_breakpoint() {
-    char command[512];
-    std::snprintf(command, sizeof(command), "breakpoint $%04X", *this->last_disassembly->address);
-    this->debugger->get_instance().execute_command(command);
+    this->debugger->get_instance().break_at(*this->last_disassembly->address);
+}
+
+void GameDisassembler::add_break_and_trace_breakpoint() {
+    QDialog dialog;
+    dialog.setWindowTitle("Break and Trace");
+    dialog.setFixedWidth(500);
+
+    // Set up the UI
+    auto *layout = new QVBoxLayout(&dialog);
+    dialog.setLayout(layout);
+
+    auto *input_grid_w = new QWidget(&dialog);
+    auto *input_grid = new QGridLayout(input_grid_w);
+    input_grid->setContentsMargins(0,0,0,0);
+    input_grid_w->setLayout(input_grid);
+
+    char address_test[6];
+    std::snprintf(address_test, sizeof(address_test), "$%04x", *this->last_disassembly->address);
+
+    auto *address = new QLineEdit(input_grid_w);
+    address->setText(address_test);
+
+    input_grid->addWidget(new QLabel("Address:", input_grid_w), 0, 0);
+    input_grid->addWidget(address, 0, 1);
+
+    input_grid->addWidget(new QLabel("Count:", input_grid_w), 1, 0);
+    auto *amt = new QLineEdit(input_grid_w);
+    amt->setText("50");
+    input_grid->addWidget(amt, 1, 1);
+
+    input_grid->addWidget(new QLabel("Step Over:", input_grid_w), 2, 0);
+    auto *step_over = new QCheckBox(input_grid_w);
+    step_over->setMinimumHeight(amt->sizeHint().height());
+    input_grid->addWidget(step_over, 2, 1);
+
+    layout->addWidget(input_grid_w);
+
+    auto *ok_button_row = new QWidget(&dialog);
+    layout->addWidget(ok_button_row);
+    auto *ok_button_row_l = new QHBoxLayout(ok_button_row);
+    ok_button_row_l->setContentsMargins(0,0,0,0);
+    ok_button_row->setLayout(ok_button_row_l);
+    ok_button_row_l->addStretch(1);
+
+    auto *ok_button = new QPushButton("OK", ok_button_row);
+    connect(ok_button, &QPushButton::clicked, &dialog, &QDialog::accept);
+    ok_button_row_l->addWidget(ok_button);
+
+    // Now... let's get down to business. Keep asking for something until the user enters something valid or gives up.
+    while(true) {
+        if(dialog.exec() == QDialog::Accepted) {
+            auto address_maybe = evaluate_address_with_error_message(this->debugger->get_instance(), address->text().toUtf8().data());
+            auto count_maybe = evaluate_address_with_error_message(this->debugger->get_instance(), amt->text().toUtf8().data());
+
+            if(!address_maybe.has_value() || !count_maybe.has_value()) {
+                continue;
+            }
+
+            this->debugger->get_instance().break_and_trace_at(*address_maybe, *count_maybe, step_over->isChecked());
+        }
+        break;
+    }
 }
 
 void GameDisassembler::delete_breakpoint() {
-    char command[512];
-    std::snprintf(command, sizeof(command), "delete $%04X", *this->last_disassembly->address);
-    this->debugger->get_instance().execute_command(command);
+    this->debugger->get_instance().remove_breakpoint(*this->last_disassembly->address);
 }
 
 void GameDisassembler::show_context_menu(const QPoint &point) {
@@ -112,8 +176,7 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
             }
             
             menu.addSeparator();
-            
-            // TODO: add a delete breakpoint maybe?
+
             auto &address = this->last_disassembly->address;
             if(address.has_value()) {
                 char breakpoint_text[512];
@@ -122,6 +185,12 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
                 std::snprintf(breakpoint_text, sizeof(breakpoint_text), "%s breakpoint at $%04X", create ? "Set" : "Unset", *address);
                 auto *set_breakpoint = menu.addAction(breakpoint_text);
                 connect(set_breakpoint, &QAction::triggered, this, create ? &GameDisassembler::add_breakpoint : &GameDisassembler::delete_breakpoint);
+
+                if(create) {
+                    std::snprintf(breakpoint_text, sizeof(breakpoint_text), "Break-and-trace at $%04X", *address);
+                    auto *set_bnt_breakpoint = menu.addAction(breakpoint_text);
+                    connect(set_bnt_breakpoint, &QAction::triggered, this, &GameDisassembler::add_break_and_trace_breakpoint);
+                }
             }
         }
     }
@@ -276,7 +345,7 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
         auto &instruction = returned_instructions.emplace_back();
         
         if(l[0] == ' ') {
-            instruction.address = l.mid(4, 4).toUInt(nullptr, 16);
+            instruction.address = l.midRef(4, 4).toUInt(nullptr, 16);
             instruction.current_location = l[0] == '-';
             
             int semicolon_offset = l.indexOf(';', 8);

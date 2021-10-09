@@ -332,6 +332,18 @@ public: // all public functions assume the mutex is not locked
      * Breakpoint immediately
      */
     void break_immediately() noexcept;
+
+    /**
+     * Remove the given breakpoint
+     *
+     * @param breakpoint breakpoint to remove
+     */
+    void remove_breakpoint(std::uint16_t breakpoint) noexcept;
+
+    /**
+     * Remove all breakpoints
+     */
+    void remove_all_breakpoints() noexcept;
     
     /**
      * Unbreak
@@ -361,6 +373,41 @@ public: // all public functions assume the mutex is not locked
      * @param fast_boot_rom use fast ROM
      */
     void set_use_fast_boot_rom(bool fast_boot_rom) noexcept;
+
+    /**
+     * Add a break-and-trace breakpoint at address
+     *
+     * @param address address to breakpoint
+     * @param n       number of times to step
+     * @param over    step over
+     */
+    void break_and_trace_at(std::uint16_t address, std::size_t n, bool over);
+
+    /**
+     * Add a breakpoint at address
+     *
+     * @param address address to breakpoint
+     */
+    void break_at(std::uint16_t address) noexcept;
+
+    struct BreakAndTraceResult {
+        std::uint8_t a,b,c,d,e,f;
+        std::uint16_t hl, sp, pc;
+        bool carry, half_carry, subtract, zero; // C, H, N, Z
+        std::string disassembly;
+    };
+
+    /**
+     * Get the break and trace results
+     *
+     * @return results
+     */
+    std::vector<BreakAndTraceResult> get_break_and_trace_results();
+
+    /**
+     * Clear the break and trace results
+     */
+    void clear_break_and_trace_results() noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -374,6 +421,12 @@ private: // all private functions assume the mutex is locked by the caller
     
     // Pixel buffer - holds the current pixels
     std::vector<std::uint32_t> pixel_buffer[3];
+
+    // Break and trace addresses
+    std::vector<std::tuple<std::uint16_t, std::size_t, bool>> break_and_trace_breakpoints;
+    std::vector<BreakAndTraceResult> break_and_trace_result;
+    std::size_t current_break_and_trace_remaining = 0;
+    bool current_break_and_trace_step_over = false;
 
     // SDL audio device
     std::optional<SDL_AudioDeviceID> sdl_audio_device;
@@ -487,6 +540,9 @@ private: // all private functions assume the mutex is locked by the caller
     static void load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept;
     std::optional<std::filesystem::path> boot_rom_path;
     bool fast_boot_rom;
+
+    // Disassemble without that mutex
+    std::string disassemble_without_mutex(std::uint16_t address, std::uint8_t count);
 };
 
 #endif

@@ -46,6 +46,7 @@ public:
     void jump_to_address_window();
     void follow_address();
     void add_breakpoint();
+    void add_break_and_trace_breakpoint();
     void delete_breakpoint();
     void refresh_view();
     bool address_is_breakpoint(std::uint16_t address);

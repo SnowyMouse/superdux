@@ -224,13 +224,32 @@ void GameDebugger::refresh_view() {
             item->setData(Qt::UserRole, l.second);
             row++;
         }
+
+        auto bnt = instance.get_break_and_trace_results();
+        if(!bnt.empty()) {
+            instance.clear_break_and_trace_results();
+            std::printf("Begin %zu BNT result(s)\n", bnt.size());
+
+            // Strip address pointer, newlines, and comment from instruction
+            for(auto &b : bnt) {
+                auto d = QString(b.disassembly.c_str()).split("\n");
+                auto d_second_to_last = d.at(d.size() - 2);
+                d_second_to_last.replace("->", "");
+                d_second_to_last = d_second_to_last.mid(d_second_to_last.indexOf(":") + 1);
+                d_second_to_last = d_second_to_last.mid(0, d_second_to_last.indexOf(" ;")).trimmed();
+                b.disassembly = d_second_to_last.toStdString();
+                std::printf("$%04x - %s\n", b.pc, b.disassembly.c_str()); // TODO: show in window and add exporting
+            }
+
+            std::printf("End of %zu BNT result(s)\n", bnt.size());
+        }
     }
     
     this->set_known_breakpoint(bp_pause);
 }
 
 void GameDebugger::action_clear_breakpoints() noexcept {
-    this->get_instance().execute_command("delete");
+    this->get_instance().remove_all_breakpoints();
 }
 
 void GameDebugger::action_update_registers() noexcept {
