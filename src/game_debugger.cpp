@@ -229,7 +229,6 @@ void GameDebugger::refresh_view() {
             auto bnt = instance.get_break_and_trace_results();
             if(!bnt.empty()) {
                 instance.clear_break_and_trace_results();
-                std::printf("Begin %zu BNT result(s)\n", bnt.size());
 
                 std::vector<ProcessedBNTResult> results;
 
@@ -257,16 +256,16 @@ void GameDebugger::refresh_view() {
                         if(is_call_conditional || is_ret_conditional) {
                             QString condition;
                             if(is_call) {
-                                condition = d_second_to_last.mid(0, comma_index).replace("CALL ", "");
+                                condition = d_second_to_last.mid(0, comma_index).replace("CALL ", "").toLower();
                             }
                             else if(is_ret) {
-                                condition = d_second_to_last.replace("RET ", "");
+                                condition = d_second_to_last.replace("RET ", "").toLower();
                             }
 
-                            auto condition_met = (condition == "Z" && r.zero) &&
-                                                 (condition == "NZ" && !r.zero) &&
-                                                 (condition == "C" && r.carry) &&
-                                                 (condition == "NC" && !r.carry);
+                            auto condition_met = (condition == "z" && r.zero) &&
+                                                 (condition == "nz" && !r.zero) &&
+                                                 (condition == "c" && r.carry) &&
+                                                 (condition == "nc" && !r.carry);
                             if(!condition_met) {
                                 is_call = false;
                                 is_ret = false;
@@ -280,11 +279,42 @@ void GameDebugger::refresh_view() {
                             r.direction = -1;
                         }
                     }
-
-                    std::printf("$%04x - %s - %i\n", b.pc, r.instruction.c_str(), r.direction); // TODO: show in window and add exporting
                 }
 
-                std::printf("End of %zu BNT result(s)\n", bnt.size());
+                // Turn it into a 2D thing
+                ProcessedBNTResultNode::directory_t top_directory;
+                std::vector<ProcessedBNTResultNode::directory_t *> trace = { &top_directory };
+
+                for(auto &r : results) {
+                    auto *current_directory = trace[trace.size() - 1];
+                    auto &d = current_directory->emplace_back();
+                    d.result = r;
+
+                    if(r.direction == 1) {
+                        trace.emplace_back(&d.children);
+                    }
+                    else if(r.direction == -1) {
+                        trace.erase(trace.begin() + (trace.size() - 1));
+
+                        // Make a new top directory if we returned to a higher level than we breakpoint
+                        if(trace.size() == 0) {
+                            top_directory = { top_directory };
+                            trace = { &top_directory };
+                        }
+                    }
+                }
+
+                auto go_through_directory = [](const ProcessedBNTResultNode::directory_t &directory, auto &go_through_directory_r, std::size_t depth = 0) -> void {
+                    for(auto &d : directory) {
+                        for(std::size_t z = 0; z < depth; z++) {
+                            std::printf("    ");
+                        }
+                        std::printf("($%04x) %s\n", d.result.pc, d.result.instruction.c_str());
+                        go_through_directory_r(d.children, go_through_directory_r, depth + 1);
+                    }
+                };
+
+                go_through_directory(top_directory, go_through_directory);
             }
         }
     }

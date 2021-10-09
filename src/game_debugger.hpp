@@ -22,7 +22,15 @@ class GameDebugger : public QMainWindow {
 public:
     struct ProcessedBNTResult : GameInstance::BreakAndTraceResult {
         std::string instruction;
-        int direction = 0; // -1 = return; 1 = call
+
+        char direction = 0; // -1 = return; 1 = call; 0 = next instruction
+    };
+
+    struct ProcessedBNTResultNode {
+        using directory_t = std::list<ProcessedBNTResultNode>;
+
+        ProcessedBNTResult result;
+        directory_t children;
     };
 
     GameDebugger(GameWindow *window);
