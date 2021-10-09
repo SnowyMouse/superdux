@@ -13,7 +13,7 @@
 #include <QFileDialog>
 
 EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *window) : window(window) {
-    this->window->setWindowTitle("Advanced Game Boy Model Settings");
+    this->setWindowTitle("Advanced Game Boy Model Settings");
 
     auto *dialog = this;
     auto *layout = new QVBoxLayout(this);
