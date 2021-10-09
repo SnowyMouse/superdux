@@ -13,6 +13,16 @@
 #include "game_disassembler.hpp"
 #include "game_debugger.hpp"
 
+static std::optional<std::uint16_t> evaluate_address_with_error_message(GameInstance &gb, const char *expression) {
+    auto rval = gb.evaluate_expression(expression);
+    if(!rval.has_value()) {
+        char error_message[512];
+        std::snprintf(error_message, sizeof(error_message), "An invalid expression `%s` was given. Check your input and try again.", expression);
+        QMessageBox(QMessageBox::Icon::Critical, "Invalid Expression", error_message, QMessageBox::StandardButton::Ok).exec();
+    }
+    return rval;
+}
+
 GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent), debugger(parent) {
     this->setColumnCount(1);
     this->debugger->format_table(this);
@@ -48,7 +58,7 @@ void GameDisassembler::go_back() {
 }
 
 void GameDisassembler::follow_address() {
-    auto where = this->debugger->get_instance().evaluate_expression(this->last_disassembly->follow_address.toUtf8().data());
+    auto where = evaluate_address_with_error_message(this->debugger->get_instance(), this->last_disassembly->follow_address.toUtf8().data());
     if(where.has_value()) {
         this->go_to(*where);
     }
@@ -148,7 +158,7 @@ void GameDisassembler::jump_to_address_window() {
     
     // Go to the address
     if(dialog.exec() == QInputDialog::Accepted) {
-        auto where_to = this->debugger->get_instance().evaluate_expression(dialog.textValue().toUtf8().data());
+        auto where_to = evaluate_address_with_error_message(this->debugger->get_instance(), dialog.textValue().toUtf8().data());
         if(where_to.has_value()) {
             this->go_to(*where_to);
         }
