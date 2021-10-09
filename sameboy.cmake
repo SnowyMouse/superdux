@@ -72,10 +72,10 @@ foreach(ROM ${BOOT_ROMS})
         COMMAND rgbasm -i "${SAMEBOY_SOURCE_DIR}/BootROMs/" -o "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${SAMEBOY_SOURCE_DIR}/BootROMs/${ROM}.asm"
         COMMAND rgblink -x -o "${ROM_BIN}" "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o"
         
-        COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/append.py" "${ROM}" "${ROM_BIN}" "${ROM_SIZE}"
-        COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${ROM}" "${ROM_BIN}" "${ROM_H}"
+        COMMAND "Python3::Interpreter" "${CMAKE_CURRENT_SOURCE_DIR}/append.py" "${ROM}" "${ROM_BIN}" "${ROM_SIZE}"
+        COMMAND "Python3::Interpreter" "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${ROM}" "${ROM_BIN}" "${ROM_H}"
         
-        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12" ${ROM_ASM_DEP} "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${CMAKE_CURRENT_SOURCE_DIR}/append.py"
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12" "${ROM_ASM_DEP}" "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${CMAKE_CURRENT_SOURCE_DIR}/append.py"
         BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${ROM_BIN}"
     )
 endforeach()
