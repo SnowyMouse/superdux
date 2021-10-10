@@ -42,7 +42,7 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
         auto *boot_rom_widget = new QWidget(w);
         auto *boot_rom_layout = new QHBoxLayout(boot_rom_widget);
         boot_rom_layout->setContentsMargins(0,0,0,0);
-        auto *boot_rom_label = new QLabel("Boot ROM Path:", boot_rom_widget);
+        auto *boot_rom_label = new QLabel("Boot ROM path:", boot_rom_widget);
         boot_rom_layout->addWidget(boot_rom_label);
         *boot_rom_path = new QLineEdit(boot_rom_widget);
 
