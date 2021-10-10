@@ -225,8 +225,6 @@ GameWindow::GameWindow() {
     this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
-
-    this->instance->set_color_correction_mode(this->color_correction_mode);
     
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
@@ -272,7 +270,6 @@ GameWindow::GameWindow() {
     connect(edit_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
     this->gameboy_model_menu = edit_menu->addMenu("Game Boy Model");
-    this->color_correction_mode = static_cast<GB_color_correction_mode_t>(settings.value(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode).toInt());
     std::pair<const char *, GameBoyType> models[] = {
         {"Game Boy", GameBoyType::GameBoyGB},
         {"Game Boy Color", GameBoyType::GameBoyGBC},
@@ -380,6 +377,8 @@ GameWindow::GameWindow() {
 
     // Color correction options
     auto *color_correction_mode = edit_menu->addMenu("Color Correction Mode");
+    this->color_correction_mode = static_cast<GB_color_correction_mode_t>(settings.value(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode).toInt());
+    this->instance->set_color_correction_mode(this->color_correction_mode);
     std::pair<const char *, GB_color_correction_mode_t> color_correction_modes[] = {
         {"Disabled", GB_color_correction_mode_t::GB_COLOR_CORRECTION_DISABLED},
         {"Correct Curves", GB_color_correction_mode_t::GB_COLOR_CORRECTION_CORRECT_CURVES},
