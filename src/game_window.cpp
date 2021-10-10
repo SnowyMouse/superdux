@@ -49,8 +49,8 @@
 #define SETTINGS_SGB_REVISION "sgb_model_revision"
 #define SETTINGS_SGB2_REVISION "sgb2_model_revision"
 
-#define SETTINGS_SGB_CROP_BORDERS "sgb_crop_borders"
-#define SETTINGS_SGB2_CROP_BORDERS "sgb2_crop_borders"
+#define SETTINGS_SGB_CROP_BORDER "sgb_crop_border"
+#define SETTINGS_SGB2_CROP_Border "sgb2_crop_border"
 
 #define SETTINGS_GBC_FAST_BOOT "gbc_fast_boot_rom"
 
@@ -161,7 +161,7 @@ bool GameWindow::use_fast_boot_rom_for_type(GameBoyType type) const noexcept {
     }
 }
 
-bool GameWindow::use_crop_borders_for_type(GameBoyType type) const noexcept {
+bool GameWindow::use_crop_border_for_type(GameBoyType type) const noexcept {
     switch(type) {
         case GameBoyType::GameBoyGB:
             return false;
@@ -170,9 +170,9 @@ bool GameWindow::use_crop_borders_for_type(GameBoyType type) const noexcept {
         case GameBoyType::GameBoyGBA:
             return false;
         case GameBoyType::GameBoySGB:
-            return this->sgb_crop_borders;
+            return this->sgb_crop_border;
         case GameBoyType::GameBoySGB2:
-            return this->sgb2_crop_borders;
+            return this->sgb2_crop_border;
         default:
             std::terminate();
     }
@@ -215,8 +215,8 @@ GameWindow::GameWindow() {
     this->sgb_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_REVISION, this->sgb_rev).toInt());
     this->sgb2_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_REVISION, this->sgb2_rev).toInt());
 
-    this->sgb_crop_borders = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_CROP_BORDERS, this->sgb_crop_borders).toBool());
-    this->sgb2_crop_borders = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_CROP_BORDERS, this->sgb2_crop_borders).toBool());
+    this->sgb_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_CROP_BORDER, this->sgb_crop_border).toBool());
+    this->sgb2_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_CROP_Border, this->sgb2_crop_border).toBool());
 
     this->gbc_fast_boot_rom = settings.value(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom).toBool();
     
@@ -606,8 +606,8 @@ void GameWindow::redraw_pixel_buffer() {
     this->pixel_buffer.resize(width * height, 0xFF000000);
     this->instance->read_pixel_buffer(this->pixel_buffer.data(), this->pixel_buffer.size());
 
-    // If we aren't cropping SGB borders, just output the pixel buffer
-    if(!this->use_crop_borders_for_type(this->gb_type)) {
+    // If we aren't cropping SGB border, just output the pixel buffer
+    if(!this->use_crop_border_for_type(this->gb_type)) {
         this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), width, height, QImage::Format::Format_ARGB32));
     }
 
@@ -687,8 +687,8 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     std::uint32_t width, height;
     this->instance->get_dimensions(width, height);
 
-    // If cropping borders, override
-    if(this->use_crop_borders_for_type(this->gb_type)) {
+    // If cropping border, override
+    if(this->use_crop_border_for_type(this->gb_type)) {
         width = GB_WIDTH;
         height = GB_HEIGHT;
     }
@@ -948,8 +948,8 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SGB_REVISION, this->sgb_rev);
     settings.setValue(SETTINGS_SGB2_REVISION, this->sgb2_rev);
 
-    settings.setValue(SETTINGS_SGB_CROP_BORDERS, this->sgb_crop_borders);
-    settings.setValue(SETTINGS_SGB2_CROP_BORDERS, this->sgb2_crop_borders);
+    settings.setValue(SETTINGS_SGB_CROP_BORDER, this->sgb_crop_border);
+    settings.setValue(SETTINGS_SGB2_CROP_Border, this->sgb2_crop_border);
 
     settings.setValue(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom);
 

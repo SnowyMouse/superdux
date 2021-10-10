@@ -131,16 +131,16 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
                 {"NTSC", GB_model_t::GB_MODEL_SGB_NTSC},
                 {"PAL", GB_model_t::GB_MODEL_SGB_PAL}
             }, this->window->sgb_rev, &EditAdvancedGameBoyModelDialog::find_sgb_boot_rom, {
-                { "Crop borders:", {this->sgb_crop_borders_cb = new QCheckBox()} }
+                { "Crop border:", {this->sgb_crop_border_cb = new QCheckBox()} }
             });
     add_tab("Super Game Boy 2", &this->sgb2_boot_rom_le, this->window->sgb2_boot_rom_path, &this->sgb2_rev, {
                 {"SGB2", GB_model_t::GB_MODEL_SGB2}
             }, this->window->sgb2_rev, &EditAdvancedGameBoyModelDialog::find_sgb2_boot_rom, {
-                { "Crop borders:", {this->sgb2_crop_borders_cb = new QCheckBox()} }
+                { "Crop border:", {this->sgb2_crop_border_cb = new QCheckBox()} }
             });
 
-    this->sgb_crop_borders_cb->setChecked(window->sgb_crop_borders);
-    this->sgb2_crop_borders_cb->setChecked(window->sgb2_crop_borders);
+    this->sgb_crop_border_cb->setChecked(window->sgb_crop_border);
+    this->sgb2_crop_border_cb->setChecked(window->sgb2_crop_border);
 
     layout->addWidget(tab_widget);
 
@@ -206,8 +206,8 @@ void EditAdvancedGameBoyModelDialog::perform_accept() {
     this->window->sgb_rev = static_cast<GB_model_t>(this->sgb_rev->currentData().toInt());
     this->window->sgb2_rev = static_cast<GB_model_t>(this->sgb2_rev->currentData().toInt());
     this->window->gbc_fast_boot_rom = this->gbc_fast_cb->isChecked();
-    this->window->sgb_crop_borders = this->sgb_crop_borders_cb->isChecked();
-    this->window->sgb2_crop_borders = this->sgb2_crop_borders_cb->isChecked();
+    this->window->sgb_crop_border = this->sgb_crop_border_cb->isChecked();
+    this->window->sgb2_crop_border = this->sgb2_crop_border_cb->isChecked();
 
     // If empty, set to nullopt
     auto set_possible_path = [](std::optional<std::filesystem::path> &path, const QString &str) {
