@@ -842,3 +842,5 @@ void GameInstance::remove_all_breakpoints() noexcept {
     this->break_and_trace_breakpoints.clear();
     this->mutex.unlock();
 }
+
+void GameInstance::set_color_correction_mode(GB_color_correction_mode_t mode) noexcept MAKE_SETTER(GB_set_color_correction_mode(&this->gameboy, mode))

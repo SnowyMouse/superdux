@@ -90,6 +90,8 @@ private:
     QGraphicsView *pixel_buffer_view;
     QGraphicsScene *pixel_buffer_scene = nullptr;
     QGraphicsTextItem *fps_text = nullptr;
+    GB_color_correction_mode_t color_correction_mode = GB_color_correction_mode_t::GB_COLOR_CORRECTION_DISABLED;
+    std::vector<QAction *> color_correction_mode_options;
     void set_pixel_view_scaling(int scaling);
     void redraw_pixel_buffer();
     
@@ -180,6 +182,7 @@ private slots:
     void action_edit_controls() noexcept;
     void action_set_buffer_mode() noexcept;
     void action_set_rtc_mode() noexcept;
+    void action_set_color_correction_mode() noexcept;
     void action_show_advanced_model_options() noexcept;
     
     void action_toggle_audio() noexcept;

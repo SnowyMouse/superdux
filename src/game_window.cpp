@@ -35,6 +35,7 @@
 #define SETTINGS_SAMPLE_RATE "sample_rate"
 #define SETTINGS_BUFFER_MODE "buffer_mode"
 #define SETTINGS_RTC_MODE "rtc_mode"
+#define SETTINGS_COLOR_CORRECTION_MODE "color_correction_mode"
 
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
 #define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
@@ -224,6 +225,8 @@ GameWindow::GameWindow() {
     this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
+
+    this->instance->set_color_correction_mode(this->color_correction_mode);
     
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
@@ -269,6 +272,7 @@ GameWindow::GameWindow() {
     connect(edit_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
     this->gameboy_model_menu = edit_menu->addMenu("Game Boy Model");
+    this->color_correction_mode = static_cast<GB_color_correction_mode_t>(settings.value(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode).toInt());
     std::pair<const char *, GameBoyType> models[] = {
         {"Game Boy", GameBoyType::GameBoyGB},
         {"Game Boy Color", GameBoyType::GameBoyGBC},
@@ -360,8 +364,8 @@ GameWindow::GameWindow() {
     this->channel_count_options = { mono, stereo };
     
     edit_menu->addSeparator();
-    
-    // Add scaling options
+
+    // Scaling
     auto *scaling = edit_menu->addMenu("Render Scaling");
     for(int i = 8; i >= 1; i--) {
         char text[4];
@@ -372,6 +376,24 @@ GameWindow::GameWindow() {
         action->setCheckable(true);
         action->setChecked(i == this->scaling);
         this->scaling_options.emplace_back(action);
+    }
+
+    // Color correction options
+    auto *color_correction_mode = edit_menu->addMenu("Color Correction Mode");
+    std::pair<const char *, GB_color_correction_mode_t> color_correction_modes[] = {
+        {"Disabled", GB_color_correction_mode_t::GB_COLOR_CORRECTION_DISABLED},
+        {"Correct Curves", GB_color_correction_mode_t::GB_COLOR_CORRECTION_CORRECT_CURVES},
+        {"Emulate Hardware", GB_color_correction_mode_t::GB_COLOR_CORRECTION_EMULATE_HARDWARE},
+        {"Reduce Contrast", GB_color_correction_mode_t::GB_COLOR_CORRECTION_REDUCE_CONTRAST},
+        {"Low Contrast", GB_color_correction_mode_t::GB_COLOR_CORRECTION_LOW_CONTRAST},
+    };
+    for(auto &i : color_correction_modes) {
+        auto *action = color_correction_mode->addAction(i.first);
+        action->setData(i.second);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_color_correction_mode);
+        action->setCheckable(true);
+        action->setChecked(i.second == this->color_correction_mode);
+        this->color_correction_mode_options.emplace_back(action);
     }
 
     // Buffer modes
@@ -913,6 +935,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SAMPLE_RATE, this->sample_rate);
     settings.setValue(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode());
     settings.setValue(SETTINGS_RTC_MODE, this->rtc_mode);
+    settings.setValue(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
@@ -1041,6 +1064,17 @@ void GameWindow::action_set_rtc_mode() noexcept {
     this->rtc_mode = mode;
 
     for(auto &i : this->rtc_mode_options) {
+        i->setChecked(i->data().toInt() == mode);
+    }
+}
+
+void GameWindow::action_set_color_correction_mode() noexcept {
+    auto *action = qobject_cast<QAction *>(sender());
+    auto mode = static_cast<GB_color_correction_mode_t>(action->data().toInt());
+    this->instance->set_color_correction_mode(mode);
+    this->color_correction_mode = mode;
+
+    for(auto &i : this->color_correction_mode_options) {
         i->setChecked(i->data().toInt() == mode);
     }
 }

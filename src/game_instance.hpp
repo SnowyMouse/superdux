@@ -409,6 +409,13 @@ public: // all public functions assume the mutex is not locked
      * Clear the break and trace results
      */
     void clear_break_and_trace_results() noexcept;
+
+    /**
+     * Set the color correction mode
+     *
+     * @param mode mode to set to
+     */
+    void set_color_correction_mode(GB_color_correction_mode_t mode) noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
