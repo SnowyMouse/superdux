@@ -246,7 +246,74 @@ GameWindow::GameWindow() {
     
     this->recent_roms_menu = file_menu->addMenu("Recent ROMs");
     this->update_recent_roms_list();
-    
+
+    // Save states
+    this->save_state_menu = file_menu->addMenu("Save States");
+    std::vector<QMenu *> save_state_menus(10);
+
+    auto *revert_save_state = this->save_state_menu->addAction("Revert Load State");
+    connect(revert_save_state, &QAction::triggered, this, &GameWindow::action_revert_save_state);
+    revert_save_state->setShortcut(static_cast<int>(Qt::CTRL) + Qt::Key_Minus);
+    auto *unrevert_save_state = this->save_state_menu->addAction("Unrevert Load State");
+    connect(unrevert_save_state, &QAction::triggered, this, &GameWindow::action_unrevert_save_state);
+    unrevert_save_state->setShortcut(static_cast<int>(Qt::CTRL) + Qt::Key_Equal);
+
+    this->save_state_menu->addSeparator();
+
+    for(int i = 0; i < 10; i++) {
+        char m[256];
+        std::snprintf(m, sizeof(m), "Save State #%i", i);
+        save_state_menus[i] = this->save_state_menu->addMenu(m);
+
+        int base_key;
+        switch(i) {
+            case 0:
+                base_key = Qt::Key_0;
+                break;
+            case 1:
+                base_key = Qt::Key_1;
+                break;
+            case 2:
+                base_key = Qt::Key_2;
+                break;
+            case 3:
+                base_key = Qt::Key_3;
+                break;
+            case 4:
+                base_key = Qt::Key_4;
+                break;
+            case 5:
+                base_key = Qt::Key_5;
+                break;
+            case 6:
+                base_key = Qt::Key_6;
+                break;
+            case 7:
+                base_key = Qt::Key_7;
+                break;
+            case 8:
+                base_key = Qt::Key_8;
+                break;
+            case 9:
+                base_key = Qt::Key_9;
+                break;
+            default:
+                std::terminate();
+        }
+
+        auto *save = save_state_menus[i]->addAction("Save");
+        save->setShortcut(static_cast<int>(Qt::CTRL) + base_key);
+        connect(save, &QAction::triggered, this, &GameWindow::action_create_save_state);
+        save->setData(i);
+        auto *load = save_state_menus[i]->addAction("Load");
+        load->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::SHIFT) + base_key);
+        connect(load, &QAction::triggered, this, &GameWindow::action_load_save_state);
+        load->setData(i);
+    }
+    this->save_state_menu->addSeparator();
+    auto *import = this->save_state_menu->addAction("Import...");
+    connect(import, &QAction::triggered, this, &GameWindow::action_import_save_state);
+
     auto *save = file_menu->addAction("Save SRAM to Disk");
     save->setShortcut(QKeySequence::Save);
     save->setIcon(GET_ICON("document-save"));
@@ -422,20 +489,23 @@ GameWindow::GameWindow() {
     auto *emulation_menu = bar->addMenu("Emulation");
     connect(emulation_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(emulation_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
-    
-    this->reset_rom_action = emulation_menu->addAction("Reset");
-    connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
-    this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
-    this->reset_rom_action->setEnabled(false);
-    
-    emulation_menu->addSeparator();
-    
+
     // Pause options
     this->pause_action = emulation_menu->addAction("Pause");
     connect(this->pause_action, &QAction::triggered, this, &GameWindow::action_toggle_pause);
     this->pause_action->setIcon(GET_ICON("media-playback-pause"));
     this->pause_action->setCheckable(true);
     this->pause_action->setChecked(false);
+    
+    // Reset
+    this->reset_rom_action = emulation_menu->addAction("Reset");
+    connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
+    this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
+    this->reset_rom_action->setEnabled(false);
+
+    emulation_menu->addSeparator();
+
+
     
     // Video menu
     auto *view_menu = bar->addMenu("View");
@@ -769,6 +839,7 @@ void GameWindow::action_toggle_pause() noexcept {
 
 void GameWindow::action_open_rom() noexcept {
     QFileDialog qfd;
+    qfd.setWindowTitle("Select a Game Boy ROM");
     qfd.setNameFilters(QStringList { "Game Boy ROM (*.gb)", "Game Boy Color ROM (*.gbc)", "ISX Binary (*.isx)" });
     
     if(qfd.exec() == QDialog::DialogCode::Accepted) {
@@ -1078,7 +1149,137 @@ void GameWindow::action_set_color_correction_mode() noexcept {
     }
 }
 
+std::filesystem::path GameWindow::get_save_state_path(int index) const {
+    char extension[64];
+    std::snprintf(extension, sizeof(extension), ".s%i", index); // use SameBoy's convention (.s0, .s1, etc.)
+    return std::filesystem::path(this->save_path).replace_extension(extension);
+}
+
+void GameWindow::action_create_save_state() {
+    auto save_state = qobject_cast<QAction *>(sender())->data().toInt();
+    auto path = this->get_save_state_path(save_state);
+
+    // Attempt to save
+    if(this->instance->create_save_state(path)) {
+        char msg[256];
+        std::snprintf(msg, sizeof(msg), "Created save state #%i", save_state);
+        this->show_status_text(msg);
+    }
+    else {
+        char err[256];
+        std::snprintf(err, sizeof(err), "Failed to create save state #%i", save_state);
+        this->show_status_text(err);
+    }
+}
+
+bool GameWindow::load_save_state(const std::filesystem::path &path) {
+    // Back up the save state in case this was done by mistake
+    auto backup = this->instance->create_save_state();
+    if(this->instance->load_save_state(path)) {
+        // Push the save state into the buffer
+        this->next_save_state = this->next_save_state + 1;
+        this->save_states.resize(this->next_save_state);
+        this->save_states[this->next_save_state - 1] = backup;
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+void GameWindow::action_load_save_state() {
+    auto save_state = qobject_cast<QAction *>(sender())->data().toInt();
+    auto path = this->get_save_state_path(save_state);
+    if(!std::filesystem::is_regular_file(path)) {
+        char err[256];
+        std::snprintf(err, sizeof(err), "Save state #%i does not exist", save_state);
+        this->show_status_text(err);
+        return;
+    }
+
+    // Attempt to load
+    if(this->load_save_state(path)) {
+        char msg[256];
+        std::snprintf(msg, sizeof(msg), "Loaded save state #%i", save_state);
+        this->show_status_text(msg);
+    }
+    else {
+        char err[256];
+        std::snprintf(err, sizeof(err), "Failed to load save state #%i", save_state);
+        this->show_status_text(err);
+    }
+}
+
+void GameWindow::action_import_save_state() {
+    QFileDialog qfd;
+    qfd.setWindowTitle("Import a Save State");
+
+    if(qfd.exec() != QDialog::DialogCode::Accepted) {
+        return;
+    }
+
+    // Maybe attempt to load
+    auto path = std::filesystem::path(qfd.selectedFiles().at(0).toStdString());
+    if(this->load_save_state(path)) {
+        this->show_status_text("Loaded imported save state");
+    }
+    else {
+        this->show_status_text("Failed to load imported save state");
+    }
+}
+
 void GameWindow::action_show_advanced_model_options() noexcept {
     EditAdvancedGameBoyModelDialog dialog(this);
     dialog.exec();
+}
+
+void GameWindow::action_revert_save_state() {
+    if(this->next_save_state == 0) {
+        this->show_status_text("No save state to revert");
+        return;
+    }
+
+    // Try to load the last save state
+    auto &state = this->save_states[this->next_save_state - 1];
+    auto backup = this->instance->create_save_state();
+    if(this->instance->load_save_state(state)) {
+        char m[256];
+        std::snprintf(m, sizeof(m), "Loaded temp save state %zu / %zu", this->next_save_state, this->save_states.size());
+        this->show_status_text(m);
+        this->next_save_state--;
+
+        // Back up save state if we want to un-revert
+        this->save_states[this->next_save_state] = backup;
+    }
+    else {
+        char m[256];
+        std::snprintf(m, sizeof(m), "Failed to load temp state %zu / %zu", this->next_save_state, this->save_states.size());
+        this->show_status_text(m);
+    }
+}
+
+void GameWindow::action_unrevert_save_state() {
+    if(this->next_save_state == this->save_states.size()) {
+        this->show_status_text("No save state to unrevert");
+        return;
+    }
+
+    // Load the next save state
+    auto &state = this->save_states[this->next_save_state];
+    auto backup = this->instance->create_save_state();
+    if(this->instance->load_save_state(state)) {
+        // Back up save state if we want to un-un-revert
+        this->save_states[this->next_save_state] = backup;
+        this->next_save_state++;
+
+        char m[256];
+        std::snprintf(m, sizeof(m), "Undid temp save state %zu / %zu", this->next_save_state, this->save_states.size());
+        this->show_status_text(m);
+
+    }
+    else {
+        char m[256];
+        std::snprintf(m, sizeof(m), "Failed to undo temp save state %zu / %zu", this->next_save_state, this->save_states.size());
+        this->show_status_text(m);
+    }
 }

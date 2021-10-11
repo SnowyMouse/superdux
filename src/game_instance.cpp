@@ -844,3 +844,18 @@ void GameInstance::remove_all_breakpoints() noexcept {
 }
 
 void GameInstance::set_color_correction_mode(GB_color_correction_mode_t mode) noexcept MAKE_SETTER(GB_set_color_correction_mode(&this->gameboy, mode))
+
+
+bool GameInstance::create_save_state(const std::filesystem::path &path) noexcept MAKE_GETTER(GB_save_state(&this->gameboy, path.string().c_str()) == 0)
+
+std::vector<std::uint8_t> GameInstance::create_save_state() {
+    this->mutex.lock();
+    std::vector<std::uint8_t> data(GB_get_save_state_size(&this->gameboy));
+    GB_save_state_to_buffer(&this->gameboy, data.data());
+    this->mutex.unlock();
+    return data;
+}
+
+bool GameInstance::load_save_state(const std::filesystem::path &path) noexcept MAKE_GETTER(GB_load_state(&this->gameboy, path.string().c_str()) == 0)
+
+bool GameInstance::load_save_state(const std::vector<std::uint8_t> &state) noexcept MAKE_GETTER(GB_load_state_from_buffer(&this->gameboy, state.data(), state.size()) == 0)

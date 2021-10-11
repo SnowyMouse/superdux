@@ -138,6 +138,14 @@ private:
     bool sgb_crop_border = false, sgb2_crop_border = false;
     bool use_crop_border_for_type(GameBoyType type) const noexcept;
 
+    // Save states
+    std::vector<QAction *> create_save_state_actions;
+    std::vector<QAction *> load_save_state_actions;
+    std::vector<std::vector<std::uint8_t>> save_states;
+    std::size_t next_save_state = 0;
+    bool load_save_state(const std::filesystem::path &path);
+    std::filesystem::path get_save_state_path(int index) const;
+    QMenu *save_state_menu;
     
     void reload_devices();
     
@@ -184,6 +192,13 @@ private slots:
     void action_set_rtc_mode() noexcept;
     void action_set_color_correction_mode() noexcept;
     void action_show_advanced_model_options() noexcept;
+
+    void action_create_save_state();
+    void action_load_save_state();
+    void action_import_save_state();
+
+    void action_revert_save_state();
+    void action_unrevert_save_state();
     
     void action_toggle_audio() noexcept;
     void action_set_volume();

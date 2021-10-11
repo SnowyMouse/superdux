@@ -416,6 +416,37 @@ public: // all public functions assume the mutex is not locked
      * @param mode mode to set to
      */
     void set_color_correction_mode(GB_color_correction_mode_t mode) noexcept;
+
+    /**
+     * Create a save state at the given path
+     *
+     * @param path path to save to
+     * @return     true if successful
+     */
+    bool create_save_state(const std::filesystem::path &path) noexcept;
+
+    /**
+     * Create a save state with the given data
+     *
+     * @return     save state
+     */
+    std::vector<std::uint8_t> create_save_state();
+
+    /**
+     * Load a save state at the given path
+     *
+     * @param path path to load from
+     * @return     true if successful
+     */
+    bool load_save_state(const std::filesystem::path &path) noexcept;
+
+    /**
+     * Load a save state at the given path
+     *
+     * @param state save state
+     * @return      true if successful
+     */
+    bool load_save_state(const std::vector<std::uint8_t> &state) noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
