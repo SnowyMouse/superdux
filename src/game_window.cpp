@@ -36,6 +36,7 @@
 #define SETTINGS_BUFFER_MODE "buffer_mode"
 #define SETTINGS_RTC_MODE "rtc_mode"
 #define SETTINGS_COLOR_CORRECTION_MODE "color_correction_mode"
+#define SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH "temporary_save_buffer_length"
 
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
 #define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
@@ -214,6 +215,8 @@ GameWindow::GameWindow() {
     this->gba_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GBA_REVISION, this->gba_rev).toInt());
     this->sgb_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_REVISION, this->sgb_rev).toInt());
     this->sgb2_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_REVISION, this->sgb2_rev).toInt());
+
+    this->temporary_save_state_buffer_length = settings.value(SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH, this->temporary_save_state_buffer_length).toUInt();
 
     this->sgb_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_CROP_BORDER, this->sgb_crop_border).toBool());
     this->sgb2_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_CROP_Border, this->sgb2_crop_border).toBool());
@@ -1006,6 +1009,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode());
     settings.setValue(SETTINGS_RTC_MODE, this->rtc_mode);
     settings.setValue(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode);
+    settings.setValue(SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH, this->temporary_save_state_buffer_length);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
@@ -1176,10 +1180,20 @@ bool GameWindow::load_save_state(const std::filesystem::path &path) {
     // Back up the save state in case this was done by mistake
     auto backup = this->instance->create_save_state();
     if(this->instance->load_save_state(path)) {
+        // If we hit the maximum save states, remove the first state before adding a new state (and don't increment the counter)
+        if(this->next_temporary_save_state + 1 > this->temporary_save_state_buffer_length) {
+            this->temporary_save_states.erase(this->temporary_save_states.begin());
+        }
+
+        // Otherwise, increment the counter
+        else {
+            this->next_temporary_save_state++;
+        }
+
         // Push the save state into the buffer
-        this->next_save_state = this->next_save_state + 1;
-        this->save_states.resize(this->next_save_state);
-        this->save_states[this->next_save_state - 1] = backup;
+        this->temporary_save_states.resize(this->next_temporary_save_state);
+        this->temporary_save_states[this->next_temporary_save_state - 1] = backup;
+
         return true;
     }
     else {
@@ -1234,52 +1248,52 @@ void GameWindow::action_show_advanced_model_options() noexcept {
 }
 
 void GameWindow::action_revert_save_state() {
-    if(this->next_save_state == 0) {
+    if(this->next_temporary_save_state == 0) {
         this->show_status_text("No save state to revert");
         return;
     }
 
     // Try to load the last save state
-    auto &state = this->save_states[this->next_save_state - 1];
+    auto &state = this->temporary_save_states[this->next_temporary_save_state - 1];
     auto backup = this->instance->create_save_state();
     if(this->instance->load_save_state(state)) {
         char m[256];
-        std::snprintf(m, sizeof(m), "Loaded temp save state %zu / %zu", this->next_save_state, this->save_states.size());
+        std::snprintf(m, sizeof(m), "Loaded temp save state %u / %zu", this->next_temporary_save_state, this->temporary_save_states.size());
         this->show_status_text(m);
-        this->next_save_state--;
+        this->next_temporary_save_state--;
 
         // Back up save state if we want to un-revert
-        this->save_states[this->next_save_state] = backup;
+        this->temporary_save_states[this->next_temporary_save_state] = backup;
     }
     else {
         char m[256];
-        std::snprintf(m, sizeof(m), "Failed to load temp state %zu / %zu", this->next_save_state, this->save_states.size());
+        std::snprintf(m, sizeof(m), "Failed to load temp state %u / %zu", this->next_temporary_save_state, this->temporary_save_states.size());
         this->show_status_text(m);
     }
 }
 
 void GameWindow::action_unrevert_save_state() {
-    if(this->next_save_state == this->save_states.size()) {
+    if(this->next_temporary_save_state == this->temporary_save_states.size()) {
         this->show_status_text("No save state to unrevert");
         return;
     }
 
     // Load the next save state
-    auto &state = this->save_states[this->next_save_state];
+    auto &state = this->temporary_save_states[this->next_temporary_save_state];
     auto backup = this->instance->create_save_state();
     if(this->instance->load_save_state(state)) {
         // Back up save state if we want to un-un-revert
-        this->save_states[this->next_save_state] = backup;
-        this->next_save_state++;
+        this->temporary_save_states[this->next_temporary_save_state] = backup;
+        this->next_temporary_save_state++;
 
         char m[256];
-        std::snprintf(m, sizeof(m), "Undid temp save state %zu / %zu", this->next_save_state, this->save_states.size());
+        std::snprintf(m, sizeof(m), "Undid temp save state %u / %zu", this->next_temporary_save_state, this->temporary_save_states.size());
         this->show_status_text(m);
 
     }
     else {
         char m[256];
-        std::snprintf(m, sizeof(m), "Failed to undo temp save state %zu / %zu", this->next_save_state, this->save_states.size());
+        std::snprintf(m, sizeof(m), "Failed to undo temp save state %u / %zu", this->next_temporary_save_state, this->temporary_save_states.size());
         this->show_status_text(m);
     }
 }

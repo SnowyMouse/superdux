@@ -141,8 +141,9 @@ private:
     // Save states
     std::vector<QAction *> create_save_state_actions;
     std::vector<QAction *> load_save_state_actions;
-    std::vector<std::vector<std::uint8_t>> save_states;
-    std::size_t next_save_state = 0;
+    std::vector<std::vector<std::uint8_t>> temporary_save_states;
+    unsigned int next_temporary_save_state = 0;
+    unsigned int temporary_save_state_buffer_length = 10;
     bool load_save_state(const std::filesystem::path &path);
     std::filesystem::path get_save_state_path(int index) const;
     QMenu *save_state_menu;
