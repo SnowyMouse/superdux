@@ -21,7 +21,11 @@ Build requirements:
    `SAMEBOY_SOURCE_DIR` setting in the CMake cache like this:
    
    `$ cmake <arguments> -DSAMEBOY_SOURCE_DIR=/path/to/sameboy/source`
+   
+   To clone sameboy-dx with the SameBoy repo, run this command:
+   
+   `$ git clone https://github.com/SnowyMouse/sameboy-dx.git --recursive`
 
-   You can also update the existing submodule manually with this:
+   You can update the existing submodule manually with this:
    
    `$ git submodule update --remote`

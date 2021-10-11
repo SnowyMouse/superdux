@@ -41,4 +41,8 @@ if(CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
     )
 endif()
 
+target_compile_definitions(sameboy-dx
+    PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
+)
+
 target_link_libraries(sameboy-dx sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets Qt5::Gamepad)

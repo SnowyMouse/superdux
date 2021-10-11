@@ -3,6 +3,15 @@ set(SAMEBOY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/SameBoy" CACHE STRING "Path 
 file(GLOB_RECURSE CORE_FILES
     "${SAMEBOY_SOURCE_DIR}/Core/*.c"
 )
+list(SORT CORE_FILES)
+
+# Hash every .c file in SameBoy
+set(CF_HASHES "")
+foreach(CF ${CORE_FILES})
+    file(SHA256 "${CF}" CF_HASH)
+    set(CF_HASHES "${CF_HASHES}${CF_HASH}")
+endforeach()
+string(SHA256 SAMEBOY_SOURCE_HASH "${CF_HASHES}")
 
 add_library(sameboy-core STATIC
     ${CORE_FILES}
@@ -36,6 +45,7 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12"
     COMMAND pb12 < "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp" > "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12"
     DEPENDS pb12 "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp"
 )
+
 set(BOOT_ROMS_BIN)
 set(BOOT_ROMS_HEADER)
 
