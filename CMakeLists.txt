@@ -8,9 +8,9 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(SDL2)
+find_package(SDL2 REQUIRED)
 find_package(Qt5 COMPONENTS Widgets Gamepad REQUIRED)
-find_package(Python3 COMPONENTS Interpreter)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 include("sameboy.cmake")
 
