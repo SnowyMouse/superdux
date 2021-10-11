@@ -14,9 +14,16 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 include("sameboy.cmake")
 
-file(GLOB_RECURSE SUPER_FILES
-    "src/*.cpp"
-    "src/*.c"
+set(SDX_FILES
+    src/edit_advanced_game_boy_model_dialog.cpp
+    src/edit_controls_dialog.cpp
+    src/game_debugger.cpp
+    src/game_disassembler.cpp
+    src/game_instance.cpp
+    src/game_window.cpp
+    src/gb_proxy.c
+    src/input_device.cpp
+    src/main.cpp
 )
 
 set(CMAKE_AUTOMOC ON)
@@ -25,7 +32,7 @@ set(CMAKE_AUTOUIC ON)
 
 # And lastly our executable
 add_executable(sameboy-dx
-    ${SUPER_FILES}
+    ${SDX_FILES}
     ${BOOT_ROMS_HEADER}
 )
 
