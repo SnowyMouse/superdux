@@ -345,7 +345,7 @@ std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_addr
         auto &instruction = returned_instructions.emplace_back();
         
         if(l[0] == ' ') {
-            instruction.address = l.midRef(4, 4).toUInt(nullptr, 16);
+            instruction.address = l.mid(4, 4).toUInt(nullptr, 16);
             instruction.current_location = l[0] == '-';
             
             int semicolon_offset = l.indexOf(';', 8);
