@@ -147,7 +147,14 @@ void EditControlsDialog::keyPressEvent(QKeyEvent *event) {
 }
 
 void EditControlsDialog::regenerate_button_settings(int) {
-    // Get the device first
+    // Clear the buttons
+    for(auto &i : this->settings) {
+        for(auto &j : i) {
+            j->clear();
+        }
+    }
+
+    // Get the device next
     this->device = {};
     auto all_devices = this->game_window->get_all_devices();
     for(auto &device_maybe : all_devices) {
