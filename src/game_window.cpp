@@ -1192,6 +1192,30 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
         case InputDevice::Input_Right:
             this->instance->set_button_state(GB_key_t::GB_KEY_RIGHT, boolean_input);
             break;
+        case InputDevice::Input_RapidA:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_A, boolean_input);
+            break;
+        case InputDevice::Input_RapidB:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_B, boolean_input);
+            break;
+        case InputDevice::Input_RapidStart:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_START, boolean_input);
+            break;
+        case InputDevice::Input_RapidSelect:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_SELECT, boolean_input);
+            break;
+        case InputDevice::Input_RapidUp:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_UP, boolean_input);
+            break;
+        case InputDevice::Input_RapidDown:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_DOWN, boolean_input);
+            break;
+        case InputDevice::Input_RapidLeft:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_LEFT, boolean_input);
+            break;
+        case InputDevice::Input_RapidRight:
+            this->instance->set_rapid_button_state(GB_key_t::GB_KEY_RIGHT, boolean_input);
+            break;
         case InputDevice::Input_Turbo:
             if(input > 0.1) {
                 float max_turbo = 8.0;

@@ -96,6 +96,15 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     instance->previous_buffer = instance->work_buffer;
     instance->work_buffer = (instance->work_buffer + 1) % (sizeof(instance->pixel_buffer) / sizeof(instance->pixel_buffer[0]));
     instance->assign_work_buffer();
+
+    // Handle rapid fire buttons
+    instance->rapid_button_frames = (instance->rapid_button_frames + 1) % instance->rapid_button_switch_frames;
+    if(instance->rapid_button_frames == 0) { // we hit the nth frame, so switch
+        instance->rapid_button_state = !instance->rapid_button_state;
+        for(auto i : instance->rapid_buttons) {
+            GB_set_key_state(&instance->gameboy, i, instance->rapid_button_state);
+        }
+    }
     
     // Set this since we hit vblank
     instance->vblank_hit = true;
@@ -861,3 +870,23 @@ std::vector<std::uint8_t> GameInstance::create_save_state() {
 bool GameInstance::load_save_state(const std::filesystem::path &path) noexcept MAKE_GETTER(GB_load_state(&this->gameboy, path.string().c_str()) == 0)
 
 bool GameInstance::load_save_state(const std::vector<std::uint8_t> &state) noexcept MAKE_GETTER(GB_load_state_from_buffer(&this->gameboy, state.data(), state.size()) == 0)
+
+void GameInstance::set_rapid_button_state(GB_key_t button, bool pressed) {
+    this->mutex.lock();
+    std::size_t rb_len = this->rapid_buttons.size();
+    bool found = false;
+    for(std::size_t q = 0; q < rb_len; q++) {
+        if(this->rapid_buttons[q] == button) {
+            found = true;
+            if(!pressed) {
+                this->rapid_buttons.erase(this->rapid_buttons.begin() + q);
+            }
+            break;
+        }
+    }
+    if(!found && pressed) {
+        this->rapid_buttons.emplace_back(button);
+    }
+    GB_set_key_state(&this->gameboy, button, pressed ? this->rapid_button_state : false); // unset if we're releasing the button. otherwise set to current rapid button state
+    this->mutex.unlock();
+}

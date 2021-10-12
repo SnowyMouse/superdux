@@ -214,14 +214,22 @@ public: // all public functions assume the mutex is not locked
      * @return current pixel buffer setting
      */
     PixelBufferMode get_pixel_buffering_mode() noexcept;
-    
+
     /**
      * Set the button state of the Game Boy instance
-     * 
+     *
      * @param button  button to set
      * @param pressed state to set to
      */
     void set_button_state(GB_key_t button, bool pressed);
+
+    /**
+     * Set the rapid fire button state of the Game Boy instance
+     *
+     * @param button  button to set
+     * @param pressed state to set to
+     */
+    void set_rapid_button_state(GB_key_t button, bool pressed);
     
     /**
      * Get whether or not the instance is paused
@@ -592,6 +600,12 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Get the backtrace without a mutex
     std::vector<std::uint16_t> get_breakpoints_without_mutex();
+
+    // Rapid buttons
+    std::vector<GB_key_t> rapid_buttons;
+    bool rapid_button_state = false;
+    std::uint8_t rapid_button_frames = 0;
+    std::uint8_t rapid_button_switch_frames = 4;
 };
 
 #endif

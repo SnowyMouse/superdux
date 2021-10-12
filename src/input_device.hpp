@@ -22,6 +22,14 @@ public:
                           DO_THIS(Down) \
                           DO_THIS(Left) \
                           DO_THIS(Right) \
+                          DO_THIS(RapidA) \
+                          DO_THIS(RapidB) \
+                          DO_THIS(RapidStart) \
+                          DO_THIS(RapidSelect) \
+                          DO_THIS(RapidUp) \
+                          DO_THIS(RapidDown) \
+                          DO_THIS(RapidLeft) \
+                          DO_THIS(RapidRight) \
                           DO_THIS(Turbo) \
                           DO_THIS(Slowmo) \
                           DO_THIS(VolumeUp) \
