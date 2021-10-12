@@ -819,6 +819,11 @@ void GameWindow::game_loop() {
             // If we hit ctrl-c, close the window (saves)
             case SDL_EventType::SDL_QUIT:
                 this->close();
+
+                // If the window wasn't closed, warn
+                if(this->isVisible()) {
+                    std::fprintf(stderr, "Can't close the main window. Finish what you're doing, first!\n");
+                }
                 break;
 
             // Audio hotplugging
