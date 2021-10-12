@@ -201,7 +201,7 @@ void InputDeviceKeyboard::load_sane_defaults() {
     this->settings[Input_Right] = {Qt::Key_Right};
     this->settings[Input_Up] = {Qt::Key_Up};
     this->settings[Input_Down] = {Qt::Key_Down};
-    this->settings[Input_Turbo] = {Qt::Key_C};
+    this->settings[Input_Turbo] = {Qt::Key_Space};
 }
 
 void InputDeviceGamepad::load_sane_defaults() {
