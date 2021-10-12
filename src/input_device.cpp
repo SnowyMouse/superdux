@@ -1,4 +1,3 @@
-#include <QGamepad>
 #include <QSettings>
 
 #include "input_device.hpp"
@@ -78,37 +77,34 @@ void InputDeviceKeyboard::handle_key_event(QKeyEvent *event, bool pressed) {
     this->emit_input(static_cast<std::uint32_t>(event->key()), pressed ? 1.0 : 0.0);
 }
 
-static std::pair<std::uint32_t, const char *> input_map[] = {
-    { InputDeviceGamepad::Controller_Input_A, "A" },
-    { InputDeviceGamepad::Controller_Input_B, "B" },
-    { InputDeviceGamepad::Controller_Input_Select, "Select" },
-    { InputDeviceGamepad::Controller_Input_Start, "Start" },
-    { InputDeviceGamepad::Controller_Input_Up, "Up" },
-    { InputDeviceGamepad::Controller_Input_Down, "Down" },
-    { InputDeviceGamepad::Controller_Input_Left, "Left" },
-    { InputDeviceGamepad::Controller_Input_Right, "Right" },
-    { InputDeviceGamepad::Controller_Input_LeftX, "LeftX+" },
-    { ~InputDeviceGamepad::Controller_Input_LeftX, "LeftX-" },
-    { InputDeviceGamepad::Controller_Input_LeftY, "LeftY+" },
-    { ~InputDeviceGamepad::Controller_Input_LeftY, "LeftY-" },
-    { InputDeviceGamepad::Controller_Input_RightX, "RightX+" },
-    { ~InputDeviceGamepad::Controller_Input_RightX, "RightY-" },
-    { InputDeviceGamepad::Controller_Input_RightY, "RightY+" },
-    { ~InputDeviceGamepad::Controller_Input_RightY, "RightY-" },
-    { InputDeviceGamepad::Controller_Input_Center, "Center" },
-    { InputDeviceGamepad::Controller_Input_Guide, "Guide" },
-    { InputDeviceGamepad::Controller_Input_L1, "L1" },
-    { InputDeviceGamepad::Controller_Input_L2, "L2+" },
-    { ~InputDeviceGamepad::Controller_Input_L2, "L2-" },
-    { InputDeviceGamepad::Controller_Input_L3, "L3" },
-    { InputDeviceGamepad::Controller_Input_R1, "R1" },
-    { InputDeviceGamepad::Controller_Input_R2, "R2+" },
-    { ~InputDeviceGamepad::Controller_Input_R2, "R2-" },
-    { InputDeviceGamepad::Controller_Input_R3, "R3" },
-    { InputDeviceGamepad::Controller_Input_X, "X" },
-    { InputDeviceGamepad::Controller_Input_Y, "Y" }
-};
+static constexpr const std::uint32_t CONTROLLER_BUTTON_MASK = 0x0000FFFF;
+static constexpr const std::uint32_t CONTROLLER_BUTTON_SHIFT = 0;
 
+static constexpr const char CONTROLLER_NEGATIVE_CHAR = '-';
+static constexpr const char CONTROLLER_POSITIVE_CHAR = '+';
+static constexpr const std::uint32_t CONTROLLER_NEGATIVE_MASK = 0x80000000;
+static constexpr const std::uint32_t CONTROLLER_AXIS_MASK = 0xFF000000 ^ CONTROLLER_NEGATIVE_MASK;
+static constexpr const std::uint32_t CONTROLLER_AXIS_SHIFT = 24;
+
+static constexpr std::uint32_t controller_input_to_key(SDL_GameControllerButton axis) noexcept {
+    return (static_cast<std::uint32_t>(axis + 1) << CONTROLLER_BUTTON_SHIFT) & CONTROLLER_BUTTON_MASK;
+}
+
+static constexpr std::uint32_t controller_input_to_key(SDL_GameControllerAxis button) noexcept {
+    return (static_cast<std::uint32_t>(button + 1) << CONTROLLER_AXIS_SHIFT) & CONTROLLER_AXIS_MASK;
+}
+
+static constexpr std::variant<SDL_GameControllerButton, SDL_GameControllerAxis> controller_key_to_input(std::uint32_t what) noexcept {
+    if(what & CONTROLLER_BUTTON_MASK) {
+        return static_cast<SDL_GameControllerButton>(((what & CONTROLLER_BUTTON_MASK) >> CONTROLLER_BUTTON_SHIFT) - 1);
+    }
+    else if(what & CONTROLLER_AXIS_MASK) {
+        return static_cast<SDL_GameControllerAxis>(((what & CONTROLLER_AXIS_MASK) >> CONTROLLER_AXIS_SHIFT) - 1);
+    }
+    else {
+        std::terminate();
+    }
+}
 
 
 std::optional<QString> InputDeviceKeyboard::control_to_string(std::uint32_t what) {
@@ -124,14 +120,6 @@ std::optional<QString> InputDeviceKeyboard::control_to_string(std::uint32_t what
     auto s = QKeySequence(what);
     if(!s.isEmpty()) {
         return s.toString();
-    }
-    return std::nullopt;
-}
-std::optional<QString> InputDeviceGamepad::control_to_string(std::uint32_t what) {
-    for(auto &i : input_map) {
-        if(what == i.first) {
-            return i.second;
-        }
     }
     return std::nullopt;
 }
@@ -154,32 +142,54 @@ std::optional<std::uint32_t> InputDeviceKeyboard::control_from_string(const QStr
         return std::nullopt;
     }
 }
+
+std::optional<QString> InputDeviceGamepad::control_to_string(std::uint32_t what) {
+    auto input = controller_key_to_input(what);
+
+    auto *button = std::get_if<SDL_GameControllerButton>(&input);
+    auto *axis = std::get_if<SDL_GameControllerAxis>(&input);
+
+    if(button) {
+        return SDL_GameControllerGetStringForButton(*button);
+    }
+    else if(axis) {
+        return QString(SDL_GameControllerGetStringForAxis(*axis)) + ((what & CONTROLLER_NEGATIVE_MASK) ? CONTROLLER_NEGATIVE_CHAR : CONTROLLER_POSITIVE_CHAR);
+    }
+    else {
+        return std::nullopt;
+    }
+}
 std::optional<std::uint32_t> InputDeviceGamepad::control_from_string(const QString &what) {
-    for(auto &i : input_map) {
-        if(what == i.second) {
-            return i.first;
+    if(what.endsWith(CONTROLLER_POSITIVE_CHAR) || what.endsWith(CONTROLLER_NEGATIVE_CHAR)) {
+        auto axis = SDL_GameControllerGetAxisFromString(what.mid(0, what.length() - 1).toUtf8().data());
+        if(axis != SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_INVALID) {
+            return controller_input_to_key(axis);
         }
     }
-    return std::nullopt;
-    
+
+    auto button = SDL_GameControllerGetButtonFromString(what.toUtf8().data());
+    if(button != SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_INVALID) {
+        return controller_input_to_key(button);
+    }
+    else {
+        return std::nullopt;
+    }
+}
+
+QString InputDeviceGamepad::name() const noexcept {
+    return SDL_GameControllerName(this->gamepad);
 }
 
 InputDeviceKeyboard::~InputDeviceKeyboard() {}
-InputDeviceGamepad::~InputDeviceGamepad() {}
+InputDeviceGamepad::~InputDeviceGamepad() {
 
-void InputDeviceGamepad::handle_input(ControllerInputType type, double value) {
-    // Negate if negative
-    std::uint32_t t;
-    if(value < 0.0) {
-        t = static_cast<std::uint32_t>(~type);
-        value *= -1.0;
-    }
-    else {
-        t = static_cast<std::uint32_t>(type);
-    }
-    
-    // Done
-    this->emit_input(t, value);
+}
+
+void InputDeviceGamepad::handle_input(SDL_GameControllerButton type, bool value) {
+    this->emit_input(controller_input_to_key(type), value ? 1.0 : 0.0);
+}
+void InputDeviceGamepad::handle_input(SDL_GameControllerAxis type, double value) {
+    this->emit_input(controller_input_to_key(type) | (value < 0.0 ? CONTROLLER_NEGATIVE_MASK : 0), std::fabs(value));
 }
 
 void InputDeviceKeyboard::load_sane_defaults() {
@@ -195,13 +205,18 @@ void InputDeviceKeyboard::load_sane_defaults() {
 }
 
 void InputDeviceGamepad::load_sane_defaults() {
-    this->settings[Input_A] = {Controller_Input_A};
-    this->settings[Input_B] = {Controller_Input_B};
-    this->settings[Input_Start] = {Controller_Input_Start};
-    this->settings[Input_Select] = {Controller_Input_Select};
-    this->settings[Input_Left] = {Controller_Input_Left};
-    this->settings[Input_Right] = {Controller_Input_Right};
-    this->settings[Input_Up] = {Controller_Input_Up};
-    this->settings[Input_Down] = {Controller_Input_Down};
-    this->settings[Input_Turbo] = {Controller_Input_R2};
+    this->settings[Input_A] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_A)};
+    this->settings[Input_B] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_B)};
+    this->settings[Input_Start] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_START)};
+    this->settings[Input_Select] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_BACK)};
+    this->settings[Input_Left] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_LEFT)};
+    this->settings[Input_Right] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_RIGHT)};
+    this->settings[Input_Up] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_UP)};
+    this->settings[Input_Down] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_DOWN)};
+    this->settings[Input_Turbo] = {controller_input_to_key(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT)};
+    this->settings[Input_Slowmo] = {controller_input_to_key(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERLEFT)};
+}
+
+InputDeviceGamepad::InputDeviceGamepad(SDL_GameController *gamepad) : gamepad(gamepad) {
+    this->load_settings();
 }

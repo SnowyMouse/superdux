@@ -26,7 +26,7 @@ public:
     EditControlsDialog *dialog;
 };
 
-EditControlsDialog::EditControlsDialog() : QDialog() {
+EditControlsDialog::EditControlsDialog(GameWindow *game_window) : QDialog(), game_window(game_window) {
     this->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Minimum);
     this->setWindowTitle("Control Settings");
     
@@ -84,7 +84,7 @@ void EditControlsDialog::regenerate_device_list() {
     
     this->device_box = new QComboBox(device_picker);
     this->device_box->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Minimum);
-    auto all_devices = GameWindow::get_all_devices();
+    auto all_devices = this->game_window->get_all_devices();
     for(auto &device : all_devices) {
         this->device_box->addItem(device->name());
     }
@@ -149,7 +149,7 @@ void EditControlsDialog::keyPressEvent(QKeyEvent *event) {
 void EditControlsDialog::regenerate_button_settings(int) {
     // Get the device first
     this->device = {};
-    auto all_devices = GameWindow::get_all_devices();
+    auto all_devices = this->game_window->get_all_devices();
     for(auto &device_maybe : all_devices) {
         if(device_maybe->name() == this->device_box->currentText()) {
             this->device = std::move(device_maybe);

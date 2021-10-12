@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SDL2 REQUIRED)
-find_package(Qt5 COMPONENTS Widgets Gamepad REQUIRED)
+find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 include("sameboy.cmake")
@@ -52,4 +52,4 @@ target_compile_definitions(sameboy-dx
     PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
 )
 
-target_link_libraries(sameboy-dx sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets Qt5::Gamepad)
+target_link_libraries(sameboy-dx sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets)

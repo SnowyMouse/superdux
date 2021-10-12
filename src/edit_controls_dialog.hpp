@@ -10,15 +10,17 @@
 
 #include "input_device.hpp"
 
+class GameWindow;
+
 class EditControlsDialog : public QDialog {
     Q_OBJECT
     
 public:
-    EditControlsDialog();
+    EditControlsDialog(GameWindow *game_window);
     ~EditControlsDialog() override;
     
 private:
-    std::unique_ptr<InputDevice> device;
+    std::shared_ptr<InputDevice> device;
     
     class InputLineEdit;
     
@@ -34,6 +36,8 @@ private:
     void regenerate_device_list();
     void regenerate_button_settings(int);
     void keyPressEvent(QKeyEvent *) override;
+
+    GameWindow *game_window;
 };
 
 #endif

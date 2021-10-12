@@ -26,7 +26,6 @@ extern "C" {
 
 #include "game_instance.hpp"
 
-class QGamepad;
 class GameDebugger;
 class EditAdvancedGameBoyModelDialog;
 
@@ -42,7 +41,7 @@ public:
     void load_rom(const char *rom_path) noexcept;
     
     const QSettings &settings();
-    static std::vector<std::unique_ptr<InputDevice>> get_all_devices();
+    std::vector<std::shared_ptr<InputDevice>> get_all_devices();
     
     ~GameWindow();
     
@@ -110,7 +109,7 @@ private:
     void keyPressEvent(QKeyEvent *) override;
     void keyReleaseEvent(QKeyEvent *) override;
     void handle_keyboard_key(QKeyEvent *event, bool press);
-    std::vector<std::unique_ptr<InputDevice>> devices;
+    std::vector<std::shared_ptr<InputDevice>> devices;
 
     // Revisions
     enum GameBoyType {
@@ -175,6 +174,9 @@ private:
     
     // Used for preventing loading different ROMs while debugging
     void set_loading_other_roms_enabled(bool enabled) noexcept;
+
+    void handle_joypad_event(const SDL_ControllerButtonEvent &event) noexcept;
+    void handle_joypad_event(const SDL_ControllerAxisEvent &event) noexcept;
     
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;

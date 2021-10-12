@@ -10,9 +10,7 @@
 #include <QFontDatabase>
 #include <QFileDialog>
 #include <cstring>
-#include <QGamepad>
 #include <QKeyEvent>
-#include <QGamepadManager>
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
 #include <chrono>
@@ -561,9 +559,8 @@ GameWindow::GameWindow() {
         this->instance->set_audio_enabled(!muted);
         std::printf("(Debug) Sample rate: %u Hz\n", this->instance->get_current_sample_rate());
     }
-    
-    // Detect gamepads changing
-    connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::reload_devices);
+
+    // Reload devices
     this->reload_devices();
     
     // Fire game_loop repeatedly
@@ -800,9 +797,28 @@ void GameWindow::game_loop() {
                 break;
 
             // Controller hotplugging
+            case SDL_EventType::SDL_CONTROLLERDEVICEADDED:
+            case SDL_EventType::SDL_CONTROLLERDEVICEREMOVED:
+                this->reload_devices();
+                break;
+
+            // Controller input
+            case SDL_EventType::SDL_CONTROLLERAXISMOTION:
+                this->handle_joypad_event(event.caxis);
+                break;
+            case SDL_EventType::SDL_CONTROLLERBUTTONDOWN:
+            case SDL_EventType::SDL_CONTROLLERBUTTONUP:
+                this->handle_joypad_event(event.cbutton);
+                break;
+
+            // No.
             case SDL_EventType::SDL_JOYDEVICEADDED:
             case SDL_EventType::SDL_JOYDEVICEREMOVED:
-                this->reload_devices();
+            case SDL_EventType::SDL_JOYAXISMOTION:
+            case SDL_EventType::SDL_JOYBALLMOTION:
+            case SDL_EventType::SDL_JOYHATMOTION:
+            case SDL_EventType::SDL_JOYBUTTONDOWN:
+            case SDL_EventType::SDL_JOYBUTTONUP:
                 break;
 
             // If we didn't handle something, complain
@@ -820,6 +836,28 @@ void GameWindow::game_loop() {
     // Otherwise, we should fire quickly
     else {
         this->game_thread_timer.setInterval(5);
+    }
+}
+
+void GameWindow::handle_joypad_event(const SDL_ControllerButtonEvent &event) noexcept {
+    bool value = event.state == SDL_PRESSED;
+
+    for(auto &i : this->devices) {
+        auto *gp = dynamic_cast<InputDeviceGamepad *>(i.get());
+        if(gp) {
+            gp->handle_input(static_cast<SDL_GameControllerButton>(event.button), value);
+        }
+    }
+}
+
+void GameWindow::handle_joypad_event(const SDL_ControllerAxisEvent &event) noexcept {
+    double value = event.value > 0 ? event.value / 32767.0 : event.value / 32768.0;
+
+    for(auto &i : this->devices) {
+        auto *gp = dynamic_cast<InputDeviceGamepad *>(i.get());
+        if(gp) {
+            gp->handle_input(static_cast<SDL_GameControllerAxis>(event.axis), value);
+        }
     }
 }
 
@@ -1059,25 +1097,26 @@ void GameWindow::closeEvent(QCloseEvent *) {
 }
 
 void GameWindow::action_edit_controls() noexcept {
-    EditControlsDialog d;
+    EditControlsDialog d(this);
     this->disable_input = true;
     d.exec();
     this->disable_input = false;
     this->reload_devices();
 }
 
-std::vector<std::unique_ptr<InputDevice>> GameWindow::get_all_devices() {
-    std::vector<std::unique_ptr<InputDevice>> devices;
-    devices.emplace_back(std::make_unique<InputDeviceKeyboard>());
-    for(auto &i : QGamepadManager::instance()->connectedGamepads()) {
-        devices.emplace_back(std::make_unique<InputDeviceGamepad>(i));
-    }
-    return devices;
+std::vector<std::shared_ptr<InputDevice>> GameWindow::get_all_devices() {
+    return this->devices;
 }
 
 void GameWindow::reload_devices() {
     this->devices.clear();
-    this->devices = this->get_all_devices();
+    devices.emplace_back(std::make_shared<InputDeviceKeyboard>());
+
+    for(int i = 0; i < SDL_NumJoysticks(); i++) {
+        auto *sdl = SDL_GameControllerOpen(i);
+        devices.emplace_back(std::make_shared<InputDeviceGamepad>(sdl));
+    }
+
     print_debug_message("Loading %zu devices\n", this->devices.size());
     for(auto &d : this->devices) {
         connect(d.get(), &InputDevice::input, this, &GameWindow::handle_device_input);
