@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
     
-    SDL_Init(SDL_INIT_AUDIO);
+    SDL_Init(SDL_INIT_AUDIO | SDL_INIT_EVENTS);
     
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName("sameboy-dx");

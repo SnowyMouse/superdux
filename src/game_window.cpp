@@ -785,6 +785,17 @@ void GameWindow::game_loop() {
     this->redraw_pixel_buffer();
     this->debugger_window->refresh_view();
 
+    SDL_Event event;
+    while(SDL_PollEvent(&event)) {
+        switch(event.type) {
+            // If we hit ctrl-c, close the window (saves)
+            case SDL_EventType::SDL_QUIT:
+                this->close();
+                break;
+
+        }
+    }
+
     // If we're paused, we don't need to fire as often since not as much information is being changed
     if(this->instance->is_paused()) {
         this->game_thread_timer.setInterval(50);
