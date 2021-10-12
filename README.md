@@ -7,7 +7,7 @@ Build requirements:
 * CMake
 * Python
 * C11 and C++17 compiler
-* Qt5 with QController (Qt6 lacks QController - will later replace it w/ SDL)
+* Qt5 and/or Qt6 (executable will be placed in qt5/ or qt6/)
 * [SDL] version 2.0.16 or later
 * [SameBoy]\*
     * [RGBDS] (for building SameBoy's boot ROMs)

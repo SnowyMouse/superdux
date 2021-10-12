@@ -9,8 +9,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SDL2 REQUIRED)
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+find_package(Qt5 COMPONENTS Widgets)
+find_package(Qt6 COMPONENTS Widgets)
 
 include("sameboy.cmake")
 
@@ -26,30 +28,57 @@ set(SDX_FILES
     src/main.cpp
 )
 
+option(BUILD_QT5_VERSION "Build the Qt5 version" ${Qt5_FOUND})
+option(BUILD_QT6_VERSION "Build the Qt6 version" ${Qt6_FOUND})
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# And lastly our executable
-add_executable(sameboy-dx
-    ${SDX_FILES}
-    ${BOOT_ROMS_HEADER}
-)
-
-target_include_directories(sameboy-dx
-    PRIVATE "${SAMEBOY_SOURCE_DIR}"
-    PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
-)
-
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
-if(CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
-    target_compile_definitions(sameboy-dx
-        PRIVATE DEBUG
+
+# And lastly our executable
+macro(make_sameboy_dx target_name qt_widgets)
+    add_executable(${target_name}
+        ${SDX_FILES}
+        ${BOOT_ROMS_HEADER}
+    )
+
+    target_include_directories(${target_name}
+        PRIVATE "${SAMEBOY_SOURCE_DIR}"
+        PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+
+    if(CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
+        target_compile_definitions(${target_name}
+            PRIVATE DEBUG
+        )
+    endif()
+
+    target_compile_definitions(${target_name}
+        PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
+    )
+
+    target_link_libraries(${target_name} sameboy-core ${SDL2_LIBRARIES} pthread ${qt_widgets})
+endmacro()
+
+if(${BUILD_QT5_VERSION})
+    make_sameboy_dx(sameboy-dx-qt5 Qt5::Widgets)
+    set_target_properties(sameboy-dx-qt5
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt5"
+        OUTPUT_NAME "sameboy-dx"
+    )
+endif()
+if(${BUILD_QT6_VERSION})
+    make_sameboy_dx(sameboy-dx-qt6 Qt6::Widgets)
+    set_target_properties(sameboy-dx-qt6
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt6"
+        OUTPUT_NAME "sameboy-dx"
     )
 endif()
 
-target_compile_definitions(sameboy-dx
-    PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
-)
-
-target_link_libraries(sameboy-dx sameboy-core ${SDL2_LIBRARIES} pthread Qt5::Widgets)
+if((NOT ${BUILD_QT5_VERSION}) AND (NOT ${BUILD_QT6_VERSION}))
+    message(fatal_error "Must build either Qt5 or Qt6 version")
+endif()
