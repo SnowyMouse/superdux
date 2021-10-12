@@ -16,81 +16,81 @@ struct GB_breakpoint_s {
     bool is_jump_to;
 };
 
-static inline uint8_t *get_8_bit_gb_register_address(struct GB_gameboy_s *gb, gbz80_register r) {
+static inline uint8_t *get_8_bit_gb_register_address(struct GB_gameboy_s *gb, sm83_register r) {
     switch(r) {
-        case GBZ80_REG_A:
+        case SM83_REG_A:
             return &gb->a;
-        case GBZ80_REG_B:
+        case SM83_REG_B:
             return &gb->b;
-        case GBZ80_REG_C:
+        case SM83_REG_C:
             return &gb->c;
-        case GBZ80_REG_D:
+        case SM83_REG_D:
             return &gb->d;
-        case GBZ80_REG_E:
+        case SM83_REG_E:
             return &gb->e;
-        case GBZ80_REG_F:
+        case SM83_REG_F:
             return &gb->f;
         default:
             return NULL;
     }
 }
-static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, gbz80_register r) {
+static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, sm83_register r) {
     switch(r) {
-        case GBZ80_REG_HL:
+        case SM83_REG_HL:
             return &gb->hl;
-        case GBZ80_REG_PC:
+        case SM83_REG_PC:
             return &gb->pc;
-        case GBZ80_REG_SP:
+        case SM83_REG_SP:
             return &gb->sp;
         default:
             return NULL;
     }
 }
 
-static inline uint8_t get_8_bit_gb_register(const struct GB_gameboy_s *gb, gbz80_register r) {
+static inline uint8_t get_8_bit_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
     return *get_8_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
 }
-static inline uint16_t get_16_bit_gb_register(const struct GB_gameboy_s *gb, gbz80_register r) {
+static inline uint16_t get_16_bit_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
     return *get_16_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
 }
 
-static void set_8_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint8_t v) {
+static void set_8_bit_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint8_t v) {
     *get_8_bit_gb_register_address(gb, r) = v;
 }
-static void set_16_bit_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint16_t v) {
+static void set_16_bit_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint16_t v) {
     *get_16_bit_gb_register_address(gb, r) = v;
 }
 
-uint16_t get_gb_register(const struct GB_gameboy_s *gb, gbz80_register r) {
+uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
     switch(r) {
-        case GBZ80_REG_A:
-        case GBZ80_REG_B:
-        case GBZ80_REG_C:
-        case GBZ80_REG_D:
-        case GBZ80_REG_E:
-        case GBZ80_REG_F:
+        case SM83_REG_A:
+        case SM83_REG_B:
+        case SM83_REG_C:
+        case SM83_REG_D:
+        case SM83_REG_E:
+        case SM83_REG_F:
             return get_8_bit_gb_register(gb, r);
-        case GBZ80_REG_HL:
-        case GBZ80_REG_PC:
-        case GBZ80_REG_SP:
+        case SM83_REG_HL:
+        case SM83_REG_PC:
+        case SM83_REG_SP:
             return get_16_bit_gb_register(gb, r);
         default:
             abort();
     }
 }
 
-void set_gb_register(struct GB_gameboy_s *gb, gbz80_register r, uint16_t v) {
+void set_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint16_t v) {
     switch(r) {
-        case GBZ80_REG_A:
-        case GBZ80_REG_B:
-        case GBZ80_REG_C:
-        case GBZ80_REG_D:
-        case GBZ80_REG_E:
-        case GBZ80_REG_F:
+        case SM83_REG_A:
+        case SM83_REG_B:
+        case SM83_REG_C:
+        case SM83_REG_D:
+        case SM83_REG_E:
+        case SM83_REG_F:
             return set_8_bit_gb_register(gb, r, v);
-        case GBZ80_REG_HL:
-        case GBZ80_REG_PC:
-        case GBZ80_REG_SP:
+        case SM83_REG_HL:
+        case SM83_REG_PC:
+        case SM83_REG_SP:
             return set_16_bit_gb_register(gb, r, v);
         default:
             abort();

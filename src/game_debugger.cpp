@@ -171,7 +171,7 @@ void GameDebugger::set_known_breakpoint(bool known_breakpoint) {
         this->finish_fn_button->setEnabled(known_breakpoint);
         
         if(known_breakpoint) {
-            this->disassembler->go_to(this->get_instance().get_register_value(gbz80_register::GBZ80_REG_PC));
+            this->disassembler->go_to(this->get_instance().get_register_value(sm83_register::SM83_REG_PC));
         }
     }
 }
@@ -193,7 +193,7 @@ void GameDebugger::refresh_view() {
     if(!bp_pause || this->known_breakpoint != bp_pause) {
         #define PROCESS_REGISTER_FIELD(name, field, fmt) {\
             char str[8]; \
-            std::snprintf(str, sizeof(str), fmt, instance.get_register_value(gbz80_register::GBZ80_REG_##name)); \
+            std::snprintf(str, sizeof(str), fmt, instance.get_register_value(sm83_register::SM83_REG_##name)); \
             this->field->blockSignals(true); \
             this->field->setText(str); \
             this->field->blockSignals(false); \
@@ -336,7 +336,7 @@ void GameDebugger::action_update_registers() noexcept {
     #define PROCESS_REGISTER_FIELD(name, field) {\
         auto value = instance.evaluate_expression(this->field->text().toUtf8().data());\
         if(value.has_value()) {\
-            instance.set_register_value(gbz80_register::GBZ80_REG_##name, *value);\
+            instance.set_register_value(sm83_register::SM83_REG_##name, *value);\
         }\
     }
 

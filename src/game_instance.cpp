@@ -129,7 +129,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     if(instance->current_break_and_trace_remaining > 0) {
         bnt = (--instance->current_break_and_trace_remaining) > 0;
         if(bnt) {
-            auto pc = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_PC);
+            auto pc = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_PC);
             for(auto i : instance->get_breakpoints_without_mutex()) {
                 if(i == pc) {
                     bnt = false; // if we hit a breakpoint in the middle of breaking and tracing, end prematurely
@@ -142,7 +142,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     // If that didn't satisfy it, maybe we have something set here?
     if(!bnt) {
         for(auto b = instance->break_and_trace_breakpoints.begin(); b != instance->break_and_trace_breakpoints.end(); b++) {
-            auto pc = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_PC);
+            auto pc = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_PC);
             if(pc == std::get<0>(*b)) {
                 instance->current_break_and_trace_remaining = std::get<1>(*b);
                 instance->current_break_and_trace_step_over = std::get<2>(*b);
@@ -164,15 +164,15 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     // If we are, continue after we record the current state
     if(bnt) {
         auto &b = instance->break_and_trace_result.emplace_back();
-        b.a = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_A);
-        b.b = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_B);
-        b.c = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_C);
-        b.d = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_D);
-        b.e = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_E);
-        b.f = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_F);
-        b.hl = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_HL);
-        b.sp = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_SP);
-        b.pc = get_gb_register(&instance->gameboy, gbz80_register::GBZ80_REG_PC);
+        b.a = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_A);
+        b.b = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_B);
+        b.c = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_C);
+        b.d = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_D);
+        b.e = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_E);
+        b.f = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_F);
+        b.hl = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_HL);
+        b.sp = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_SP);
+        b.pc = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_PC);
         b.carry = b.f & GB_CARRY_FLAG;
         b.half_carry = b.f & GB_HALF_CARRY_FLAG;
         b.subtract = b.f & GB_SUBTRACT_FLAG;
@@ -316,7 +316,7 @@ std::vector<std::pair<std::string, std::uint16_t>> GameInstance::get_backtrace()
         backtrace[bt_count - b].second = get_gb_backtrace_address(&this->gameboy, b);
     }
     if(bt_count > 0) {
-        backtrace[0].second = get_gb_register(&this->gameboy, gbz80_register::GBZ80_REG_PC);
+        backtrace[0].second = get_gb_register(&this->gameboy, sm83_register::SM83_REG_PC);
     }
 
     this->mutex.unlock();
@@ -570,8 +570,8 @@ void GameInstance::unbreak(const char *command) {
     }
 }
 
-std::uint16_t GameInstance::get_register_value(gbz80_register reg) noexcept MAKE_GETTER(get_gb_register(&this->gameboy, reg))
-void GameInstance::set_register_value(gbz80_register reg, std::uint16_t value) noexcept MAKE_SETTER(set_gb_register(&this->gameboy, reg, value))
+std::uint16_t GameInstance::get_register_value(sm83_register reg) noexcept MAKE_GETTER(get_gb_register(&this->gameboy, reg))
+void GameInstance::set_register_value(sm83_register reg, std::uint16_t value) noexcept MAKE_SETTER(set_gb_register(&this->gameboy, reg, value))
 
 std::optional<std::uint16_t> GameInstance::evaluate_expression(const char *expression) noexcept {
     std::uint16_t result_maybe;
