@@ -836,6 +836,8 @@ void GameInstance::remove_breakpoint(std::uint16_t breakpoint) noexcept {
     this->mutex.unlock();
 }
 
+void GameInstance::set_highpass_filter_mode(GB_highpass_mode_t mode) noexcept MAKE_SETTER(GB_set_highpass_filter_mode(&this->gameboy, mode))
+
 void GameInstance::remove_all_breakpoints() noexcept {
     this->mutex.lock();
     this->execute_command_without_mutex(malloc_string("delete"));

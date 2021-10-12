@@ -447,6 +447,13 @@ public: // all public functions assume the mutex is not locked
      * @return      true if successful
      */
     bool load_save_state(const std::vector<std::uint8_t> &state) noexcept;
+
+    /**
+     * Set the audio highpass filter mode
+     *
+     * @param mode mode to set to
+     */
+    void set_highpass_filter_mode(GB_highpass_mode_t mode) noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols

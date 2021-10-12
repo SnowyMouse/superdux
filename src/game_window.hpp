@@ -67,6 +67,8 @@ private:
     unsigned int sample_count = 0;
     unsigned int sample_rate = 1024; // using 1024 as the default instead of 0 is deliberate - SDL sometimes defaults to 4096 which has terrible audio delay
     std::vector<QAction *> channel_count_options;
+    GB_highpass_mode_t highpass_filter_mode = GB_highpass_mode_t::GB_HIGHPASS_OFF;
+    std::vector<QAction *> highpass_filter_mode_options;
     
     // Emulation
     QAction *pause_action;
@@ -195,6 +197,7 @@ private slots:
     void action_set_rtc_mode() noexcept;
     void action_set_color_correction_mode() noexcept;
     void action_show_advanced_model_options() noexcept;
+    void action_set_highpass_filter_mode() noexcept;
 
     void action_create_save_state();
     void action_load_save_state();

@@ -35,6 +35,7 @@
 #define SETTINGS_RTC_MODE "rtc_mode"
 #define SETTINGS_COLOR_CORRECTION_MODE "color_correction_mode"
 #define SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH "temporary_save_buffer_length"
+#define SETTINGS_HIGHPASS_FILTER_MODE "highpass_filter_mode"
 
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
 #define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
@@ -427,6 +428,26 @@ GameWindow::GameWindow() {
     mono->setChecked(this->instance->is_mono_forced());
     connect(mono, &QAction::triggered, this, &GameWindow::action_set_channel_count);
     this->channel_count_options = { mono, stereo };
+
+    // Highpass mode
+    this->highpass_filter_mode = static_cast<decltype(this->highpass_filter_mode)>(settings.value(SETTINGS_HIGHPASS_FILTER_MODE, static_cast<int>(this->highpass_filter_mode)).toInt());
+    this->instance->set_rtc_mode(this->rtc_mode);
+    auto *highpass_filter_mode = edit_menu->addMenu("Highpass Filter Mode");
+    std::pair<const char *, GB_highpass_mode_t> highpass_filter_modes[] = {
+        {"Off", GB_highpass_mode_t::GB_HIGHPASS_OFF},
+        {"Accurate", GB_highpass_mode_t::GB_HIGHPASS_ACCURATE},
+        {"Remove DC Offset", GB_highpass_mode_t::GB_HIGHPASS_REMOVE_DC_OFFSET},
+    };
+    for(auto &i : highpass_filter_modes) {
+        auto *action = highpass_filter_mode->addAction(i.first);
+        action->setData(i.second);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_highpass_filter_mode);
+        action->setCheckable(true);
+        action->setChecked(i.second == this->highpass_filter_mode);
+        this->highpass_filter_mode_options.emplace_back(action);
+    }
+
+    edit_menu->addSeparator();
     
     edit_menu->addSeparator();
 
@@ -1085,6 +1106,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_RTC_MODE, this->rtc_mode);
     settings.setValue(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode);
     settings.setValue(SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH, this->temporary_save_state_buffer_length);
+    settings.setValue(SETTINGS_HIGHPASS_FILTER_MODE, this->highpass_filter_mode);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
@@ -1214,6 +1236,17 @@ void GameWindow::action_set_rtc_mode() noexcept {
     this->rtc_mode = mode;
 
     for(auto &i : this->rtc_mode_options) {
+        i->setChecked(i->data().toInt() == mode);
+    }
+}
+
+void GameWindow::action_set_highpass_filter_mode() noexcept {
+    auto *action = qobject_cast<QAction *>(sender());
+    auto mode = static_cast<GB_highpass_mode_t>(action->data().toInt());
+    this->instance->set_highpass_filter_mode(mode);
+    this->highpass_filter_mode = mode;
+
+    for(auto &i : this->highpass_filter_mode_options) {
         i->setChecked(i->data().toInt() == mode);
     }
 }
