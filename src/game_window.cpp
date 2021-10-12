@@ -793,6 +793,16 @@ void GameWindow::game_loop() {
                 this->close();
                 break;
 
+            // Audio hotplugging
+            case SDL_EventType::SDL_AUDIODEVICEADDED:
+            case SDL_EventType::SDL_AUDIODEVICEREMOVED:
+                this->instance->set_up_sdl_audio(this->sample_rate);
+                break;
+
+            // If we didn't handle something, complain
+            default:
+                print_debug_message("Unhandled SDL event %i\n", event.type);
+                break;
         }
     }
 
