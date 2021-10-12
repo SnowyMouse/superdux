@@ -563,7 +563,6 @@ GameWindow::GameWindow() {
     }
     
     // Detect gamepads changing
-    connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::reload_devices);
     this->reload_devices();
     
     // Fire game_loop repeatedly
@@ -797,6 +796,12 @@ void GameWindow::game_loop() {
             case SDL_EventType::SDL_AUDIODEVICEADDED:
             case SDL_EventType::SDL_AUDIODEVICEREMOVED:
                 this->instance->set_up_sdl_audio(this->sample_rate);
+                break;
+
+            // Controller hotplugging
+            case SDL_EventType::SDL_JOYDEVICEADDED:
+            case SDL_EventType::SDL_JOYDEVICEREMOVED:
+                this->reload_devices();
                 break;
 
             // If we didn't handle something, complain
