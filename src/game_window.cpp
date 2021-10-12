@@ -563,6 +563,7 @@ GameWindow::GameWindow() {
     }
     
     // Detect gamepads changing
+    connect(QGamepadManager::instance(), &QGamepadManager::connectedGamepadsChanged, this, &GameWindow::reload_devices);
     this->reload_devices();
     
     // Fire game_loop repeatedly
