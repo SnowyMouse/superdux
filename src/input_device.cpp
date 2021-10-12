@@ -182,7 +182,7 @@ QString InputDeviceGamepad::name() const noexcept {
 
 InputDeviceKeyboard::~InputDeviceKeyboard() {}
 InputDeviceGamepad::~InputDeviceGamepad() {
-
+    SDL_GameControllerClose(this->gamepad);
 }
 
 void InputDeviceGamepad::handle_input(SDL_GameControllerButton type, bool value) {

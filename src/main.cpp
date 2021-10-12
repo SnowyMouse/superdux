@@ -19,18 +19,20 @@ int main(int argc, char **argv) {
     QCoreApplication::setOrganizationName("sameboy-dx");
     QCoreApplication::setOrganizationDomain("sameboy-dx");
     QCoreApplication::setApplicationName("sameboy-dx");
-    
-    GameWindow window;
-    
-    QSettings settings;
-    
-    window.show();
-    
-    if(argc == 2) {
-        window.load_rom(argv[1]);
+
+    int r;
+
+    // Braces here because InputDeviceGamepad destructor will cause a segfault if SDL_Quit is called before it is called
+    {
+        GameWindow window;
+        window.show();
+
+        if(argc == 2) {
+            window.load_rom(argv[1]);
+        }
+
+        r = app.exec();
     }
-    
-    int r = app.exec();
     
     SDL_Quit();
     
