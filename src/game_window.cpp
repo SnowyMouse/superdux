@@ -565,6 +565,7 @@ GameWindow::GameWindow() {
     
     // Fire game_loop repeatedly
     this->game_thread_timer.callOnTimeout(this, &GameWindow::game_loop);
+    this->game_thread_timer.start();
 }
 
 void GameWindow::action_set_volume() {
@@ -642,12 +643,14 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
 
     // Set timer and UI
     this->show_debugger->setEnabled(true);
-    this->game_thread_timer.start();
     
     // Start thread
     if(r == 0 && !instance_thread.joinable()) {
         instance_thread = std::thread(GameInstance::start_game_loop, this->instance.get());
     }
+
+    // Fire this once
+    this->game_loop();
 }
 
 void GameWindow::update_recent_roms_list() {
@@ -671,10 +674,15 @@ void GameWindow::action_open_recent_rom() {
 }
 
 void GameWindow::redraw_pixel_buffer() {
+    // Make sure we have enough data to store the pixels
     std::uint32_t width, height;
     this->instance->get_dimensions(width, height);
     this->pixel_buffer.resize(width * height, 0xFF000000);
-    this->instance->read_pixel_buffer(this->pixel_buffer.data(), this->pixel_buffer.size());
+
+    // If we have a ROM loaded, copy the pixel buffer
+    if(this->instance->is_rom_loaded()) {
+        this->instance->read_pixel_buffer(this->pixel_buffer.data(), this->pixel_buffer.size());
+    }
 
     // If we aren't cropping SGB border, just output the pixel buffer
     if(!this->use_crop_border_for_type(this->gb_type)) {
@@ -695,8 +703,10 @@ void GameWindow::redraw_pixel_buffer() {
         // Boom
         this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), GB_WIDTH, GB_HEIGHT, QImage::Format::Format_ARGB32));
     }
+
+    // Set our pixmap
     pixel_buffer_pixmap_item->setPixmap(this->pixel_buffer_pixmap);
-    
+
     // Handle status text fade
     if(this->status_text) {
         auto now = clock::now();
@@ -828,9 +838,9 @@ void GameWindow::game_loop() {
         }
     }
 
-    // If we're paused, we don't need to fire as often since not as much information is being changed
-    if(this->instance->is_paused()) {
-        this->game_thread_timer.setInterval(50);
+    // If we're paused, we don't need to fire as often since not as much information is being changed (unless we have status text to show?), saving CPU usage
+    if((this->instance->is_paused() || !this->instance->is_rom_loaded()) && (status_text == nullptr)) {
+        this->game_thread_timer.setInterval(100);
     }
 
     // Otherwise, we should fire quickly
