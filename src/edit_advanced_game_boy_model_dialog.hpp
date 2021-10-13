@@ -22,6 +22,7 @@ private:
     QComboBox *gb_rev, *gbc_rev, *gba_rev, *sgb_rev, *sgb2_rev;
     QCheckBox *gbc_fast_cb;
     QCheckBox *sgb_crop_border_cb, *sgb2_crop_border_cb;
+    QCheckBox *gb_allow_custom_boot_rom, *gbc_allow_custom_boot_rom, *gba_allow_custom_boot_rom, *sgb_allow_custom_boot_rom, *sgb2_allow_custom_boot_rom;
 
 private slots:
     void find_gb_boot_rom();

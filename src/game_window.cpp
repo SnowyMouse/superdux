@@ -53,6 +53,12 @@
 #define SETTINGS_SGB_BOOT_ROM "sgb_boot_rom"
 #define SETTINGS_SGB2_BOOT_ROM "sgb2_boot_rom"
 
+#define SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM "gb_allow_custom_boot_rom"
+#define SETTINGS_GBC_allow_custom_BOOT_ROM "gbc_allow_custom_boot_rom"
+#define SETTINGS_GBA_allow_custom_BOOT_ROM "gba_allow_custom_boot_rom"
+#define SETTINGS_SGB_allow_custom_BOOT_ROM "sgb_allow_custom_boot_rom"
+#define SETTINGS_SGB2_allow_custom_BOOT_ROM "sgb2_allow_custom_boot_rom"
+
 #define SETTINGS_GB_REVISION "gb_model_revision"
 #define SETTINGS_GBC_REVISION "gbc_model_revision"
 #define SETTINGS_GBA_REVISION "gba_model_revision"
@@ -175,17 +181,19 @@ GB_model_t GameWindow::model_for_type(GameBoyType type) const noexcept {
 }
 
 const std::optional<std::filesystem::path> &GameWindow::boot_rom_for_type(GameBoyType type) const noexcept {
+    static const std::optional<std::filesystem::path> null_path = std::nullopt;
+
     switch(type) {
         case GameBoyType::GameBoyGB:
-            return this->gb_boot_rom_path;
+            return this->gb_allow_custom_boot_rom ? this->gb_boot_rom_path : null_path;
         case GameBoyType::GameBoyGBC:
-            return this->gbc_boot_rom_path;
+            return this->gbc_allow_custom_boot_rom ? this->gbc_boot_rom_path : null_path;
         case GameBoyType::GameBoyGBA:
-            return this->gba_boot_rom_path;
+            return this->gba_allow_custom_boot_rom ? this->gba_boot_rom_path : null_path;
         case GameBoyType::GameBoySGB:
-            return this->sgb_boot_rom_path;
+            return this->sgb_allow_custom_boot_rom ? this->sgb_boot_rom_path : null_path;
         case GameBoyType::GameBoySGB2:
-            return this->sgb2_boot_rom_path;
+            return this->sgb2_allow_custom_boot_rom ? this->sgb2_boot_rom_path : null_path;
         default:
             std::terminate();
     }
@@ -282,6 +290,11 @@ GameWindow::GameWindow() {
     LOAD_BOOL_SETTING_VALUE(this->turbo_enabled, SETTINGS_TURBO_ENABLED);
     LOAD_BOOL_SETTING_VALUE(this->slowmo_enabled, SETTINGS_SLOWMO_ENABLED);
     LOAD_BOOL_SETTING_VALUE(this->rewind_enabled, SETTINGS_REWIND_ENABLED);
+    LOAD_BOOL_SETTING_VALUE(this->gb_allow_custom_boot_rom, SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->gbc_allow_custom_boot_rom, SETTINGS_GBC_allow_custom_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->gba_allow_custom_boot_rom, SETTINGS_GBA_allow_custom_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->sgb_allow_custom_boot_rom, SETTINGS_SGB_allow_custom_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->sgb2_allow_custom_boot_rom, SETTINGS_SGB2_allow_custom_BOOT_ROM);
 
     LOAD_DOUBLE_SETTING_VALUE(this->rewind_length, SETTINGS_REWIND_LENGTH);
     LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
@@ -1223,6 +1236,12 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_GBA_BOOT_ROM, this->gba_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_SGB_BOOT_ROM, this->sgb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_SGB2_BOOT_ROM, this->sgb2_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
+
+    settings.setValue(SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM, this->gb_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_GBC_allow_custom_BOOT_ROM, this->gbc_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_GBA_allow_custom_BOOT_ROM, this->gba_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_SGB_allow_custom_BOOT_ROM, this->sgb_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_SGB2_allow_custom_BOOT_ROM, this->sgb2_allow_custom_boot_rom);
 
     settings.setValue(SETTINGS_GB_REVISION, this->gb_rev);
     settings.setValue(SETTINGS_GBC_REVISION, this->gbc_rev);

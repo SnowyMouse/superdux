@@ -68,9 +68,9 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
         layout->addWidget(vwidget);
     };
 
-    add_control("Turbo", "Turbo Speed:", &this->enable_turbo, &this->turbo_amount, &this->turbo_slider);
-    add_control("Slowmo", "Slowmo Speed:", &this->enable_slowmo, &this->slowmo_amount, &this->slowmo_slider);
-    add_control("Rewind", "Rewind Seconds:", &this->enable_rewind, &this->rewind_amount, &this->rewind_slider);
+    add_control("Turbo", "Turbo speed:", &this->enable_turbo, &this->turbo_amount, &this->turbo_slider);
+    add_control("Slowmo", "Slowmo speed:", &this->enable_slowmo, &this->slowmo_amount, &this->slowmo_slider);
+    add_control("Rewind", "Rewind seconds:", &this->enable_rewind, &this->rewind_amount, &this->rewind_slider);
 
     this->enable_turbo->setChecked(window->turbo_enabled);
     this->enable_slowmo->setChecked(window->slowmo_enabled);

@@ -151,6 +151,7 @@ private:
 
     bool gbc_fast_boot_rom = false;
     std::optional<std::filesystem::path> gb_boot_rom_path, gbc_boot_rom_path, gba_boot_rom_path, sgb_boot_rom_path, sgb2_boot_rom_path;
+    bool gb_allow_custom_boot_rom = true, gbc_allow_custom_boot_rom = true, gba_allow_custom_boot_rom = true, sgb_allow_custom_boot_rom = true, sgb2_allow_custom_boot_rom = true;
     bool sgb_crop_border = false, sgb2_crop_border = false;
     bool use_crop_border_for_type(GameBoyType type) const noexcept;
 
