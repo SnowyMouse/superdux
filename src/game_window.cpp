@@ -67,6 +67,43 @@
 #define print_debug_message(...) (void(0))
 #endif
 
+#define MAKE_MODE_SETTER_WITH_VARIABLE(instance_fn, variable, array) { \
+    auto *action = qobject_cast<QAction *>(sender()); \
+    auto mode = static_cast<decltype(variable)>(action->data().toInt()); \
+    this->instance->instance_fn(mode); \
+    variable = mode; \
+    \
+    for(auto &i : array) { \
+        i->setChecked(i->data().toInt() == mode); \
+    } \
+}
+
+void GameWindow::action_set_rtc_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_rtc_mode, this->rtc_mode, this->rtc_mode_options)
+void GameWindow::action_set_highpass_filter_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_highpass_filter_mode, this->highpass_filter_mode, this->highpass_filter_mode_options)
+void GameWindow::action_set_rumble_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_rumble_mode, this->rumble_mode, this->rumble_mode_options)
+void GameWindow::action_set_color_correction_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_color_correction_mode, this->color_correction_mode, this->color_correction_mode_options)
+
+void GameWindow::action_set_channel_count() noexcept {
+    // Uses the user data from the sender to get volume
+    auto *action = qobject_cast<QAction *>(sender());
+    int channel_count = action->data().toInt();
+    this->instance->set_mono_forced(channel_count == 1);
+
+    for(auto &i : this->channel_count_options) {
+        i->setChecked(i->data().toInt() == channel_count);
+    }
+}
+
+void GameWindow::action_set_buffer_mode() noexcept {
+    auto *action = qobject_cast<QAction *>(sender());
+    auto mode = static_cast<GameInstance::PixelBufferMode>(action->data().toInt());
+    this->instance->set_pixel_buffering_mode(mode);
+
+    for(auto &i : this->pixel_buffer_options) {
+        i->setChecked(i->data().toInt() == mode);
+    }
+}
+
 class GamePixelBufferView : public QGraphicsView {
 public:
     GamePixelBufferView(QWidget *parent, GameWindow *window) : QGraphicsView(parent), window(window) {
@@ -211,19 +248,33 @@ GameWindow::GameWindow() {
     set_boot_rom_path(this->sgb_boot_rom_path, settings.value(SETTINGS_SGB_BOOT_ROM).toString().toStdString());
     set_boot_rom_path(this->sgb2_boot_rom_path, settings.value(SETTINGS_SGB2_BOOT_ROM).toString().toStdString());
 
-    this->gb_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GB_REVISION, this->gb_rev).toInt());
-    this->gbc_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GBC_REVISION, this->gbc_rev).toInt());
-    this->gba_rev = static_cast<GB_model_t>(settings.value(SETTINGS_GBA_REVISION, this->gba_rev).toInt());
-    this->sgb_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_REVISION, this->sgb_rev).toInt());
-    this->sgb2_rev = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_REVISION, this->sgb2_rev).toInt());
+    #define LOAD_INT_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toInt())
+    #define LOAD_UINT_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toUInt())
+    #define LOAD_BOOL_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toBool())
 
-    this->temporary_save_state_buffer_length = settings.value(SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH, this->temporary_save_state_buffer_length).toUInt();
+    LOAD_INT_SETTING_VALUE(this->gb_rev, SETTINGS_GB_REVISION);
+    LOAD_INT_SETTING_VALUE(this->gbc_rev, SETTINGS_GBC_REVISION);
+    LOAD_INT_SETTING_VALUE(this->gba_rev, SETTINGS_GBA_REVISION);
+    LOAD_INT_SETTING_VALUE(this->sgb_rev, SETTINGS_SGB_REVISION);
+    LOAD_INT_SETTING_VALUE(this->sgb2_rev, SETTINGS_SGB2_REVISION);
 
-    this->sgb_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_CROP_BORDER, this->sgb_crop_border).toBool());
-    this->sgb2_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_CROP_BORDER, this->sgb2_crop_border).toBool());
+    LOAD_UINT_SETTING_VALUE(this->temporary_save_state_buffer_length, SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH);
+    LOAD_UINT_SETTING_VALUE(this->sample_rate, SETTINGS_SAMPLE_RATE);
+    LOAD_UINT_SETTING_VALUE(this->sample_count, SETTINGS_SAMPLE_BUFFER_SIZE);
 
+    LOAD_BOOL_SETTING_VALUE(this->sgb_crop_border, SETTINGS_SGB_CROP_BORDER);
+    LOAD_BOOL_SETTING_VALUE(this->sgb2_crop_border, SETTINGS_SGB2_CROP_BORDER);
+    LOAD_BOOL_SETTING_VALUE(this->gbc_fast_boot_rom, SETTINGS_GBC_FAST_BOOT);
+    LOAD_BOOL_SETTING_VALUE(this->status_text_hidden, SETTINGS_STATUS_TEXT_HIDDEN);
 
-    this->gbc_fast_boot_rom = settings.value(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom).toBool();
+    LOAD_INT_SETTING_VALUE(this->rtc_mode, SETTINGS_RTC_MODE);
+    LOAD_INT_SETTING_VALUE(this->rumble_mode, SETTINGS_RUMBLE_MODE);
+    LOAD_INT_SETTING_VALUE(this->highpass_filter_mode, SETTINGS_HIGHPASS_FILTER_MODE);
+    LOAD_INT_SETTING_VALUE(this->color_correction_mode, SETTINGS_COLOR_CORRECTION_MODE);
+
+    #undef LOAD_INT_SETTING_VALUE
+    #undef LOAD_UINT_SETTING_VALUE
+    #undef LOAD_BOOL_SETTING_VALUE
     
     // Instantiate the gameboy
     this->instance = std::make_unique<GameInstance>(this->model_for_type(this->gb_type));
@@ -362,7 +413,6 @@ GameWindow::GameWindow() {
     connect(advanced_options, &QAction::triggered, this, &GameWindow::action_show_advanced_model_options);
 
     // RTC modes
-    this->rtc_mode = static_cast<decltype(this->rtc_mode)>(settings.value(SETTINGS_RTC_MODE, static_cast<int>(this->rtc_mode)).toInt());
     this->instance->set_rtc_mode(this->rtc_mode);
     auto *rtc_mode = edit_menu->addMenu("Real-Time Clock Mode");
     std::pair<const char *, GB_rtc_mode_t> rtc_modes[] = {
@@ -379,7 +429,6 @@ GameWindow::GameWindow() {
     }
 
     // Rumble modes
-    this->rumble_mode = static_cast<decltype(this->rumble_mode)>(settings.value(SETTINGS_RUMBLE_MODE, static_cast<int>(this->rumble_mode)).toInt());
     this->instance->set_rumble_mode(this->rumble_mode);
     auto *rumble_mode = edit_menu->addMenu("Rumble Mode");
     std::pair<const char *, GB_rumble_mode_t> rumble_modes[] = {
@@ -451,7 +500,6 @@ GameWindow::GameWindow() {
     this->channel_count_options = { mono, stereo };
 
     // Highpass mode
-    this->highpass_filter_mode = static_cast<decltype(this->highpass_filter_mode)>(settings.value(SETTINGS_HIGHPASS_FILTER_MODE, static_cast<int>(this->highpass_filter_mode)).toInt());
     this->instance->set_rtc_mode(this->rtc_mode);
     auto *highpass_filter_mode = edit_menu->addMenu("Highpass Filter Mode");
     std::pair<const char *, GB_highpass_mode_t> highpass_filter_modes[] = {
@@ -467,8 +515,6 @@ GameWindow::GameWindow() {
         action->setChecked(i.second == this->highpass_filter_mode);
         this->highpass_filter_mode_options.emplace_back(action);
     }
-
-    edit_menu->addSeparator();
     
     edit_menu->addSeparator();
 
@@ -487,7 +533,6 @@ GameWindow::GameWindow() {
 
     // Color correction options
     auto *color_correction_mode = edit_menu->addMenu("Color Correction Mode");
-    this->color_correction_mode = static_cast<GB_color_correction_mode_t>(settings.value(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode).toInt());
     this->instance->set_color_correction_mode(this->color_correction_mode);
     std::pair<const char *, GB_color_correction_mode_t> color_correction_modes[] = {
         {"Disabled", GB_color_correction_mode_t::GB_COLOR_CORRECTION_DISABLED},
@@ -524,7 +569,6 @@ GameWindow::GameWindow() {
     edit_menu->addSeparator();
 
     // Status text?
-    this->status_text_hidden = settings.value(SETTINGS_STATUS_TEXT_HIDDEN, this->status_text_hidden).toBool();
     auto *hide_status_text = edit_menu->addAction("Hide Status Text");
     connect(hide_status_text, &QAction::triggered, this, &GameWindow::action_toggle_hide_status_text);
     hide_status_text->setCheckable(true);
@@ -596,8 +640,6 @@ GameWindow::GameWindow() {
     this->setCentralWidget(central_widget);
 
     // Audio
-    this->sample_rate = settings.value(SETTINGS_SAMPLE_RATE, this->sample_rate).toInt();
-    this->sample_count = settings.value(SETTINGS_SAMPLE_BUFFER_SIZE, this->sample_count).toUInt();
     bool result = this->instance->set_up_sdl_audio(this->sample_rate, this->sample_count);
     if(!result) {
         std::printf("Debug) Failed to start up audio with SDL: %s\n", SDL_GetError());
@@ -621,17 +663,6 @@ void GameWindow::action_set_volume() {
     int volume = action->data().toInt(); 
     this->instance->set_volume(volume);
     this->show_new_volume_text();
-}
-
-void GameWindow::action_set_channel_count() noexcept {
-    // Uses the user data from the sender to get volume
-    auto *action = qobject_cast<QAction *>(sender());
-    int channel_count = action->data().toInt(); 
-    this->instance->set_mono_forced(channel_count == 1);
-    
-    for(auto &i : this->channel_count_options) {
-        i->setChecked(i->data().toInt() == channel_count);
-    }
 }
 
 void GameWindow::increment_volume(int amount) {
@@ -1291,60 +1322,6 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             }
             break;
         default: break;
-    }
-}
-
-void GameWindow::action_set_buffer_mode() noexcept {
-    auto *action = qobject_cast<QAction *>(sender());
-    auto mode = static_cast<GameInstance::PixelBufferMode>(action->data().toInt());
-    this->instance->set_pixel_buffering_mode(mode);
-
-    for(auto &i : this->pixel_buffer_options) {
-        i->setChecked(i->data().toInt() == mode);
-    }
-}
-
-void GameWindow::action_set_rtc_mode() noexcept {
-    auto *action = qobject_cast<QAction *>(sender());
-    auto mode = static_cast<GB_rtc_mode_t>(action->data().toInt());
-    this->instance->set_rtc_mode(mode);
-    this->rtc_mode = mode;
-
-    for(auto &i : this->rtc_mode_options) {
-        i->setChecked(i->data().toInt() == mode);
-    }
-}
-
-void GameWindow::action_set_highpass_filter_mode() noexcept {
-    auto *action = qobject_cast<QAction *>(sender());
-    auto mode = static_cast<GB_highpass_mode_t>(action->data().toInt());
-    this->instance->set_highpass_filter_mode(mode);
-    this->highpass_filter_mode = mode;
-
-    for(auto &i : this->highpass_filter_mode_options) {
-        i->setChecked(i->data().toInt() == mode);
-    }
-}
-
-void GameWindow::action_set_rumble_mode() noexcept {
-    auto *action = qobject_cast<QAction *>(sender());
-    auto mode = static_cast<GB_rumble_mode_t>(action->data().toInt());
-    this->instance->set_rumble_mode(mode);
-    this->rumble_mode = mode;
-
-    for(auto &i : this->highpass_filter_mode_options) {
-        i->setChecked(i->data().toInt() == mode);
-    }
-}
-
-void GameWindow::action_set_color_correction_mode() noexcept {
-    auto *action = qobject_cast<QAction *>(sender());
-    auto mode = static_cast<GB_color_correction_mode_t>(action->data().toInt());
-    this->instance->set_color_correction_mode(mode);
-    this->color_correction_mode = mode;
-
-    for(auto &i : this->color_correction_mode_options) {
-        i->setChecked(i->data().toInt() == mode);
     }
 }
 
