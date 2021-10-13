@@ -202,6 +202,8 @@ void InputDeviceKeyboard::load_sane_defaults() {
     this->settings[Input_Up] = {Qt::Key_Up};
     this->settings[Input_Down] = {Qt::Key_Down};
     this->settings[Input_Turbo] = {Qt::Key_Space};
+    this->settings[Input_Slowmo] = {Qt::Key_C};
+    this->settings[Input_Rewind] = {Qt::Key_Backspace};
 }
 
 void InputDeviceGamepad::load_sane_defaults() {
@@ -215,6 +217,7 @@ void InputDeviceGamepad::load_sane_defaults() {
     this->settings[Input_Down] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_DOWN)};
     this->settings[Input_Turbo] = {controller_input_to_key(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT)};
     this->settings[Input_Slowmo] = {controller_input_to_key(SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERLEFT)};
+    this->settings[Input_Rewind] = {controller_input_to_key(SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X)};
 }
 
 InputDeviceGamepad::InputDeviceGamepad(SDL_GameController *gamepad) : gamepad(gamepad) {

@@ -1311,6 +1311,9 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
                 this->instance->set_speed_multiplier(1.0);
             }
             break;
+        case InputDevice::Input_Rewind:
+            this->instance->set_rewind(boolean_input);
+            break;
         case InputDevice::Input_VolumeDown:
             if(boolean_input) {
                 this->increment_volume(-5);

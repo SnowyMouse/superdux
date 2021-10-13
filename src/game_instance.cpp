@@ -108,6 +108,8 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     
     // Set this since we hit vblank
     instance->vblank_hit = true;
+
+    instance->should_rewind = instance->rewinding;
 }
 
 GameInstance::GameInstance(GB_model_t model) {
@@ -121,6 +123,7 @@ GameInstance::GameInstance(GB_model_t model) {
     GB_apu_set_sample_callback(&this->gameboy, GameInstance::on_sample);
     GB_set_rumble_mode(&this->gameboy, GB_rumble_mode_t::GB_RUMBLE_CARTRIDGE_ONLY);
     GB_set_rumble_callback(&this->gameboy, GameInstance::on_rumble);
+    GB_set_rewind_length(&this->gameboy, 15.0);
     
     this->update_pixel_buffer_size();
 }
@@ -258,13 +261,26 @@ void GameInstance::start_game_loop(GameInstance *instance) noexcept {
     }
     
     instance->loop_running = true;
+
+    bool rewind_paused = false;
     
     while(true) {
         // Burn the thread until we have the mutex (bad practice, but it minimizes latency)
         while(!instance->mutex.try_lock()) {}
+
+        // If we aren't holding the rewinding button, cancel the rewind pause
+        instance->rewind_paused = instance->rewind_paused && instance->rewinding;
         
         // Run some cycles on the gameboy
-        if(!instance->manual_paused) {
+        if(!instance->manual_paused && !instance->rewind_paused) {
+            if(instance->should_rewind) {
+                GB_rewind_pop(&instance->gameboy);
+                if(!GB_rewind_pop(&instance->gameboy)) { // if we can't rewind any further, pause until the user lets go of the rewind button
+                    instance->rewind_paused = true;
+                }
+                instance->should_rewind = false;
+            }
+
             GB_run(&instance->gameboy);
             
             // Wait until the end of GB_run to calculate frame rate
@@ -603,6 +619,7 @@ int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::opt
 
     // Reset this
     this->rumble = 0.0;
+    this->rewinding = false;
 
     // Pause SDL audio
     this->reset_audio();
@@ -902,3 +919,7 @@ void GameInstance::on_rumble(GB_gameboy_s *gb, double rumble) noexcept {
 
 double GameInstance::get_rumble() noexcept MAKE_GETTER(this->rumble)
 void GameInstance::set_rumble_mode(GB_rumble_mode_t mode) noexcept MAKE_SETTER(GB_set_rumble_mode(&this->gameboy, mode))
+
+void GameInstance::set_rewind(bool rewinding) noexcept MAKE_SETTER(this->rewinding = rewinding)
+
+bool GameInstance::is_paused_from_rewind() noexcept MAKE_GETTER(this->rewind_paused)

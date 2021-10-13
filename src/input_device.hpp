@@ -32,6 +32,7 @@ public:
                           DO_THIS(RapidRight) \
                           DO_THIS(Turbo) \
                           DO_THIS(Slowmo) \
+                          DO_THIS(Rewind) \
                           DO_THIS(VolumeUp) \
                           DO_THIS(VolumeDown)
     

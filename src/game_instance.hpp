@@ -236,7 +236,7 @@ public: // all public functions assume the mutex is not locked
      * 
      * @param paused
      */
-    bool is_paused() noexcept { return this->is_paused_manually() || this->is_paused_from_breakpoint(); }
+    bool is_paused() noexcept { return this->is_paused_manually() || this->is_paused_from_breakpoint() || this->is_paused_from_rewind(); }
     
     /**
      * Set whether or not the instance is paused manually
@@ -258,6 +258,13 @@ public: // all public functions assume the mutex is not locked
      * @return paused due to breakpoint
      */
     bool is_paused_from_breakpoint() const noexcept { return this->bp_paused; }
+
+    /**
+     * Get whether or not the instance is paused because of rewind
+     *
+     * @return paused from rewind
+     */
+    bool is_paused_from_rewind() noexcept;
     
     /**
      * Get the current frame rate
@@ -476,6 +483,14 @@ public: // all public functions assume the mutex is not locked
      * @param mode mode to set to
      */
     void set_rumble_mode(GB_rumble_mode_t mode) noexcept;
+
+    /**
+     * Start rewinding
+     *
+     * @return rewinding rewinding mode
+     */
+    void set_rewind(bool rewinding) noexcept;
+
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -618,12 +633,16 @@ private: // all private functions assume the mutex is locked by the caller
     // Rumble
     double rumble = 0.0;
     static void on_rumble(GB_gameboy_s *gb, double rumble) noexcept;
+    bool should_rewind = false;
+    bool rewind_paused = false;
 
     // Rapid buttons
     std::vector<GB_key_t> rapid_buttons;
     bool rapid_button_state = false;
     std::uint8_t rapid_button_frames = 0;
     std::uint8_t rapid_button_switch_frames = 4;
+
+    bool rewinding = false;
 };
 
 #endif
