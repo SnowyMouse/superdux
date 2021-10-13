@@ -220,3 +220,11 @@ void InputDeviceGamepad::load_sane_defaults() {
 InputDeviceGamepad::InputDeviceGamepad(SDL_GameController *gamepad) : gamepad(gamepad) {
     this->load_settings();
 }
+
+SDL_JoystickID InputDeviceGamepad::get_joystick_id() const noexcept {
+    return SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(this->gamepad));
+}
+
+void InputDeviceGamepad::apply_rumble(double rumble) noexcept {
+    SDL_GameControllerRumble(this->gamepad, 0, 0xFFFF * rumble, 33);
+}

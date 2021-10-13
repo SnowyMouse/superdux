@@ -119,6 +119,8 @@ GameInstance::GameInstance(GB_model_t model) {
     GB_set_log_callback(&this->gameboy, GameInstance::on_log);
     GB_set_input_callback(&this->gameboy, GameInstance::on_input_requested);
     GB_apu_set_sample_callback(&this->gameboy, GameInstance::on_sample);
+    GB_set_rumble_mode(&this->gameboy, GB_rumble_mode_t::GB_RUMBLE_CARTRIDGE_ONLY);
+    GB_set_rumble_callback(&this->gameboy, GameInstance::on_rumble);
     
     this->update_pixel_buffer_size();
 }
@@ -599,6 +601,9 @@ void GameInstance::assign_work_buffer() noexcept {
 int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept {
     this->mutex.lock();
 
+    // Reset this
+    this->rumble = 0.0;
+
     // Pause SDL audio
     this->reset_audio();
     
@@ -890,3 +895,9 @@ void GameInstance::set_rapid_button_state(GB_key_t button, bool pressed) {
     GB_set_key_state(&this->gameboy, button, pressed ? this->rapid_button_state : false); // unset if we're releasing the button. otherwise set to current rapid button state
     this->mutex.unlock();
 }
+
+void GameInstance::on_rumble(GB_gameboy_s *gb, double rumble) noexcept {
+    reinterpret_cast<GameInstance *>(GB_get_user_data(gb))->rumble = rumble;
+}
+
+double GameInstance::get_rumble() noexcept MAKE_GETTER(this->rumble)

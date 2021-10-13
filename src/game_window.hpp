@@ -151,6 +151,7 @@ private:
     QMenu *save_state_menu;
     
     void reload_devices();
+    InputDeviceGamepad *last_used_input_device = nullptr;
     
     // Save path
     std::filesystem::path save_path;

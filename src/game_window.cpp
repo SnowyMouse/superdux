@@ -535,8 +535,6 @@ GameWindow::GameWindow() {
     this->reset_rom_action->setEnabled(false);
 
     emulation_menu->addSeparator();
-
-
     
     // Video menu
     auto *view_menu = bar->addMenu("View");
@@ -881,6 +879,10 @@ void GameWindow::game_loop() {
     // Otherwise, we should fire quickly
     else {
         this->game_thread_timer.setInterval(5);
+
+        if(this->last_used_input_device) {
+            this->last_used_input_device->apply_rumble(this->instance->get_rumble());
+        }
     }
 }
 
@@ -889,10 +891,14 @@ void GameWindow::handle_joypad_event(const SDL_ControllerButtonEvent &event) noe
 
     for(auto &i : this->devices) {
         auto *gp = dynamic_cast<InputDeviceGamepad *>(i.get());
-        if(gp) {
+        if(gp && gp->get_joystick_id() == event.which) {
             gp->handle_input(static_cast<SDL_GameControllerButton>(event.button), value);
+            this->last_used_input_device = gp;
+            return;
         }
     }
+
+    print_debug_message("Got a joypad event from an unknown device %u\n", event.which);
 }
 
 void GameWindow::handle_joypad_event(const SDL_ControllerAxisEvent &event) noexcept {
@@ -900,10 +906,14 @@ void GameWindow::handle_joypad_event(const SDL_ControllerAxisEvent &event) noexc
 
     for(auto &i : this->devices) {
         auto *gp = dynamic_cast<InputDeviceGamepad *>(i.get());
-        if(gp) {
+        if(gp && gp->get_joystick_id() == event.which) {
             gp->handle_input(static_cast<SDL_GameControllerAxis>(event.axis), value);
+            this->last_used_input_device = gp;
+            return;
         }
     }
+
+    print_debug_message("Got a joypad event from an unknown device %u\n", event.which);
 }
 
 void GameWindow::action_set_scaling() noexcept {
@@ -1005,6 +1015,7 @@ void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
             dev->handle_key_event(event, press);
         }
     }
+    this->last_used_input_device = nullptr;
     
     event->ignore();
 }
@@ -1013,14 +1024,14 @@ void GameWindow::keyPressEvent(QKeyEvent *event) {
     if(event->isAutoRepeat()) {
         return;
     }
-    handle_keyboard_key(event, true);
+    this->handle_keyboard_key(event, true);
 }
 
 void GameWindow::keyReleaseEvent(QKeyEvent *event) {
     if(event->isAutoRepeat()) {
         return;
     }
-    handle_keyboard_key(event, false);
+    this->handle_keyboard_key(event, false);
 }
 
 void GameWindow::action_showing_menu() noexcept {
@@ -1161,6 +1172,7 @@ std::vector<std::shared_ptr<InputDevice>> GameWindow::get_all_devices() {
 
 void GameWindow::reload_devices() {
     this->devices.clear();
+    this->last_used_input_device = nullptr;
     devices.emplace_back(std::make_shared<InputDeviceKeyboard>());
 
     for(int i = 0; i < SDL_NumJoysticks(); i++) {

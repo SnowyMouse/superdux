@@ -462,6 +462,13 @@ public: // all public functions assume the mutex is not locked
      * @param mode mode to set to
      */
     void set_highpass_filter_mode(GB_highpass_mode_t mode) noexcept;
+
+    /**
+     * Get the current rumble
+     *
+     * @return rumble
+     */
+    double get_rumble() noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -600,6 +607,10 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Get the backtrace without a mutex
     std::vector<std::uint16_t> get_breakpoints_without_mutex();
+
+    // Rumble
+    double rumble = 0.0;
+    static void on_rumble(GB_gameboy_s *gb, double rumble) noexcept;
 
     // Rapid buttons
     std::vector<GB_key_t> rapid_buttons;

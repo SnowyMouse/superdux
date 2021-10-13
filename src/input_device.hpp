@@ -110,6 +110,8 @@ public:
 
     void handle_input(SDL_GameControllerButton type, bool value);
     void handle_input(SDL_GameControllerAxis type, double value);
+    void apply_rumble(double rumble) noexcept;
+    SDL_JoystickID get_joystick_id() const noexcept;
 
     InputDeviceGamepad(SDL_GameController *gamepad);
     ~InputDeviceGamepad() override;
