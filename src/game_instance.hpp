@@ -491,6 +491,13 @@ public: // all public functions assume the mutex is not locked
      */
     void set_rewind(bool rewinding) noexcept;
 
+    /**
+     * Set the rewind time
+     *
+     * @param seconds seconds to rewind
+     */
+    void set_rewind_length(double seconds) noexcept;
+
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols

@@ -38,6 +38,7 @@
 #define SETTINGS_HIGHPASS_FILTER_MODE "highpass_filter_mode"
 #define SETTINGS_RUMBLE_MODE "rumble_mode"
 #define SETTINGS_STATUS_TEXT_HIDDEN "status_text_hidden"
+#define SETTINGS_REWIND_LENGTH "rewind_length"
 
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
 #define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
@@ -251,6 +252,7 @@ GameWindow::GameWindow() {
     #define LOAD_INT_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toInt())
     #define LOAD_UINT_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toUInt())
     #define LOAD_BOOL_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toBool())
+    #define LOAD_DOUBLE_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toDouble())
 
     LOAD_INT_SETTING_VALUE(this->gb_rev, SETTINGS_GB_REVISION);
     LOAD_INT_SETTING_VALUE(this->gbc_rev, SETTINGS_GBC_REVISION);
@@ -271,6 +273,8 @@ GameWindow::GameWindow() {
     LOAD_INT_SETTING_VALUE(this->rumble_mode, SETTINGS_RUMBLE_MODE);
     LOAD_INT_SETTING_VALUE(this->highpass_filter_mode, SETTINGS_HIGHPASS_FILTER_MODE);
     LOAD_INT_SETTING_VALUE(this->color_correction_mode, SETTINGS_COLOR_CORRECTION_MODE);
+
+    LOAD_DOUBLE_SETTING_VALUE(this->rewind_length, SETTINGS_REWIND_LENGTH);
 
     #undef LOAD_INT_SETTING_VALUE
     #undef LOAD_UINT_SETTING_VALUE
@@ -1188,6 +1192,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_HIGHPASS_FILTER_MODE, this->highpass_filter_mode);
     settings.setValue(SETTINGS_RUMBLE_MODE, this->rumble_mode);
     settings.setValue(SETTINGS_STATUS_TEXT_HIDDEN, this->status_text_hidden);
+    settings.setValue(SETTINGS_REWIND_LENGTH, this->rewind_length);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());

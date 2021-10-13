@@ -123,7 +123,6 @@ GameInstance::GameInstance(GB_model_t model) {
     GB_apu_set_sample_callback(&this->gameboy, GameInstance::on_sample);
     GB_set_rumble_mode(&this->gameboy, GB_rumble_mode_t::GB_RUMBLE_CARTRIDGE_ONLY);
     GB_set_rumble_callback(&this->gameboy, GameInstance::on_rumble);
-    GB_set_rewind_length(&this->gameboy, 15.0);
     
     this->update_pixel_buffer_size();
 }
@@ -923,3 +922,5 @@ void GameInstance::set_rumble_mode(GB_rumble_mode_t mode) noexcept MAKE_SETTER(G
 void GameInstance::set_rewind(bool rewinding) noexcept MAKE_SETTER(this->rewinding = rewinding)
 
 bool GameInstance::is_paused_from_rewind() noexcept MAKE_GETTER(this->rewind_paused)
+
+void GameInstance::set_rewind_length(double seconds) noexcept MAKE_SETTER(GB_set_rewind_length(&this->gameboy, seconds))

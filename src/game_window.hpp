@@ -75,6 +75,7 @@ private:
     void game_loop();
     std::vector<QAction *> rtc_mode_options;
     GB_rtc_mode_t rtc_mode = GB_rtc_mode_t::GB_RTC_MODE_ACCURATE;
+    double rewind_length = 30.0;
 
     // Rumble
     std::vector<QAction *> rumble_mode_options;
