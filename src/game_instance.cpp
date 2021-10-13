@@ -901,3 +901,4 @@ void GameInstance::on_rumble(GB_gameboy_s *gb, double rumble) noexcept {
 }
 
 double GameInstance::get_rumble() noexcept MAKE_GETTER(this->rumble)
+void GameInstance::set_rumble_mode(GB_rumble_mode_t mode) noexcept MAKE_SETTER(GB_set_rumble_mode(&this->gameboy, mode))

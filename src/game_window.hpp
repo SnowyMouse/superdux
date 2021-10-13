@@ -75,6 +75,10 @@ private:
     void game_loop();
     std::vector<QAction *> rtc_mode_options;
     GB_rtc_mode_t rtc_mode = GB_rtc_mode_t::GB_RTC_MODE_ACCURATE;
+
+    // Rumble
+    std::vector<QAction *> rumble_mode_options;
+    GB_rumble_mode_t rumble_mode = GB_rumble_mode_t::GB_RUMBLE_CARTRIDGE_ONLY;
     
     // Pause if menu is open?
     bool menu_open = false;
@@ -200,6 +204,7 @@ private slots:
     void action_set_color_correction_mode() noexcept;
     void action_show_advanced_model_options() noexcept;
     void action_set_highpass_filter_mode() noexcept;
+    void action_set_rumble_mode() noexcept;
     void action_toggle_hide_status_text() noexcept;
 
     void action_create_save_state();

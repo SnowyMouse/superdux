@@ -469,6 +469,13 @@ public: // all public functions assume the mutex is not locked
      * @return rumble
      */
     double get_rumble() noexcept;
+
+    /**
+     * Set the rumble mode
+     *
+     * @param mode mode to set to
+     */
+    void set_rumble_mode(GB_rumble_mode_t mode) noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols

@@ -36,6 +36,7 @@
 #define SETTINGS_COLOR_CORRECTION_MODE "color_correction_mode"
 #define SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH "temporary_save_buffer_length"
 #define SETTINGS_HIGHPASS_FILTER_MODE "highpass_filter_mode"
+#define SETTINGS_RUMBLE_MODE "rumble_mode"
 #define SETTINGS_STATUS_TEXT_HIDDEN "status_text_hidden"
 
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
@@ -375,6 +376,24 @@ GameWindow::GameWindow() {
         action->setCheckable(true);
         action->setChecked(i.second == this->rtc_mode);
         this->rtc_mode_options.emplace_back(action);
+    }
+
+    // Rumble modes
+    this->rumble_mode = static_cast<decltype(this->rumble_mode)>(settings.value(SETTINGS_RUMBLE_MODE, static_cast<int>(this->rumble_mode)).toInt());
+    this->instance->set_rumble_mode(this->rumble_mode);
+    auto *rumble_mode = edit_menu->addMenu("Rumble Mode");
+    std::pair<const char *, GB_rumble_mode_t> rumble_modes[] = {
+        {"Off", GB_rumble_mode_t::GB_RUMBLE_DISABLED},
+        {"Cartridge Only", GB_rumble_mode_t::GB_RUMBLE_CARTRIDGE_ONLY},
+        {"All Games", GB_rumble_mode_t::GB_RUMBLE_ALL_GAMES},
+    };
+    for(auto &i : rumble_modes) {
+        auto *action = rumble_mode->addAction(i.first);
+        action->setData(i.second);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_rumble_mode);
+        action->setCheckable(true);
+        action->setChecked(i.second == this->rumble_mode);
+        this->rumble_mode_options.emplace_back(action);
     }
 
     edit_menu->addSeparator();
@@ -1136,6 +1155,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode);
     settings.setValue(SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH, this->temporary_save_state_buffer_length);
     settings.setValue(SETTINGS_HIGHPASS_FILTER_MODE, this->highpass_filter_mode);
+    settings.setValue(SETTINGS_RUMBLE_MODE, this->rumble_mode);
     settings.setValue(SETTINGS_STATUS_TEXT_HIDDEN, this->status_text_hidden);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
@@ -1300,6 +1320,17 @@ void GameWindow::action_set_highpass_filter_mode() noexcept {
     auto mode = static_cast<GB_highpass_mode_t>(action->data().toInt());
     this->instance->set_highpass_filter_mode(mode);
     this->highpass_filter_mode = mode;
+
+    for(auto &i : this->highpass_filter_mode_options) {
+        i->setChecked(i->data().toInt() == mode);
+    }
+}
+
+void GameWindow::action_set_rumble_mode() noexcept {
+    auto *action = qobject_cast<QAction *>(sender());
+    auto mode = static_cast<GB_rumble_mode_t>(action->data().toInt());
+    this->instance->set_rumble_mode(mode);
+    this->rumble_mode = mode;
 
     for(auto &i : this->highpass_filter_mode_options) {
         i->setChecked(i->data().toInt() == mode);
