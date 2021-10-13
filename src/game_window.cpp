@@ -39,6 +39,8 @@
 #define SETTINGS_RUMBLE_MODE "rumble_mode"
 #define SETTINGS_STATUS_TEXT_HIDDEN "status_text_hidden"
 #define SETTINGS_REWIND_LENGTH "rewind_length"
+#define SETTINGS_MAX_TURBO "max_turbo"
+#define SETTINGS_MAX_SLOWMO "max_slowmo"
 
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
 #define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
@@ -275,6 +277,8 @@ GameWindow::GameWindow() {
     LOAD_INT_SETTING_VALUE(this->color_correction_mode, SETTINGS_COLOR_CORRECTION_MODE);
 
     LOAD_DOUBLE_SETTING_VALUE(this->rewind_length, SETTINGS_REWIND_LENGTH);
+    LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
+    LOAD_DOUBLE_SETTING_VALUE(this->max_turbo, SETTINGS_MAX_TURBO);
 
     #undef LOAD_INT_SETTING_VALUE
     #undef LOAD_UINT_SETTING_VALUE
@@ -1193,6 +1197,8 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_RUMBLE_MODE, this->rumble_mode);
     settings.setValue(SETTINGS_STATUS_TEXT_HIDDEN, this->status_text_hidden);
     settings.setValue(SETTINGS_REWIND_LENGTH, this->rewind_length);
+    settings.setValue(SETTINGS_MAX_SLOWMO, this->max_slowmo);
+    settings.setValue(SETTINGS_MAX_TURBO, this->max_turbo);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
@@ -1300,8 +1306,7 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             break;
         case InputDevice::Input_Turbo:
             if(input > 0.1) {
-                float max_turbo = 8.0;
-                this->instance->set_turbo_mode(true, 1.0 + max_turbo * ((input - 0.1) / 0.9));
+                this->instance->set_turbo_mode(true, 1.0 + this->max_turbo * ((input - 0.1) / 0.9));
             }
             else {
                 this->instance->set_turbo_mode(false);
@@ -1309,8 +1314,7 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             break;
         case InputDevice::Input_Slowmo:
             if(input > 0.1) {
-                float max_slowmo = 4.0;
-                this->instance->set_speed_multiplier(1.0 / (1.0 + max_slowmo * ((input - 0.1) / 0.9))); // TODO: allow you to set the maximum slowmotion
+                this->instance->set_speed_multiplier(1.0 / (1.0 + this->max_slowmo * ((input - 0.1) / 0.9)));
             }
             else {
                 this->instance->set_speed_multiplier(1.0);
