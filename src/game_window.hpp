@@ -103,6 +103,7 @@ private:
     void show_status_text(const char *text);
     QGraphicsTextItem *status_text = nullptr;
     clock::time_point status_text_deletion;
+    bool status_text_hidden = false;
     std::vector<QAction *> volume_options;
     void show_new_volume_text();
     
@@ -198,6 +199,7 @@ private slots:
     void action_set_color_correction_mode() noexcept;
     void action_show_advanced_model_options() noexcept;
     void action_set_highpass_filter_mode() noexcept;
+    void action_toggle_hide_status_text() noexcept;
 
     void action_create_save_state();
     void action_load_save_state();

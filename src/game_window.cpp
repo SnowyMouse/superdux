@@ -36,6 +36,7 @@
 #define SETTINGS_COLOR_CORRECTION_MODE "color_correction_mode"
 #define SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH "temporary_save_buffer_length"
 #define SETTINGS_HIGHPASS_FILTER_MODE "highpass_filter_mode"
+#define SETTINGS_STATUS_TEXT_HIDDEN "status_text_hidden"
 
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
 #define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
@@ -50,7 +51,7 @@
 #define SETTINGS_SGB2_REVISION "sgb2_model_revision"
 
 #define SETTINGS_SGB_CROP_BORDER "sgb_crop_border"
-#define SETTINGS_SGB2_CROP_Border "sgb2_crop_border"
+#define SETTINGS_SGB2_CROP_BORDER "sgb2_crop_border"
 
 #define SETTINGS_GBC_FAST_BOOT "gbc_fast_boot_rom"
 
@@ -218,7 +219,8 @@ GameWindow::GameWindow() {
     this->temporary_save_state_buffer_length = settings.value(SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH, this->temporary_save_state_buffer_length).toUInt();
 
     this->sgb_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB_CROP_BORDER, this->sgb_crop_border).toBool());
-    this->sgb2_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_CROP_Border, this->sgb2_crop_border).toBool());
+    this->sgb2_crop_border = static_cast<GB_model_t>(settings.value(SETTINGS_SGB2_CROP_BORDER, this->sgb2_crop_border).toBool());
+
 
     this->gbc_fast_boot_rom = settings.value(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom).toBool();
     
@@ -501,6 +503,13 @@ GameWindow::GameWindow() {
     }
     
     edit_menu->addSeparator();
+
+    // Status text?
+    this->status_text_hidden = settings.value(SETTINGS_STATUS_TEXT_HIDDEN, this->status_text_hidden).toBool();
+    auto *hide_status_text = edit_menu->addAction("Hide Status Text");
+    connect(hide_status_text, &QAction::triggered, this, &GameWindow::action_toggle_hide_status_text);
+    hide_status_text->setCheckable(true);
+    hide_status_text->setChecked(this->status_text_hidden);
     
     // Add controls options
     auto *controls = edit_menu->addAction("Configure Controls...");
@@ -970,6 +979,10 @@ void GameWindow::action_toggle_audio() noexcept {
 }
 
 void GameWindow::show_status_text(const char *text) {
+    if(this->status_text_hidden) {
+        return;
+    }
+
     if(this->status_text) {
         delete this->status_text;
     }
@@ -1112,6 +1125,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_COLOR_CORRECTION_MODE, this->color_correction_mode);
     settings.setValue(SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH, this->temporary_save_state_buffer_length);
     settings.setValue(SETTINGS_HIGHPASS_FILTER_MODE, this->highpass_filter_mode);
+    settings.setValue(SETTINGS_STATUS_TEXT_HIDDEN, this->status_text_hidden);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
@@ -1126,7 +1140,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SGB2_REVISION, this->sgb2_rev);
 
     settings.setValue(SETTINGS_SGB_CROP_BORDER, this->sgb_crop_border);
-    settings.setValue(SETTINGS_SGB2_CROP_Border, this->sgb2_crop_border);
+    settings.setValue(SETTINGS_SGB2_CROP_BORDER, this->sgb2_crop_border);
 
     settings.setValue(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom);
 
@@ -1433,5 +1447,15 @@ void GameWindow::action_unrevert_save_state() {
         char m[256];
         std::snprintf(m, sizeof(m), "Failed to undo temp save state %u / %zu", this->next_temporary_save_state, this->temporary_save_states.size());
         this->show_status_text(m);
+    }
+}
+
+void GameWindow::action_toggle_hide_status_text() noexcept {
+    this->status_text_hidden = !this->status_text_hidden;
+    qobject_cast<QAction *>(sender())->setChecked(this->status_text_hidden);
+
+    if(this->status_text_hidden) {
+        delete this->status_text;
+        this->status_text = nullptr;
     }
 }
