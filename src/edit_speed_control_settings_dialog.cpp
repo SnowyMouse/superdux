@@ -17,7 +17,7 @@ static constexpr const std::uint32_t TURBO_SLIDER_GRANULARITY = 25;
 static constexpr const std::uint32_t TURBO_SLIDER_TICK_INTERVAL = 100;
 
 static constexpr const std::uint32_t SLOWMO_SLIDER_MAX = 100;
-static constexpr const std::uint32_t SLOWMO_SLIDER_MIN = 25;
+static constexpr const std::uint32_t SLOWMO_SLIDER_MIN = 0;
 static constexpr const std::uint32_t SLOWMO_SLIDER_GRANULARITY = 5;
 static constexpr const std::uint32_t SLOWMO_SLIDER_TICK_INTERVAL = 25;
 

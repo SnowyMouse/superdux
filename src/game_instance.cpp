@@ -271,7 +271,7 @@ void GameInstance::start_game_loop(GameInstance *instance) noexcept {
         instance->rewind_paused = instance->rewind_paused && instance->rewinding;
         
         // Run some cycles on the gameboy
-        if(!instance->manual_paused && !instance->rewind_paused) {
+        if(!instance->manual_paused && !instance->rewind_paused && !instance->pause_zero_speed) {
             if(instance->should_rewind) {
                 GB_rewind_pop(&instance->gameboy);
                 if(!GB_rewind_pop(&instance->gameboy)) { // if we can't rewind any further, pause until the user lets go of the rewind button
@@ -553,7 +553,18 @@ void GameInstance::set_audio_enabled(bool enabled, std::uint32_t sample_rate) no
     this->mutex.unlock();
 }
 
-void GameInstance::set_speed_multiplier(double speed_multiplier) noexcept MAKE_SETTER(GB_set_clock_multiplier(&this->gameboy, speed_multiplier))
+void GameInstance::set_speed_multiplier(double speed_multiplier) noexcept {
+    this->mutex.lock();
+    if(speed_multiplier < 0.001) {
+        this->pause_zero_speed = true; // prevents a floating point exception that occurs if 0 speed
+        speed_multiplier = 0.001;
+    }
+    else {
+        this->pause_zero_speed = false;
+    }
+    GB_set_clock_multiplier(&this->gameboy, speed_multiplier);
+    this->mutex.unlock();
+}
 bool GameInstance::is_audio_enabled() noexcept MAKE_GETTER(this->audio_enabled)
 
 std::size_t GameInstance::get_pixel_buffer_size() noexcept {
@@ -922,5 +933,7 @@ void GameInstance::set_rumble_mode(GB_rumble_mode_t mode) noexcept MAKE_SETTER(G
 void GameInstance::set_rewind(bool rewinding) noexcept MAKE_SETTER(this->rewinding = rewinding)
 
 bool GameInstance::is_paused_from_rewind() noexcept MAKE_GETTER(this->rewind_paused)
+
+bool GameInstance::is_paused_from_zero_speed() noexcept MAKE_GETTER(this->pause_zero_speed);
 
 void GameInstance::set_rewind_length(double seconds) noexcept MAKE_SETTER(GB_set_rewind_length(&this->gameboy, seconds))

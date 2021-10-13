@@ -287,6 +287,10 @@ GameWindow::GameWindow() {
     LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
     LOAD_DOUBLE_SETTING_VALUE(this->max_turbo, SETTINGS_MAX_TURBO);
 
+    // Prevent invalid values
+    this->max_slowmo = std::max(this->max_slowmo, 0.0);
+    this->max_turbo = std::max(this->max_turbo, 1.0);
+
     #undef LOAD_INT_SETTING_VALUE
     #undef LOAD_UINT_SETTING_VALUE
     #undef LOAD_BOOL_SETTING_VALUE

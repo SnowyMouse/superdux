@@ -236,7 +236,7 @@ public: // all public functions assume the mutex is not locked
      * 
      * @param paused
      */
-    bool is_paused() noexcept { return this->is_paused_manually() || this->is_paused_from_breakpoint() || this->is_paused_from_rewind(); }
+    bool is_paused() noexcept { return this->is_paused_manually() || this->is_paused_from_breakpoint() || this->is_paused_from_rewind() || this->is_paused_from_zero_speed(); }
     
     /**
      * Set whether or not the instance is paused manually
@@ -265,6 +265,13 @@ public: // all public functions assume the mutex is not locked
      * @return paused from rewind
      */
     bool is_paused_from_rewind() noexcept;
+
+    /**
+     * Get whether or not the instance is paused because of speed multiplier being 0
+     *
+     * @return paused from zero speed
+     */
+    bool is_paused_from_zero_speed() noexcept;
     
     /**
      * Get the current frame rate
@@ -548,6 +555,9 @@ private: // all private functions assume the mutex is locked by the caller
     
     // Loop is running
     std::atomic_bool loop_running = false;
+
+    // Pause due to zero speed
+    bool pause_zero_speed = false;
     
     // Loop is finishing
     bool loop_finishing = false;
