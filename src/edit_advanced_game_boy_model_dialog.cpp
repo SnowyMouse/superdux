@@ -159,6 +159,8 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
                 { "Crop border:", {this->sgb2_crop_border_cb = new QCheckBox()} }
             });
 
+    tab_widget->setCurrentIndex(this->window->gb_type);
+
     this->sgb_crop_border_cb->setChecked(window->sgb_crop_border);
     this->sgb2_crop_border_cb->setChecked(window->sgb2_crop_border);
 
