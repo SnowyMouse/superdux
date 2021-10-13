@@ -42,6 +42,10 @@
 #define SETTINGS_MAX_TURBO "max_turbo"
 #define SETTINGS_MAX_SLOWMO "max_slowmo"
 
+#define SETTINGS_TURBO_ENABLED "turbo_enabled"
+#define SETTINGS_SLOWMO_ENABLED "slowmo_enabled"
+#define SETTINGS_REWIND_ENABLED "rewind_enabled"
+
 #define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
 #define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
 #define SETTINGS_GBA_BOOT_ROM "gba_boot_rom"
@@ -261,6 +265,10 @@ GameWindow::GameWindow() {
     LOAD_INT_SETTING_VALUE(this->gba_rev, SETTINGS_GBA_REVISION);
     LOAD_INT_SETTING_VALUE(this->sgb_rev, SETTINGS_SGB_REVISION);
     LOAD_INT_SETTING_VALUE(this->sgb2_rev, SETTINGS_SGB2_REVISION);
+    LOAD_INT_SETTING_VALUE(this->rtc_mode, SETTINGS_RTC_MODE);
+    LOAD_INT_SETTING_VALUE(this->rumble_mode, SETTINGS_RUMBLE_MODE);
+    LOAD_INT_SETTING_VALUE(this->highpass_filter_mode, SETTINGS_HIGHPASS_FILTER_MODE);
+    LOAD_INT_SETTING_VALUE(this->color_correction_mode, SETTINGS_COLOR_CORRECTION_MODE);
 
     LOAD_UINT_SETTING_VALUE(this->temporary_save_state_buffer_length, SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH);
     LOAD_UINT_SETTING_VALUE(this->sample_rate, SETTINGS_SAMPLE_RATE);
@@ -270,11 +278,9 @@ GameWindow::GameWindow() {
     LOAD_BOOL_SETTING_VALUE(this->sgb2_crop_border, SETTINGS_SGB2_CROP_BORDER);
     LOAD_BOOL_SETTING_VALUE(this->gbc_fast_boot_rom, SETTINGS_GBC_FAST_BOOT);
     LOAD_BOOL_SETTING_VALUE(this->status_text_hidden, SETTINGS_STATUS_TEXT_HIDDEN);
-
-    LOAD_INT_SETTING_VALUE(this->rtc_mode, SETTINGS_RTC_MODE);
-    LOAD_INT_SETTING_VALUE(this->rumble_mode, SETTINGS_RUMBLE_MODE);
-    LOAD_INT_SETTING_VALUE(this->highpass_filter_mode, SETTINGS_HIGHPASS_FILTER_MODE);
-    LOAD_INT_SETTING_VALUE(this->color_correction_mode, SETTINGS_COLOR_CORRECTION_MODE);
+    LOAD_BOOL_SETTING_VALUE(this->turbo_enabled, SETTINGS_TURBO_ENABLED);
+    LOAD_BOOL_SETTING_VALUE(this->slowmo_enabled, SETTINGS_SLOWMO_ENABLED);
+    LOAD_BOOL_SETTING_VALUE(this->rewind_enabled, SETTINGS_REWIND_ENABLED);
 
     LOAD_DOUBLE_SETTING_VALUE(this->rewind_length, SETTINGS_REWIND_LENGTH);
     LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
@@ -1199,6 +1205,9 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_REWIND_LENGTH, this->rewind_length);
     settings.setValue(SETTINGS_MAX_SLOWMO, this->max_slowmo);
     settings.setValue(SETTINGS_MAX_TURBO, this->max_turbo);
+    settings.setValue(SETTINGS_REWIND_ENABLED, this->rewind_enabled);
+    settings.setValue(SETTINGS_SLOWMO_ENABLED, this->slowmo_enabled);
+    settings.setValue(SETTINGS_TURBO_ENABLED, this->turbo_enabled);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
@@ -1305,6 +1314,9 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             this->instance->set_rapid_button_state(GB_key_t::GB_KEY_RIGHT, boolean_input);
             break;
         case InputDevice::Input_Turbo:
+            if(!this->turbo_enabled) {
+                input = 0.0;
+            }
             if(input > 0.1) {
                 this->instance->set_turbo_mode(true, 1.0 + this->max_turbo * ((input - 0.1) / 0.9));
             }
@@ -1313,6 +1325,9 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             }
             break;
         case InputDevice::Input_Slowmo:
+            if(!this->slowmo_enabled) {
+                input = 0.0;
+            }
             if(input > 0.1) {
                 this->instance->set_speed_multiplier(1.0 / (1.0 + this->max_slowmo * ((input - 0.1) / 0.9)));
             }
@@ -1321,6 +1336,9 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             }
             break;
         case InputDevice::Input_Rewind:
+            if(!this->rewind_enabled) {
+                boolean_input = false;
+            }
             this->instance->set_rewind(boolean_input);
             break;
         case InputDevice::Input_VolumeDown:

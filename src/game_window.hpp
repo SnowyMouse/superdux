@@ -79,6 +79,11 @@ private:
     double max_turbo = 4.0;
     double max_slowmo = 0.25;
 
+    // Set whether or not these are enabled
+    bool turbo_enabled = true;
+    bool slowmo_enabled = true;
+    bool rewind_enabled = true;
+
     // Rumble
     std::vector<QAction *> rumble_mode_options;
     GB_rumble_mode_t rumble_mode = GB_rumble_mode_t::GB_RUMBLE_CARTRIDGE_ONLY;
