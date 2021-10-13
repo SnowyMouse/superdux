@@ -144,7 +144,7 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
 
     layout->addWidget(tab_widget);
 
-    // OK/cancel buttons
+    // OK button
     auto *ok = new QWidget(this);
     auto *ok_layout = new QHBoxLayout(ok);
     ok_layout->setContentsMargins(0,0,0,0);

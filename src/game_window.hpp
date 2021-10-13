@@ -28,12 +28,14 @@ extern "C" {
 
 class GameDebugger;
 class EditAdvancedGameBoyModelDialog;
+class EditSpeedControlSettingsDialog;
 
 class GameWindow : public QMainWindow {
     Q_OBJECT
     
     friend GameDebugger;
     friend EditAdvancedGameBoyModelDialog;
+    friend EditSpeedControlSettingsDialog;
     
 public:
     GameWindow();
@@ -80,9 +82,9 @@ private:
     double max_slowmo = 0.25;
 
     // Set whether or not these are enabled
-    bool turbo_enabled = true;
-    bool slowmo_enabled = true;
-    bool rewind_enabled = true;
+    bool turbo_enabled = false;
+    bool slowmo_enabled = false;
+    bool rewind_enabled = false;
 
     // Rumble
     std::vector<QAction *> rumble_mode_options;
@@ -206,7 +208,6 @@ private slots:
     void action_open_rom() noexcept;
     void action_open_recent_rom();
     void action_reset() noexcept;
-    void action_edit_controls() noexcept;
     void action_set_buffer_mode() noexcept;
     void action_set_rtc_mode() noexcept;
     void action_set_color_correction_mode() noexcept;
@@ -214,6 +215,8 @@ private slots:
     void action_set_highpass_filter_mode() noexcept;
     void action_set_rumble_mode() noexcept;
     void action_toggle_hide_status_text() noexcept;
+    void action_edit_controls();
+    void action_edit_speed_control();
 
     void action_create_save_state();
     void action_load_save_state();

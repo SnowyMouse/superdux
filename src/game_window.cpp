@@ -17,6 +17,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include "edit_advanced_game_boy_model_dialog.hpp"
+#include "edit_speed_control_settings_dialog.hpp"
 
 #include <QLabel>
 
@@ -587,10 +588,14 @@ GameWindow::GameWindow() {
     connect(hide_status_text, &QAction::triggered, this, &GameWindow::action_toggle_hide_status_text);
     hide_status_text->setCheckable(true);
     hide_status_text->setChecked(this->status_text_hidden);
-    
+
     // Add controls options
     auto *controls = edit_menu->addAction("Configure Controls...");
     connect(controls, &QAction::triggered, this, &GameWindow::action_edit_controls);
+
+    // Add controls options
+    auto *speed_control = edit_menu->addAction("Configure Rewind and Speed...");
+    connect(speed_control, &QAction::triggered, this, &GameWindow::action_edit_speed_control);
     
     
     // Emulation menu
@@ -1229,8 +1234,16 @@ void GameWindow::closeEvent(QCloseEvent *) {
     QApplication::quit();
 }
 
-void GameWindow::action_edit_controls() noexcept {
+void GameWindow::action_edit_controls() {
     EditControlsDialog d(this);
+    this->disable_input = true;
+    d.exec();
+    this->disable_input = false;
+    this->reload_devices();
+}
+
+void GameWindow::action_edit_speed_control() {
+    EditSpeedControlSettingsDialog d(this);
     this->disable_input = true;
     d.exec();
     this->disable_input = false;
@@ -1314,22 +1327,18 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             this->instance->set_rapid_button_state(GB_key_t::GB_KEY_RIGHT, boolean_input);
             break;
         case InputDevice::Input_Turbo:
-            if(!this->turbo_enabled) {
-                input = 0.0;
-            }
-            if(input > 0.1) {
-                this->instance->set_turbo_mode(true, 1.0 + this->max_turbo * ((input - 0.1) / 0.9));
+            if(this->turbo_enabled && input > 0.1) {
+                double max_increase = this->max_turbo - 1.0;
+                this->instance->set_turbo_mode(true, 1.0 + max_increase * ((input - 0.1) / 0.9));
             }
             else {
                 this->instance->set_turbo_mode(false);
             }
             break;
         case InputDevice::Input_Slowmo:
-            if(!this->slowmo_enabled) {
-                input = 0.0;
-            }
-            if(input > 0.1) {
-                this->instance->set_speed_multiplier(1.0 / (1.0 + this->max_slowmo * ((input - 0.1) / 0.9)));
+            if(this->slowmo_enabled && input > 0.1) {
+                double max_decrease = (1.0 - this->max_slowmo);
+                this->instance->set_speed_multiplier(this->max_slowmo + max_decrease * (1.0 - (input - 0.1) / 0.9));
             }
             else {
                 this->instance->set_speed_multiplier(1.0);

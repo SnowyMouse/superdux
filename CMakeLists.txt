@@ -19,6 +19,7 @@ include("sameboy.cmake")
 set(SDX_FILES
     src/edit_advanced_game_boy_model_dialog.cpp
     src/edit_controls_dialog.cpp
+    src/edit_speed_control_settings_dialog.cpp
     src/game_debugger.cpp
     src/game_disassembler.cpp
     src/game_instance.cpp
