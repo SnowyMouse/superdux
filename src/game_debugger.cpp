@@ -421,6 +421,8 @@ void GameDebugger::format_table(QTableWidget *widget) {
     widget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     widget->setShowGrid(false);
     widget->setFont(this->table_font);
+    widget->setTextElideMode(Qt::TextElideMode::ElideNone);
+    widget->setWordWrap(false);
 }
 
 void GameDebugger::action_register_flag_state_changed(int) noexcept {
