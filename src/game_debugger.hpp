@@ -15,6 +15,7 @@ extern "C" {
 class GameDisassembler;
 class QLineEdit;
 class GameWindow;
+class QCheckBox;
 
 class GameDebugger : public QMainWindow {
     Q_OBJECT
@@ -78,6 +79,10 @@ private:
     void action_finish();
     void action_clear_breakpoints() noexcept;
     void action_update_registers() noexcept;
+    void action_register_flag_state_changed(int) noexcept;
+
+    void refresh_registers();
+    void refresh_flags();
     
     QWidget *right_view;
     
@@ -88,7 +93,8 @@ private:
     QAction *finish_fn_button;
     QAction *clear_breakpoints_button;
     
-    QLineEdit *register_a, *register_b, *register_c, *register_d, *register_e, *register_f, *register_hl, *register_sp;
+    QLineEdit *register_af, *register_bc, *register_de, *register_hl, *register_sp, *register_pc;
+    QCheckBox *flag_carry, *flag_half_carry, *flag_subtract, *flag_zero;
     QTableWidget *backtrace;
     GameWindow *game_window;
     

@@ -42,6 +42,12 @@ static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, 
             return &gb->pc;
         case SM83_REG_SP:
             return &gb->sp;
+        case SM83_REG_BC:
+            return &gb->bc;
+        case SM83_REG_AF:
+            return &gb->af;
+        case SM83_REG_DE:
+            return &gb->de;
         default:
             return NULL;
     }
@@ -73,6 +79,9 @@ uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
         case SM83_REG_HL:
         case SM83_REG_PC:
         case SM83_REG_SP:
+        case SM83_REG_AF:
+        case SM83_REG_BC:
+        case SM83_REG_DE:
             return get_16_bit_gb_register(gb, r);
         default:
             abort();
@@ -91,6 +100,9 @@ void set_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint16_t v) {
         case SM83_REG_HL:
         case SM83_REG_PC:
         case SM83_REG_SP:
+        case SM83_REG_AF:
+        case SM83_REG_BC:
+        case SM83_REG_DE:
             return set_16_bit_gb_register(gb, r, v);
         default:
             abort();
