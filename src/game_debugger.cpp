@@ -107,6 +107,8 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
                                                              register_widget_layout->addWidget(this->fieldB, register_row, 3); \
                                                              connect(this->fieldA, &QLineEdit::textChanged, this, &GameDebugger::action_update_registers);\
                                                              connect(this->fieldB, &QLineEdit::textChanged, this, &GameDebugger::action_update_registers);\
+                                                             this->fieldA->setFont(this->table_font);\
+                                                             this->fieldB->setFont(this->table_font);\
                                                              register_row++;
 
     ADD_REGISTER_FIELD("AF", register_af, "HL", register_hl);
