@@ -27,8 +27,9 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
 
 
     // First the tilemap
-    auto *gb_tilemap_view_frame = new QGroupBox(central_w);
-    gb_tilemap_view_frame->setTitle("Tilemap");
+    auto *gb_tab_view = new QTabWidget(central_w);
+
+    auto *gb_tilemap_view_frame = new QWidget(gb_tab_view);
     auto *gb_tilemap_view_frame_layout = new QVBoxLayout(gb_tilemap_view_frame);
     gb_tilemap_view_frame->setLayout(gb_tilemap_view_frame_layout);
     this->gb_tilemap_view = new QGraphicsView(gb_tilemap_view_frame);
@@ -95,7 +96,10 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     tilemap_options_layout->setContentsMargins(0,0,0,0);
     gb_tilemap_view_frame_layout->addWidget(tilemap_options);
 
-    layout->addWidget(gb_tilemap_view_frame);
+
+    gb_tab_view->addTab(gb_tilemap_view_frame, "Tilemap");
+
+    layout->addWidget(gb_tab_view);
 
 
     // Next, tilesets
@@ -121,7 +125,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
 
     // Palettes
     auto *palette_group = new QGroupBox(central_w);
-    palette_group->setTitle("Palettes");
+    palette_group->setTitle("Tileset Palette");
     auto *palette_group_layout = new QVBoxLayout(palette_group);
     palette_group->setLayout(palette_group_layout);
 
