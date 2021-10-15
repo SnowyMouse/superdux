@@ -21,7 +21,7 @@ static constexpr const std::uint32_t SLOWMO_SLIDER_MIN = 0;
 static constexpr const std::uint32_t SLOWMO_SLIDER_GRANULARITY = 5;
 static constexpr const std::uint32_t SLOWMO_SLIDER_TICK_INTERVAL = 25;
 
-static constexpr const std::uint32_t REWIND_SLIDER_MAX = 60;
+static constexpr const std::uint32_t REWIND_SLIDER_MAX = 180;
 static constexpr const std::uint32_t REWIND_SLIDER_MIN = 15;
 static constexpr const std::uint32_t REWIND_SLIDER_GRANULARITY = 5;
 static constexpr const std::uint32_t REWIND_SLIDER_TICK_INTERVAL = 15;
