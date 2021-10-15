@@ -94,8 +94,6 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     palette_selector_layout->addWidget(this->tileset_palette_index);
     this->tileset_palette_index->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     connect(this->tileset_palette_index, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &VRAMViewer::redraw_tileset);
-
-
     palette_selector->setLayout(palette_selector_layout);
 
     // Align heights
@@ -105,6 +103,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     gb_tileset_view_frame_layout->addWidget(palette_selector);
 
     layout->addWidget(gb_tileset_view_frame);
+    this->setFixedSize(this->sizeHint());
 }
 
 VRAMViewer::~VRAMViewer() {}
