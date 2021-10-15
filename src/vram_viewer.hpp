@@ -9,6 +9,8 @@ class QGraphicsScene;
 class QGraphicsPixmapItem;
 class QGraphicsView;
 class QCheckBox;
+class QSpinBox;
+class QComboBox;
 
 #include "game_instance.hpp"
 
@@ -24,8 +26,12 @@ public:
 private:
     GameWindow *window;
 
-    QImage gb_tileset_image;
     std::uint32_t gb_tileset_image_data[GameInstance::GB_TILESET_WIDTH * GameInstance::GB_TILESET_HEIGHT] = {};
+    QGraphicsScene *gb_tileset_scene;
+    QGraphicsView *gb_tileset_view;
+    QGraphicsPixmapItem *gb_tileset_pixmap;
+    QImage gb_tileset_image;
+    void redraw_tileset() noexcept;
 
     QGraphicsScene *gb_tilemap_scene;
     QGraphicsView *gb_tilemap_view;
@@ -33,8 +39,10 @@ private:
     QImage gb_tilemap_image;
     std::uint32_t gb_tilemap_image_data[GameInstance::GB_TILEMAP_WIDTH * GameInstance::GB_TILEMAP_HEIGHT] = {};
     QCheckBox *gb_tilemap_show_viewport_box;
-
     void redraw_tilemap() noexcept;
+
+    QSpinBox *tileset_palette_index;
+    QComboBox *tileset_palette_type;
 
 };
 
