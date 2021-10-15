@@ -29,6 +29,7 @@ extern "C" {
 class GameDebugger;
 class EditAdvancedGameBoyModelDialog;
 class EditSpeedControlSettingsDialog;
+class VRAMViewer;
 
 class GameWindow : public QMainWindow {
     Q_OBJECT
@@ -177,6 +178,10 @@ private:
     // Debugging
     QAction *show_debugger;
     GameDebugger *debugger_window;
+
+    // VRAM viewing
+    QAction *show_vram_viewer;
+    VRAMViewer *vram_viewer_window;
     
     // Recent ROMs
     QStringList recent_roms;

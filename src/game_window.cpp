@@ -21,6 +21,7 @@
 
 #include <QLabel>
 
+#include "vram_viewer.hpp"
 #include "input_device.hpp"
 
 #define SETTINGS_VOLUME "volume"
@@ -663,6 +664,12 @@ GameWindow::GameWindow() {
     connect(this->show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
     this->show_debugger->setEnabled(false);
 
+    // And the VRAM viewer
+    this->vram_viewer_window = new VRAMViewer(this);
+    this->show_vram_viewer = view_menu->addAction("Show VRAM Viewer");
+    connect(this->show_vram_viewer, &QAction::triggered, this->vram_viewer_window, &VRAMViewer::show);
+    this->vram_viewer_window->setEnabled(false);
+
     // If showing FPS, trigger it
     if(this->show_fps) {
         this->show_fps = false;
@@ -755,8 +762,9 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
     }
 
-    // Set timer and UI
+    // Allow these options
     this->show_debugger->setEnabled(true);
+    this->vram_viewer_window->setEnabled(true);
     
     // Start thread
     if(r == 0 && !instance_thread.joinable()) {
@@ -905,6 +913,7 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
 void GameWindow::game_loop() {
     this->redraw_pixel_buffer();
     this->debugger_window->refresh_view();
+    this->vram_viewer_window->refresh_view();
 
     SDL_Event event;
     while(SDL_PollEvent(&event)) {

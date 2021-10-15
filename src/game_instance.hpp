@@ -22,6 +22,7 @@ public: // all public functions assume the mutex is not locked
     GameInstance(GB_model_t model);
     ~GameInstance();
 
+
     enum PixelBufferMode {
         /** Use single buffering. Calls to read_pixel_buffer() will give you the work buffer. This will result in slightly less visual latency, but in most cases, this will result in heavy tearing that will look terrible on any LCD display. */
         PixelBufferSingle,
@@ -504,6 +505,32 @@ public: // all public functions assume the mutex is not locked
      * @param seconds seconds to rewind
      */
     void set_rewind_length(double seconds) noexcept;
+
+    static const constexpr std::size_t GB_TILESET_WIDTH = 256, GB_TILESET_HEIGHT = 192;
+
+    /**
+     * Draw the tileset to the given pointer. The pointer must be big enough to hold GB_TILESET_WIDTH*GB_TILESET_HEIGHT 32-bit pixels.
+     *
+     * @param destination destination array
+     */
+    void draw_tileset(std::uint32_t *destination, GB_palette_type_t palette_type, std::uint8_t index) noexcept;
+
+    static const constexpr std::size_t GB_TILEMAP_WIDTH = 256, GB_TILEMAP_HEIGHT = 256;
+
+    /**
+     * Draw the tileset to the given pointer. The pointer must be big enough to hold GB_TILEMAP_WIDTH*GB_TILEMAP_HEIGHT 32-bit pixels.
+     *
+     * @param destination destination array
+     */
+    void draw_tilemap(std::uint32_t *destination) noexcept;
+
+    /**
+     * Get the memory at the address
+     *
+     * @param address address to read
+     * @return        byte at address
+     */
+    std::uint8_t read_memory(std::uint16_t address) noexcept;
 
     
 private: // all private functions assume the mutex is locked by the caller

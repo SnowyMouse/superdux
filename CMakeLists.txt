@@ -27,6 +27,7 @@ set(SDX_FILES
     src/gb_proxy.c
     src/input_device.cpp
     src/main.cpp
+    src/vram_viewer.cpp
 )
 
 option(BUILD_QT5_VERSION "Build the Qt5 version" ${Qt5_FOUND})
