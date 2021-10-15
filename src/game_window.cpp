@@ -662,13 +662,15 @@ GameWindow::GameWindow() {
     this->debugger_window = new GameDebugger(this);
     this->show_debugger = view_menu->addAction("Show Debugger");
     connect(this->show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
+    connect(this->show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::activateWindow);
     this->show_debugger->setEnabled(false);
 
     // And the VRAM viewer
     this->vram_viewer_window = new VRAMViewer(this);
     this->show_vram_viewer = view_menu->addAction("Show VRAM Viewer");
     connect(this->show_vram_viewer, &QAction::triggered, this->vram_viewer_window, &VRAMViewer::show);
-    this->vram_viewer_window->setEnabled(false);
+    connect(this->show_vram_viewer, &QAction::triggered, this->vram_viewer_window, &VRAMViewer::activateWindow);
+    this->show_vram_viewer->setEnabled(false);
 
     // If showing FPS, trigger it
     if(this->show_fps) {
@@ -764,7 +766,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
 
     // Allow these options
     this->show_debugger->setEnabled(true);
-    this->vram_viewer_window->setEnabled(true);
+    this->show_vram_viewer->setEnabled(true);
     
     // Start thread
     if(r == 0 && !instance_thread.joinable()) {
