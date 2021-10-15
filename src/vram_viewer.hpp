@@ -11,6 +11,7 @@ class QGraphicsView;
 class QCheckBox;
 class QSpinBox;
 class QComboBox;
+class QLabel;
 
 #include "game_instance.hpp"
 
@@ -32,6 +33,8 @@ private:
     QGraphicsPixmapItem *gb_tileset_pixmap;
     QImage gb_tileset_image;
     void redraw_tileset() noexcept;
+
+    QLabel *tileset_palette_index_label;
     QSpinBox *tileset_palette_index;
     QComboBox *tileset_palette_type;
 

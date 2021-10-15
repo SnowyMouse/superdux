@@ -147,7 +147,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     palette_selector_layout->setContentsMargins(0,0,0,0);
     palette_selector->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 
-    auto *palette_label = new QLabel("Palette:");
+    auto *palette_label = new QLabel("Palette:", palette_selector);
     palette_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     palette_selector_layout->addWidget(palette_label);
 
@@ -162,7 +162,11 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     }
     palette_selector_layout->addWidget(this->tileset_palette_type);
 
-    this->tileset_palette_index = new QSpinBox(central_w);
+    this->tileset_palette_index_label = new QLabel("Index:", palette_selector);
+    this->tileset_palette_index_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    palette_selector_layout->addWidget(this->tileset_palette_index_label);
+
+    this->tileset_palette_index = new QSpinBox(palette_selector);
     this->tileset_palette_index->setMinimum(0);
     this->tileset_palette_index->setMaximum(7);
     palette_selector_layout->addWidget(this->tileset_palette_index);
@@ -188,9 +192,10 @@ void VRAMViewer::refresh_view() {
 }
 
 void VRAMViewer::redraw_palette() noexcept {
-    const std::uint32_t *new_palette = this->window->get_instance().get_palette(static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt()), this->tileset_palette_index->value());
+    auto type = static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt());
+    const std::uint32_t *new_palette = this->window->get_instance().get_palette(type, this->tileset_palette_index->value());
 
-    // Is the palete different?
+    // Is the palette different?
     if(std::memcmp(new_palette, this->current_palette, sizeof(this->current_palette)) != 0) {
         std::memcpy(this->current_palette, new_palette, sizeof(this->current_palette));
 
@@ -208,6 +213,10 @@ void VRAMViewer::redraw_palette() noexcept {
         format_background_color_for_palette(this->current_palette[2], this->palette_c);
         format_background_color_for_palette(this->current_palette[3], this->palette_d);
     }
+
+    // Gray out the index if we're on none
+    this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE);
+    this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE);
 
     this->redraw_tilemap();
     this->redraw_tileset();
