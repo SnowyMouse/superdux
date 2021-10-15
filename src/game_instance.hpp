@@ -511,7 +511,9 @@ public: // all public functions assume the mutex is not locked
     /**
      * Draw the tileset to the given pointer. The pointer must be big enough to hold GB_TILESET_WIDTH*GB_TILESET_HEIGHT 32-bit pixels.
      *
-     * @param destination destination array
+     * @param destination  destination array
+     * @param palette_type palette type
+     * @param index        palette index
      */
     void draw_tileset(std::uint32_t *destination, GB_palette_type_t palette_type, std::uint8_t index) noexcept;
 
@@ -520,9 +522,11 @@ public: // all public functions assume the mutex is not locked
     /**
      * Draw the tileset to the given pointer. The pointer must be big enough to hold GB_TILEMAP_WIDTH*GB_TILEMAP_HEIGHT 32-bit pixels.
      *
-     * @param destination destination array
+     * @param destination  destination array
+     * @param map_type     map type
+     * @param tileset_type tileset type
      */
-    void draw_tilemap(std::uint32_t *destination) noexcept;
+    void draw_tilemap(std::uint32_t *destination, GB_map_type_t map_type, GB_tileset_type_t tileset_type) noexcept;
 
     /**
      * Get the memory at the address

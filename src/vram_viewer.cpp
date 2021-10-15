@@ -39,17 +39,60 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     this->gb_tilemap_view->setDisabled(true);
     gb_tilemap_view_frame_layout->addWidget(this->gb_tilemap_view);
 
+    std::pair<const char *, GB_tileset_type_t> tilesets[] = {
+        {"Auto", GB_tileset_type_t::GB_TILESET_AUTO},
+        {"$8000", GB_tileset_type_t::GB_TILESET_8000},
+        {"$8800", GB_tileset_type_t::GB_TILESET_8800}
+    };
+
+
+    std::pair<const char *, GB_map_type_t> maps[] = {
+        {"Auto", GB_map_type_t::GB_MAP_AUTO},
+        {"$9800", GB_map_type_t::GB_MAP_9800},
+        {"$9c00", GB_map_type_t::GB_MAP_9C00}
+    };
+
+    auto *tilemap_options = new QWidget(gb_tilemap_view_frame);
+    auto *tilemap_options_layout = new QHBoxLayout(tilemap_options);
+
+    // Map option
+    auto *map_w = new QWidget(tilemap_options);
+    auto *map_w_layout = new QHBoxLayout(map_w);
+    map_w_layout->setContentsMargins(0,0,0,0);
+    map_w_layout->addWidget(new QLabel("Map:", map_w));
+    this->tilemap_map_type = new QComboBox(map_w);
+    for(auto &m : maps) {
+        this->tilemap_map_type->addItem(m.first, m.second);
+    }
+    map_w_layout->addWidget(this->tilemap_map_type);
+    map_w->setLayout(map_w_layout);
+    map_w->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    // Tileset
+    auto *tileset_w = new QWidget(tilemap_options);
+    auto *tileset_w_layout = new QHBoxLayout(tileset_w);
+    tileset_w_layout->setContentsMargins(0,0,0,0);
+    tileset_w_layout->addWidget(new QLabel("Tileset:", tileset_w));
+    this->tilemap_tileset_type = new QComboBox(tileset_w);
+    for(auto &t : tilesets) {
+        this->tilemap_tileset_type->addItem(t.first, t.second);
+    }
+    tileset_w_layout->addWidget(this->tilemap_tileset_type);
+    tileset_w->setLayout(tileset_w_layout);
+    tileset_w->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
     this->gb_tilemap_show_viewport_box = new QCheckBox("Show Viewport", gb_tilemap_view_frame);
     this->gb_tilemap_show_viewport_box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     this->gb_tilemap_show_viewport_box->setChecked(true);
     connect(this->gb_tilemap_show_viewport_box, &QCheckBox::clicked, this, &VRAMViewer::redraw_tilemap);
     this->gb_tilemap_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    auto *tilemap_options = new QWidget(gb_tilemap_view_frame);
-    auto *tilemap_options_layout = new QHBoxLayout(tilemap_options);
+    tilemap_options_layout->addWidget(map_w);
+    tilemap_options_layout->addWidget(tileset_w);
+    connect(this->tilemap_map_type, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &VRAMViewer::redraw_tilemap);
+    connect(this->tilemap_tileset_type, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &VRAMViewer::redraw_tilemap);
     tilemap_options_layout->addWidget(this->gb_tilemap_show_viewport_box);
     tilemap_options_layout->setContentsMargins(0,0,0,0);
-    tilemap_options_layout->addStretch(1);
     gb_tilemap_view_frame_layout->addWidget(tilemap_options);
 
     layout->addWidget(gb_tilemap_view_frame);
@@ -119,7 +162,7 @@ void VRAMViewer::refresh_view() {
 
 void VRAMViewer::redraw_tilemap() noexcept {
     auto &instance = this->window->get_instance();
-    instance.draw_tilemap(this->gb_tilemap_image_data);
+    instance.draw_tilemap(this->gb_tilemap_image_data, static_cast<GB_map_type_t>(this->tilemap_map_type->currentData().toInt()), static_cast<GB_tileset_type_t>(this->tilemap_tileset_type->currentData().toInt()));
 
     // Show the viewport?
     if(this->gb_tilemap_show_viewport_box->isChecked()) {

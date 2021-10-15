@@ -940,6 +940,6 @@ void GameInstance::set_rewind_length(double seconds) noexcept MAKE_SETTER(GB_set
 
 void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t palette_type, std::uint8_t index) noexcept MAKE_SETTER(GB_draw_tileset(&this->gameboy, destination, palette_type, index))
 
-void GameInstance::draw_tilemap(std::uint32_t *destination) noexcept MAKE_SETTER(GB_draw_tilemap(&this->gameboy, destination, GB_palette_type_t::GB_PALETTE_AUTO, 0, GB_map_type_t::GB_MAP_AUTO, GB_tileset_type_t::GB_TILESET_AUTO))
+void GameInstance::draw_tilemap(std::uint32_t *destination, GB_map_type_t map_type, GB_tileset_type_t tileset_type) noexcept MAKE_SETTER(GB_draw_tilemap(&this->gameboy, destination, GB_palette_type_t::GB_PALETTE_AUTO, 0, map_type, tileset_type))
 
 std::uint8_t GameInstance::read_memory(std::uint16_t address) noexcept MAKE_GETTER(GB_read_memory(&this->gameboy, address))

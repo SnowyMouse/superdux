@@ -32,6 +32,8 @@ private:
     QGraphicsPixmapItem *gb_tileset_pixmap;
     QImage gb_tileset_image;
     void redraw_tileset() noexcept;
+    QSpinBox *tileset_palette_index;
+    QComboBox *tileset_palette_type;
 
     QGraphicsScene *gb_tilemap_scene;
     QGraphicsView *gb_tilemap_view;
@@ -40,9 +42,7 @@ private:
     std::uint32_t gb_tilemap_image_data[GameInstance::GB_TILEMAP_WIDTH * GameInstance::GB_TILEMAP_HEIGHT] = {};
     QCheckBox *gb_tilemap_show_viewport_box;
     void redraw_tilemap() noexcept;
-
-    QSpinBox *tileset_palette_index;
-    QComboBox *tileset_palette_type;
+    QComboBox *tilemap_map_type, *tilemap_tileset_type;
 
 };
 
