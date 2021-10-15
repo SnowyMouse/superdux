@@ -128,10 +128,10 @@ const uint32_t *get_gb_palette(const struct GB_gameboy_s *gb, GB_palette_type_t 
 
     switch(palette_type) {
         case GB_PALETTE_BACKGROUND:
-            palette = gb->background_palettes_rgb + (palette_index % 8);
+            palette = gb->background_palettes_rgb;
             break;
         case GB_PALETTE_OAM:
-            palette = gb->sprite_palettes_rgb + (palette_index % 8);
+            palette = gb->sprite_palettes_rgb;
             break;
         default:
         case GB_PALETTE_NONE:
@@ -139,5 +139,5 @@ const uint32_t *get_gb_palette(const struct GB_gameboy_s *gb, GB_palette_type_t 
             return PALETTE_NONE;
     }
 
-    return palette + palette_index % 8;
+    return palette + 4 * (palette_index % 8);
 }
