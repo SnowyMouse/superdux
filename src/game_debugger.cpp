@@ -275,6 +275,9 @@ void GameDebugger::refresh_view() {
         }
 
         if(bp_pause) {
+            this->show();
+            this->activateWindow();
+
             auto bnt = instance.get_break_and_trace_results();
             if(!bnt.empty()) {
                 instance.clear_break_and_trace_results();
