@@ -97,8 +97,14 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
 
     layout->addWidget(gb_tilemap_view_frame);
 
+
     // Next, tilesets
-    auto *gb_tileset_view_frame = new QGroupBox(central_w);
+    auto *tileset_palette = new QWidget(central_w);
+    auto *tileset_palette_layout = new QVBoxLayout(tileset_palette);
+    tileset_palette_layout->setContentsMargins(0,0,0,0);
+    tileset_palette->setLayout(tileset_palette_layout);
+
+    auto *gb_tileset_view_frame = new QGroupBox(tileset_palette);
     gb_tileset_view_frame->setTitle("Tileset");
     auto *gb_tileset_view_frame_layout = new QVBoxLayout(gb_tileset_view_frame);
     gb_tileset_view_frame->setLayout(gb_tileset_view_frame_layout);
@@ -110,11 +116,32 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     this->gb_tileset_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     this->gb_tileset_view->setDisabled(true);
     gb_tileset_view_frame_layout->addWidget(this->gb_tileset_view);
-    gb_tileset_view_frame_layout->addStretch(1);
+    tileset_palette_layout->addWidget(gb_tileset_view_frame);
 
-    auto *palette_selector = new QWidget(gb_tileset_view_frame);
+
+    // Palettes
+    auto *palette_group = new QGroupBox(central_w);
+    palette_group->setTitle("Palettes");
+    auto *palette_group_layout = new QVBoxLayout(palette_group);
+    palette_group->setLayout(palette_group_layout);
+
+    auto *palette_preview = new QWidget(palette_group);
+    auto *palette_preview_layout = new QHBoxLayout(palette_preview);
+    palette_preview_layout->setContentsMargins(0,0,0,0);
+    palette_preview_layout->addWidget(this->palette_a = new QWidget(palette_preview));
+    palette_preview_layout->addWidget(this->palette_b = new QWidget(palette_preview));
+    palette_preview_layout->addWidget(this->palette_c = new QWidget(palette_preview));
+    palette_preview_layout->addWidget(this->palette_d = new QWidget(palette_preview));
+    this->palette_a->setStyleSheet("background-color: #000");
+    this->palette_b->setStyleSheet("background-color: #000");
+    this->palette_c->setStyleSheet("background-color: #000");
+    this->palette_d->setStyleSheet("background-color: #000");
+    palette_group_layout->addWidget(palette_preview);
+
+    auto *palette_selector = new QWidget(palette_group);
     auto *palette_selector_layout = new QHBoxLayout(palette_selector);
     palette_selector_layout->setContentsMargins(0,0,0,0);
+    palette_selector->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 
     auto *palette_label = new QLabel("Palette:");
     palette_label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -136,16 +163,13 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     this->tileset_palette_index->setMaximum(7);
     palette_selector_layout->addWidget(this->tileset_palette_index);
     this->tileset_palette_index->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    connect(this->tileset_palette_index, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &VRAMViewer::redraw_tileset);
+    connect(this->tileset_palette_index, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &VRAMViewer::redraw_palette);
+    connect(this->tileset_palette_type, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &VRAMViewer::redraw_palette);
     palette_selector->setLayout(palette_selector_layout);
+    palette_group_layout->addWidget(palette_selector);
+    tileset_palette_layout->addWidget(palette_group);
 
-    // Align heights
-    tilemap_options->setMinimumHeight(palette_selector->sizeHint().height());
-    palette_selector->setMinimumHeight(tilemap_options->sizeHint().height());
-
-    gb_tileset_view_frame_layout->addWidget(palette_selector);
-
-    layout->addWidget(gb_tileset_view_frame);
+    layout->addWidget(tileset_palette);
     this->setFixedSize(this->sizeHint());
 }
 
@@ -154,6 +178,31 @@ VRAMViewer::~VRAMViewer() {}
 void VRAMViewer::refresh_view() {
     if(this->isHidden()) {
         return;
+    }
+
+    this->redraw_palette();
+}
+
+void VRAMViewer::redraw_palette() noexcept {
+    const std::uint32_t *new_palette = this->window->get_instance().get_palette(static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt()), this->tileset_palette_index->value());
+
+    // Is the palete different?
+    if(std::memcmp(new_palette, this->current_palette, sizeof(this->current_palette)) != 0) {
+        std::memcpy(this->current_palette, new_palette, sizeof(this->current_palette));
+
+        auto format_background_color_for_palette = [](const std::uint32_t &p, QWidget *w) {
+            std::uint8_t b = (p & 0xFF);
+            std::uint8_t g = ((p & 0xFF00) >> 8) & 0xFF;
+            std::uint8_t r = ((p & 0xFF0000) >> 16) & 0xFF;
+
+            char stylesheet[256];
+            std::snprintf(stylesheet, sizeof(stylesheet), "background-color: #%02x%02x%02x", r, g, b);
+            w->setStyleSheet(stylesheet);
+        };
+        format_background_color_for_palette(this->current_palette[0], this->palette_a);
+        format_background_color_for_palette(this->current_palette[1], this->palette_b);
+        format_background_color_for_palette(this->current_palette[2], this->palette_c);
+        format_background_color_for_palette(this->current_palette[3], this->palette_d);
     }
 
     this->redraw_tilemap();

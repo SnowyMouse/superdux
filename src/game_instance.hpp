@@ -536,6 +536,15 @@ public: // all public functions assume the mutex is not locked
      */
     std::uint8_t read_memory(std::uint16_t address) noexcept;
 
+    /**
+     * Get the palete colors. There are 4 colors.
+     *
+     * @param palette_type  type of palette
+     * @param palette_index index of palette
+     * @return pointer to palette colors
+     */
+    const uint32_t *get_palette(GB_palette_type_t palette_type, unsigned char palette_index) noexcept;
+
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols

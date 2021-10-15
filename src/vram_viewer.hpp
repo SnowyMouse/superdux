@@ -44,6 +44,10 @@ private:
     void redraw_tilemap() noexcept;
     QComboBox *tilemap_map_type, *tilemap_tileset_type;
 
+    QWidget *palette_a, *palette_b, *palette_c, *palette_d;
+    std::uint32_t current_palette[4] = { 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000 };
+    void redraw_palette() noexcept;
+
 };
 
 #endif

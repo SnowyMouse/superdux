@@ -1,7 +1,5 @@
-#include "gb_proxy.h"
-
 #define GB_INTERNAL // I solumnly swear I am up to no good
-#include <Core/gb.h>
+#include "gb_proxy.h"
 
 // from SameBoy's debugger.c (struct is not exposed)
 struct GB_breakpoint_s {
@@ -121,4 +119,25 @@ uint32_t get_gb_breakpoint_size(const struct GB_gameboy_s *gb) {
 }
 uint16_t get_gb_breakpoint_address(const struct GB_gameboy_s *gb, uint32_t bt) {
     return gb->breakpoints[bt].addr;
+}
+
+static const uint32_t PALETTE_NONE[4] = { 0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000 };
+
+const uint32_t *get_gb_palette(const struct GB_gameboy_s *gb, GB_palette_type_t palette_type, unsigned char palette_index) {
+    const uint32_t *palette;
+
+    switch(palette_type) {
+        case GB_PALETTE_BACKGROUND:
+            palette = gb->background_palettes_rgb + (palette_index % 8);
+            break;
+        case GB_PALETTE_OAM:
+            palette = gb->sprite_palettes_rgb + (palette_index % 8);
+            break;
+        default:
+        case GB_PALETTE_NONE:
+        case GB_PALETTE_AUTO:
+            return PALETTE_NONE;
+    }
+
+    return palette + palette_index % 8;
 }
