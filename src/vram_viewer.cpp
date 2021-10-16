@@ -48,7 +48,8 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
 
 
     std::pair<const char *, GB_map_type_t> maps[] = {
-        {"Auto", GB_map_type_t::GB_MAP_AUTO},
+        {"Auto - Background", GB_map_type_t::GB_MAP_AUTO},
+        {"Auto - Window", GB_map_type_t::GB_MAP_AUTO},
         {"$9800", GB_map_type_t::GB_MAP_9800},
         {"$9c00", GB_map_type_t::GB_MAP_9C00}
     };
@@ -225,18 +226,48 @@ void VRAMViewer::redraw_palette() noexcept {
 
 void VRAMViewer::redraw_tilemap() noexcept {
     auto &instance = this->window->get_instance();
-    instance.draw_tilemap(this->gb_tilemap_image_data, static_cast<GB_map_type_t>(this->tilemap_map_type->currentData().toInt()), static_cast<GB_tileset_type_t>(this->tilemap_tileset_type->currentData().toInt()));
+    auto tilemap_index = this->tilemap_map_type->currentIndex();
+    auto tilemap_type = static_cast<GB_map_type_t>(this->tilemap_map_type->currentData().toInt());
+
+    auto lcdc = instance.read_memory(0xFF40);
+
+    // Showing screen
+    if(tilemap_index == 1) {
+        tilemap_type = (lcdc & 0b1000000) ? GB_map_type_t::GB_MAP_9C00 : GB_map_type_t::GB_MAP_9800; // LCDC
+    }
+
+    instance.draw_tilemap(this->gb_tilemap_image_data, tilemap_type, static_cast<GB_tileset_type_t>(this->tilemap_tileset_type->currentData().toInt()));
 
     // Show the viewport?
     if(this->gb_tilemap_show_viewport_box->isChecked()) {
-        std::uint8_t tm_x = instance.read_memory(0xFF43); // SCX
-        std::uint8_t tm_y = instance.read_memory(0xFF42); // SCY
+        std::size_t top_y, bottom_y, left_x, right_x;
 
-        std::size_t top_y = (tm_y - 1) % GameInstance::GB_TILEMAP_HEIGHT;
-        std::size_t bottom_y = (tm_y + 144) % GameInstance::GB_TILEMAP_HEIGHT;
+        if(tilemap_index == 1) {
+            auto wx = instance.read_memory(0xFF4B);
+            auto wy = instance.read_memory(0xFF4A);
+            top_y = GameInstance::GB_TILEMAP_HEIGHT - 1;
+            left_x = GameInstance::GB_TILEMAP_WIDTH - 1;
 
-        std::size_t left_x = (tm_x - 1) % GameInstance::GB_TILEMAP_WIDTH;
-        std::size_t right_x = (tm_x + 160) % GameInstance::GB_TILEMAP_WIDTH;
+            // Check if the window is visible
+            if((lcdc & 0b100000) && wx <= 166 && wy <= 143) {
+                right_x = 167 - wx;
+                bottom_y = 144 - wy;
+            }
+            else {
+                bottom_y = 0;
+                right_x = 0;
+            }
+        }
+        else {
+            auto scx = instance.read_memory(0xFF43); // SCX
+            auto scy = instance.read_memory(0xFF42); // SCY
+
+            top_y = (scy - 1) % GameInstance::GB_TILEMAP_HEIGHT;
+            bottom_y = (scy + 144) % GameInstance::GB_TILEMAP_HEIGHT;
+
+            left_x = (scx - 1) % GameInstance::GB_TILEMAP_WIDTH;
+            right_x = (scx + 160) % GameInstance::GB_TILEMAP_WIDTH;
+        }
 
         auto *tilemap_data = this->gb_tilemap_image_data;
 
