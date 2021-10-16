@@ -301,19 +301,19 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
 
             // Next, check if a background tile uses this
             if(bg_window_enabled) {
-                // First, background
-                for(uint8_t by = 0; by < 32; by++) {
-                    for(uint8_t bx = 0; bx < 32; bx++) {
-                        READ_BG_WINDOW(bx, by, background, background_attributes, TILESET_INFO_BACKGROUND)
-                    }
-                }
-
-                // Next, window
+                // First, window
                 if(window_enabled && window_x <= 166 && window_y <= 143) {
                     for(uint8_t wy = 0; wy < (32 - window_y / 8); wy++) {
                         for(uint8_t wx = 0; wx < (32 - window_x / 8); wx++) {
                             READ_BG_WINDOW(wx, wy, window, window_attributes, TILESET_INFO_WINDOW)
                         }
+                    }
+                }
+
+                // Next, background
+                for(uint8_t by = 0; by < 32; by++) {
+                    for(uint8_t bx = 0; bx < 32; bx++) {
+                        READ_BG_WINDOW(bx, by, background, background_attributes, TILESET_INFO_BACKGROUND)
                     }
                 }
             }
