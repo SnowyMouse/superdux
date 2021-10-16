@@ -24,10 +24,13 @@ public:
 
     void refresh_view();
 
-    void show_info_for_tile(const std::optional<std::uint16_t> &tile);
+    void show_info_for_tile(const std::optional<std::uint16_t> &tile, bool show_on_left_pane);
 
 private:
     GameWindow *window;
+
+    QTabWidget *gb_tab_view;
+    QWidget *gb_tilemap_view_frame;
 
     std::uint32_t gb_tileset_image_data[GameInstance::GB_TILESET_WIDTH * GameInstance::GB_TILESET_HEIGHT] = {};
     QGraphicsScene *gb_tileset_scene;

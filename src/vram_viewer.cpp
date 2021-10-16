@@ -21,7 +21,15 @@ public:
     }
     ~TilesetView() {}
 
+    void mousePressEvent(QMouseEvent *event) override {
+        this->handle_tile_selection(event, event->buttons() & Qt::MouseButton::LeftButton);
+    }
+
     void mouseMoveEvent(QMouseEvent *event) override {
+        this->handle_tile_selection(event, false);
+    }
+
+    void handle_tile_selection(QMouseEvent *event, bool click) {
         #if QT_VERSION >= 0x060000
         auto local_pos = event->position();
         #else
@@ -33,16 +41,16 @@ public:
 
         // Don't allow out of bounds fun
         if(x > 31 || y > 23) {
-            window->show_info_for_tile(std::nullopt);
+            window->show_info_for_tile(std::nullopt, false);
             return;
         }
 
         std::uint16_t tile = (x % GameInstance::GB_TILEMAP_WIDTH) + (y * GameInstance::GB_TILEMAP_HEIGHT / GameInstance::GB_TILESET_TILE_LENGTH);
-        window->show_info_for_tile(tile);
+        window->show_info_for_tile(tile, click);
     }
 
     void leaveEvent(QEvent *event) override {
-        window->show_info_for_tile(std::nullopt);
+        window->show_info_for_tile(std::nullopt, false);
     }
 
 private:
@@ -64,15 +72,13 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     auto *layout = new QHBoxLayout(central_w);
     central_w->setLayout(layout);
 
-
-
     // First the tilemap
-    auto *gb_tab_view = new QTabWidget(central_w);
+    this->gb_tab_view = new QTabWidget(central_w);
 
-    auto *gb_tilemap_view_frame = new QWidget(gb_tab_view);
-    auto *gb_tilemap_view_frame_layout = new QVBoxLayout(gb_tilemap_view_frame);
-    gb_tilemap_view_frame->setLayout(gb_tilemap_view_frame_layout);
-    this->gb_tilemap_view = new QGraphicsView(gb_tilemap_view_frame);
+    this->gb_tilemap_view_frame = new QWidget(this->gb_tab_view);
+    auto *gb_tilemap_view_frame_layout = new QVBoxLayout(this->gb_tilemap_view_frame);
+    this->gb_tilemap_view_frame->setLayout(gb_tilemap_view_frame_layout);
+    this->gb_tilemap_view = new QGraphicsView(this->gb_tilemap_view_frame);
     this->gb_tilemap_scene = new QGraphicsScene(this->gb_tilemap_view);
     this->gb_tilemap_pixmap = this->gb_tilemap_scene->addPixmap(QPixmap::fromImage(this->gb_tilemap_image));
     this->gb_tilemap_pixmap->setTransform(QTransform::fromScale(2, 2));
@@ -93,7 +99,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
         {"$9c00", GB_map_type_t::GB_MAP_9C00}
     };
 
-    auto *tilemap_options = new QWidget(gb_tilemap_view_frame);
+    auto *tilemap_options = new QWidget(this->gb_tilemap_view_frame);
     auto *tilemap_options_layout = new QHBoxLayout(tilemap_options);
 
     // Map option
@@ -122,7 +128,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     tileset_w->setLayout(tileset_w_layout);
     tileset_w->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    this->gb_tilemap_show_viewport_box = new QCheckBox("Show Viewport", gb_tilemap_view_frame);
+    this->gb_tilemap_show_viewport_box = new QCheckBox("Show Viewport", this->gb_tilemap_view_frame);
     this->gb_tilemap_show_viewport_box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     this->gb_tilemap_show_viewport_box->setChecked(true);
     connect(this->gb_tilemap_show_viewport_box, &QCheckBox::clicked, this, &VRAMViewer::redraw_tilemap);
@@ -136,10 +142,9 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     tilemap_options_layout->setContentsMargins(0,0,0,0);
     gb_tilemap_view_frame_layout->addWidget(tilemap_options);
 
+    this->gb_tab_view->addTab(this->gb_tilemap_view_frame, "Tilemap");
 
-    gb_tab_view->addTab(gb_tilemap_view_frame, "Tilemap");
-
-    layout->addWidget(gb_tab_view);
+    layout->addWidget(this->gb_tab_view);
 
 
     // Next, tilesets
@@ -451,7 +456,26 @@ void VRAMViewer::redraw_tileset() noexcept {
     this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
 }
 
-void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile) {
+void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile, bool show_on_left_pane) {
     this->moused_over_tile_index = tile;
     this->redraw_tileset();
+
+    if(show_on_left_pane && tile.has_value()) {
+        auto &t = this->tileset_object_info.tiles[*tile];
+        switch(static_cast<tileset_object_info_tile_type>(t.accessed_type)) {
+            case tileset_object_info_tile_type::TILESET_INFO_BACKGROUND:
+                this->tilemap_map_type->setCurrentIndex(0);
+                this->gb_tab_view->setCurrentWidget(this->gb_tilemap_view_frame);
+                break;
+            case tileset_object_info_tile_type::TILESET_INFO_WINDOW:
+                this->tilemap_map_type->setCurrentIndex(1);
+                this->gb_tab_view->setCurrentWidget(this->gb_tilemap_view_frame);
+                break;
+            case tileset_object_info_tile_type::TILESET_INFO_OAM:
+                std::printf("Unimplemented! This should switch to the OAM tab.\n");
+                break;
+            case tileset_object_info_tile_type::TILESET_INFO_NONE:
+                break;
+        }
+    }
 }
