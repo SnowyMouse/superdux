@@ -217,8 +217,8 @@ void VRAMViewer::redraw_palette() noexcept {
     }
 
     // Gray out the index if we're on none
-    this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE || type != GB_palette_type_t::GB_PALETTE_AUTO);
-    this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE || type != GB_palette_type_t::GB_PALETTE_AUTO);
+    this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
+    this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
 
     this->redraw_tilemap();
     this->redraw_tileset();
