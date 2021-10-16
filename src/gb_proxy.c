@@ -1,7 +1,7 @@
 #define GB_INTERNAL // I solumnly swear I am up to no good
 #include "gb_proxy.h"
 
-// from SameBoy's debugger.c (struct is not exposed)
+// from SameBoy's debugger.c (struct is not exposed - will need updated if sameboy gets updated)
 struct GB_breakpoint_s {
     union {
         struct {
@@ -28,6 +28,10 @@ static inline uint8_t *get_8_bit_gb_register_address(struct GB_gameboy_s *gb, sm
             return &gb->e;
         case SM83_REG_F:
             return &gb->f;
+        case SM83_REG_H:
+            return &gb->h;
+        case SM83_REG_L:
+            return &gb->l;
         default:
             return NULL;
     }
@@ -73,6 +77,8 @@ uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
         case SM83_REG_D:
         case SM83_REG_E:
         case SM83_REG_F:
+        case SM83_REG_H:
+        case SM83_REG_L:
             return get_8_bit_gb_register(gb, r);
         case SM83_REG_HL:
         case SM83_REG_PC:
@@ -94,6 +100,8 @@ void set_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint16_t v) {
         case SM83_REG_D:
         case SM83_REG_E:
         case SM83_REG_F:
+        case SM83_REG_H:
+        case SM83_REG_L:
             return set_8_bit_gb_register(gb, r, v);
         case SM83_REG_HL:
         case SM83_REG_PC:
