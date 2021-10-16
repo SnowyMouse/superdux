@@ -9,12 +9,48 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QLabel>
+#include <QMouseEvent>
+#include <QFontDatabase>
 
 #include "game_window.hpp"
+
+class TilesetView : public QGraphicsView {
+public:
+    TilesetView(QWidget *parent, VRAMViewer *window) : QGraphicsView(parent), window(window) {
+        this->setMouseTracking(true);
+    }
+    ~TilesetView() {}
+
+    void mouseMoveEvent(QMouseEvent *event) override {
+        auto local_pos = event->localPos();
+
+        std::size_t x = local_pos.x() / 2 / GameInstance::GB_TILESET_TILE_LENGTH;
+        std::size_t y = local_pos.y() / 2 / GameInstance::GB_TILESET_TILE_LENGTH;
+
+        // Don't allow out of bounds fun
+        if(x > 31 || y > 23) {
+            window->show_info_for_tile(std::nullopt);
+            return;
+        }
+
+        std::uint16_t tile = (x % GameInstance::GB_TILEMAP_WIDTH) + (y * GameInstance::GB_TILEMAP_HEIGHT / GameInstance::GB_TILESET_TILE_LENGTH);
+        window->show_info_for_tile(tile);
+    }
+
+    void leaveEvent(QEvent *event) override {
+        window->show_info_for_tile(std::nullopt);
+    }
+
+private:
+    VRAMViewer *window;
+};
 
 VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     gb_tilemap_image(reinterpret_cast<uchar *>(this->gb_tilemap_image_data), GameInstance::GB_TILEMAP_WIDTH, GameInstance::GB_TILEMAP_HEIGHT, QImage::Format::Format_ARGB32),
     gb_tileset_image(reinterpret_cast<uchar *>(this->gb_tileset_image_data), GameInstance::GB_TILESET_WIDTH, GameInstance::GB_TILESET_HEIGHT, QImage::Format::Format_ARGB32) {
+
+    auto table_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    table_font.setPixelSize(14);
 
     // Set up our viewer
     this->setWindowTitle("VRAM Viewer");
@@ -45,7 +81,6 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
         {"$8000", GB_tileset_type_t::GB_TILESET_8000},
         {"$8800", GB_tileset_type_t::GB_TILESET_8800}
     };
-
 
     std::pair<const char *, GB_map_type_t> maps[] = {
         {"Auto - Background", GB_map_type_t::GB_MAP_AUTO},
@@ -113,24 +148,32 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     gb_tileset_view_frame->setTitle("Tileset");
     auto *gb_tileset_view_frame_layout = new QVBoxLayout(gb_tileset_view_frame);
     gb_tileset_view_frame->setLayout(gb_tileset_view_frame_layout);
-    this->gb_tileset_view = new QGraphicsView(gb_tileset_view_frame);
+    this->gb_tileset_view = new TilesetView(gb_tileset_view_frame, this);
     this->gb_tileset_scene = new QGraphicsScene(this->gb_tileset_view);
     this->gb_tileset_pixmap = this->gb_tileset_scene->addPixmap(QPixmap::fromImage(this->gb_tileset_image));
     this->gb_tileset_pixmap->setTransform(QTransform::fromScale(2, 2));
     this->gb_tileset_view->setScene(this->gb_tileset_scene);
-    this->gb_tileset_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    this->gb_tileset_view->setDisabled(true);
+    //this->gb_tileset_view->setDisabled(true);
     gb_tileset_view_frame_layout->addWidget(this->gb_tileset_view);
-    tileset_palette_layout->addWidget(gb_tileset_view_frame);
 
+    // Tileset mouse over info
+    auto *tileset_mouse_over_widget = new QWidget(gb_tileset_view_frame);
+    auto *tileset_mouse_over_layout = new QGridLayout(tileset_mouse_over_widget);
+    int row_count = 0;
+    auto add_tileset_mouse_over_info = [&row_count, &tileset_mouse_over_widget, &tileset_mouse_over_layout, &table_font](QLabel **label) {
+        *label = new QLabel("TEST", tileset_mouse_over_widget);
+        (*label)->setFont(table_font);
+        tileset_mouse_over_layout->addWidget(*label, row_count, 0);
+        row_count++;
+    };
+    add_tileset_mouse_over_info(&this->moused_over_tile_address);
+    add_tileset_mouse_over_info(&this->moused_over_tile_accessed_index);
+    add_tileset_mouse_over_info(&this->moused_over_tile_user);
+    add_tileset_mouse_over_info(&this->moused_over_tile_palette);
+    int palette_row_index = row_count - 1;
 
-    // Palettes
-    auto *palette_group = new QGroupBox(central_w);
-    palette_group->setTitle("Tileset Palette");
-    auto *palette_group_layout = new QVBoxLayout(palette_group);
-    palette_group->setLayout(palette_group_layout);
-
-    auto *palette_preview = new QWidget(palette_group);
+    // Palette
+    auto *palette_preview = new QWidget(tileset_mouse_over_widget);
     auto *palette_preview_layout = new QHBoxLayout(palette_preview);
     palette_preview_layout->setContentsMargins(0,0,0,0);
     palette_preview_layout->addWidget(this->palette_a = new QWidget(palette_preview));
@@ -141,7 +184,27 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     this->palette_b->setStyleSheet("background-color: #000");
     this->palette_c->setStyleSheet("background-color: #000");
     this->palette_d->setStyleSheet("background-color: #000");
-    palette_group_layout->addWidget(palette_preview);
+
+    int palette_hw = this->moused_over_tile_palette->sizeHint().height();
+    this->palette_a->setFixedSize(palette_hw, palette_hw);
+    this->palette_b->setFixedSize(palette_hw, palette_hw);
+    this->palette_c->setFixedSize(palette_hw, palette_hw);
+    this->palette_d->setFixedSize(palette_hw, palette_hw);
+    palette_preview->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    tileset_mouse_over_layout->addWidget(palette_preview, palette_row_index, 1);
+
+    tileset_mouse_over_widget->setLayout(tileset_mouse_over_layout);
+    gb_tileset_view_frame_layout->addWidget(tileset_mouse_over_widget);
+    tileset_palette_layout->addWidget(gb_tileset_view_frame);
+    this->gb_tileset_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+
+    // Palettes
+    auto *palette_group = new QGroupBox(central_w);
+    palette_group->setTitle("Tileset Palette");
+    palette_group->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    auto *palette_group_layout = new QVBoxLayout(palette_group);
+    palette_group->setLayout(palette_group_layout);
 
     auto *palette_selector = new QWidget(palette_group);
     auto *palette_selector_layout = new QHBoxLayout(palette_selector);
@@ -194,32 +257,6 @@ void VRAMViewer::refresh_view() {
 }
 
 void VRAMViewer::redraw_palette() noexcept {
-    auto type = static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt());
-    const std::uint32_t *new_palette = this->window->get_instance().get_palette(type, this->tileset_palette_index->value());
-
-    // Is the palette different?
-    if(std::memcmp(new_palette, this->current_palette, sizeof(this->current_palette)) != 0) {
-        std::memcpy(this->current_palette, new_palette, sizeof(this->current_palette));
-
-        auto format_background_color_for_palette = [](const std::uint32_t &p, QWidget *w) {
-            std::uint8_t b = (p & 0xFF);
-            std::uint8_t g = ((p & 0xFF00) >> 8) & 0xFF;
-            std::uint8_t r = ((p & 0xFF0000) >> 16) & 0xFF;
-
-            char stylesheet[256];
-            std::snprintf(stylesheet, sizeof(stylesheet), "background-color: #%02x%02x%02x", r, g, b);
-            w->setStyleSheet(stylesheet);
-        };
-        format_background_color_for_palette(this->current_palette[0], this->palette_a);
-        format_background_color_for_palette(this->current_palette[1], this->palette_b);
-        format_background_color_for_palette(this->current_palette[2], this->palette_c);
-        format_background_color_for_palette(this->current_palette[3], this->palette_d);
-    }
-
-    // Gray out the index if we're on none
-    this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
-    this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
-
     this->redraw_tilemap();
     this->redraw_tileset();
 }
@@ -316,7 +353,101 @@ void VRAMViewer::redraw_tilemap() noexcept {
 }
 
 void VRAMViewer::redraw_tileset() noexcept {
+    auto type = static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt());
+
     auto &instance = this->window->get_instance();
     instance.draw_tileset(this->gb_tileset_image_data, static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt()), this->tileset_palette_index->value());
     this->gb_tileset_pixmap->setPixmap(QPixmap::fromImage(this->gb_tileset_image));
+    this->tileset_object_info = instance.get_tileset_object_info();
+
+    // if we are mousing over a tile, show data for that tile
+    const std::uint32_t *new_palette;
+    if(moused_over_tile_index.has_value()) {
+        auto &info = tileset_object_info.tiles[*moused_over_tile_index];
+
+        char tile_address[256];
+        std::snprintf(tile_address, sizeof(tile_address), "Tile address: $%i:%04x", info.tile_bank, info.tile_address);
+        this->moused_over_tile_address->setText(tile_address);
+
+        char tile_index[256];
+        if(info.tile_index >= 0x80) {
+            std::snprintf(tile_index, sizeof(tile_index), "Index: %s$%04x ($8000 mode),%s $%02x ($8800 mode)", info.tile_index >= 0x100 ? "<s>" : "", info.tile_index, info.tile_index >= 0x100 ? "</s>" : "", info.tile_index - 0x80);
+        }
+        else {
+            std::snprintf(tile_index, sizeof(tile_index), "Index: $%04x ($8000 mode)", info.tile_index);
+        }
+        this->moused_over_tile_accessed_index->setText(tile_index);
+
+
+        if(info.accessed_type) {
+            char palette_text[256];
+
+            // Find the palette
+            GB_palette_type_t palette = info.accessed_type == tileset_object_info_tile_type::TILESET_INFO_OAM ? GB_palette_type_t::GB_PALETTE_OAM : GB_palette_type_t::GB_PALETTE_BACKGROUND;
+            std::snprintf(palette_text, sizeof(palette_text), "Palette: %u (%s)", info.accessed_tile_palette_index, palette == GB_palette_type_t::GB_PALETTE_OAM ? "sprite" : "background");
+            this->moused_over_tile_palette->setText(palette_text);
+
+            char user_text[256];
+            char user_name[256] = "???";
+
+            switch(info.accessed_type) {
+                case tileset_object_info_tile_type::TILESET_INFO_OAM:
+                    std::snprintf(user_name, sizeof(user_name), "sprite #%02u ($%02x)", info.accessed_user_index, info.accessed_user_index);
+                    break;
+                case tileset_object_info_tile_type::TILESET_INFO_WINDOW:
+                    std::snprintf(user_name, sizeof(user_name), "window");
+                    break;
+                case tileset_object_info_tile_type::TILESET_INFO_BACKGROUND:
+                    std::snprintf(user_name, sizeof(user_name), "background");
+                    break;
+                default:
+                    break;
+            }
+
+            std::snprintf(palette_text, sizeof(palette_text), "User: %s", user_name);
+            new_palette = instance.get_palette(palette, info.accessed_tile_palette_index);
+            this->moused_over_tile_user->setText(palette_text);
+        }
+        else {
+            this->moused_over_tile_palette->setText(" ");
+            this->moused_over_tile_user->setText(" ");
+            new_palette = instance.get_palette(type, this->tileset_palette_index->value());
+        }
+
+    }
+    else {
+        new_palette = instance.get_palette(type, this->tileset_palette_index->value());
+        this->moused_over_tile_address->setText(" ");
+        this->moused_over_tile_accessed_index->setText(" ");
+        this->moused_over_tile_palette->setText(" ");
+        this->moused_over_tile_user->setText(" ");
+    }
+
+    // Is the palette different?
+    if(std::memcmp(new_palette, this->current_palette, sizeof(this->current_palette)) != 0) {
+        std::memcpy(this->current_palette, new_palette, sizeof(this->current_palette));
+
+        auto format_background_color_for_palette = [](const std::uint32_t &p, QWidget *w) {
+            std::uint8_t b = (p & 0xFF);
+            std::uint8_t g = ((p & 0xFF00) >> 8) & 0xFF;
+            std::uint8_t r = ((p & 0xFF0000) >> 16) & 0xFF;
+
+            char stylesheet[256];
+            std::snprintf(stylesheet, sizeof(stylesheet), "background-color: #%02x%02x%02x", r, g, b);
+            w->setStyleSheet(stylesheet);
+        };
+        format_background_color_for_palette(this->current_palette[0], this->palette_a);
+        format_background_color_for_palette(this->current_palette[1], this->palette_b);
+        format_background_color_for_palette(this->current_palette[2], this->palette_c);
+        format_background_color_for_palette(this->current_palette[3], this->palette_d);
+    }
+
+    // Gray out the index if we're on none
+    this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
+    this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
+}
+
+void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile) {
+    this->moused_over_tile_index = tile;
+    this->redraw_tileset();
 }

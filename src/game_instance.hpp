@@ -537,6 +537,11 @@ public: // all public functions assume the mutex is not locked
     std::uint8_t read_memory(std::uint16_t address) noexcept;
 
     /**
+     * Get tileset metadata information
+     */
+    tileset_object_info get_tileset_object_info() noexcept;
+
+    /**
      * Get the palete colors. There are 4 colors.
      *
      * @param palette_type  type of palette

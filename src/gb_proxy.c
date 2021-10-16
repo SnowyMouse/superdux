@@ -210,7 +210,7 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
             tileset_object_info_tile *block_info = tileset_info->tiles + x + y * TILESET_BLOCK_WIDTH;
             block_info->tile_index = tile_number;
             block_info->tile_bank = tileset_number;
-            block_info->tile_address = 0x8000 + tile_number;
+            block_info->tile_address = 0x8000 + tile_number * 0x10;
 
             // If we already accessed it, continue
             if(block_info->accessed_type != TILESET_INFO_NONE) {
@@ -219,7 +219,7 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
 
             // Check if a sprite uses this tile
             if(sprites_enabled) {
-                for(uint32_t i = 0; i < 40; i++) {
+                for(uint8_t i = 0; i < 40; i++) {
                     uint8_t *object = oam_data + i * 4;
 
                     uint8_t flags = object[3];
@@ -253,6 +253,7 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
                     block_info->accessed_type = TILESET_INFO_OAM;
                     block_info->accessed_tile_palette_index = gb->cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
                     block_info->accessed_tile_index = oam_tile;
+                    block_info->accessed_user_index = i;
 
                     // Do the next tile if 16 height sprite
                     if(sprite_height == 16) {
@@ -260,6 +261,7 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
                         next->accessed_type = TILESET_INFO_OAM;
                         next->accessed_tile_palette_index = gb->cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
                         next->accessed_tile_index = oam_tile;
+                        next->accessed_user_index = i;
                     }
 
                     // We're done here
@@ -292,7 +294,7 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
                 } \
              \
                 block_info->accessed_type = access_type; \
-                block_info->accessed_tile_index = accessed_tile_index; \
+                block_info->accessed_tile_index = tile; \
                 block_info->accessed_tile_palette_index = tile_palette; \
                 goto spaghetti_done_with_this_block; \
             }

@@ -945,7 +945,7 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
         // Get the tilset info
         tileset_object_info ti;
-        get_tileset_object_info(&this->gameboy, &ti);
+        ::get_tileset_object_info(&this->gameboy, &ti);
         for(uint16_t i = 0; i < sizeof(ti.tiles) / sizeof(ti.tiles[0]); i++) {
             const tileset_object_info_tile &info = ti.tiles[i];
             tileset_object_info_tile_type accessed_type = static_cast<tileset_object_info_tile_type>(info.accessed_type);
@@ -991,3 +991,11 @@ void GameInstance::draw_tilemap(std::uint32_t *destination, GB_map_type_t map_ty
 std::uint8_t GameInstance::read_memory(std::uint16_t address) noexcept MAKE_GETTER(GB_read_memory(&this->gameboy, address))
 
 const uint32_t *GameInstance::get_palette(GB_palette_type_t palette_type, unsigned char palette_index) noexcept MAKE_GETTER(get_gb_palette(&this->gameboy, palette_type, palette_index))
+
+tileset_object_info GameInstance::get_tileset_object_info() noexcept {
+    tileset_object_info info;
+    this->mutex.lock();
+    ::get_tileset_object_info(&this->gameboy, &info);
+    this->mutex.unlock();
+    return info;
+}

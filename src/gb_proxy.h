@@ -85,6 +85,9 @@ typedef struct {
 
     // If we accessed it, palette used for this tile.
     uint8_t accessed_tile_palette_index;
+
+    // If we accessed it, what's the index of the user (0 if background/window, the index if oam)
+    uint8_t accessed_user_index;
 } tileset_object_info_tile;
 
 typedef struct {
