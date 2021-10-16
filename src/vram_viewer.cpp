@@ -22,7 +22,11 @@ public:
     ~TilesetView() {}
 
     void mouseMoveEvent(QMouseEvent *event) override {
-        auto local_pos = event->localPos();
+        #if QT_VERSION >= 0x060000
+        auto local_pos = event->position();
+        #else
+        auto local_pos = event->localPos(); // deprecated in Qt 6 (position() is not available in Qt5 however)
+        #endif
 
         std::size_t x = local_pos.x() / 2 / GameInstance::GB_TILESET_TILE_LENGTH;
         std::size_t y = local_pos.y() / 2 / GameInstance::GB_TILESET_TILE_LENGTH;
