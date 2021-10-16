@@ -153,36 +153,11 @@ static const uint32_t TILESET_BLOCK_HEIGHT = TILESET_HEIGHT / TILESET_BLOCK_LENG
 static const uint32_t TILESET_PAGE_BLOCK_WIDTH = TILESET_BLOCK_WIDTH / 2;
 static const uint32_t TILESET_PAGE_BLOCK_COUNT = TILESET_PAGE_BLOCK_WIDTH * TILESET_BLOCK_HEIGHT;
 
-
-static void apply_palette_to_block(uint32_t *tileset, uint16_t tile_number, uint8_t tileset_page_index, const uint32_t *palette) {
-    uint32_t *block = tileset;
-
-    if(tileset_page_index) {
-        block += TILESET_PAGE_BLOCK_WIDTH * TILESET_BLOCK_LENGTH;
-    }
-
-    uint8_t x = tile_number % TILESET_PAGE_BLOCK_WIDTH;
-    uint8_t y = tile_number / TILESET_PAGE_BLOCK_WIDTH;
-
-    block += ((uint32_t)(x) * TILESET_BLOCK_LENGTH + (uint32_t)(y) * TILESET_BLOCK_WIDTH * TILESET_BLOCK_LENGTH * TILESET_BLOCK_LENGTH);
-
-    for(uint32_t ty = 0; ty < TILESET_BLOCK_LENGTH; ty++) {
-        for(uint32_t tx = 0; tx < TILESET_BLOCK_LENGTH; tx++) {
-            uint32_t *pixel = block + tx + ty * TILESET_WIDTH;
-            size_t color_index = 0;
-            for(size_t i = 0; i < sizeof(PALETTE_NONE) / sizeof(PALETTE_NONE[0]); i++) {
-                if((*pixel & 0xFF) == (PALETTE_NONE[i] & 0xFF)) {
-                    color_index = i;
-                    break;
-                }
-            }
-            *pixel = palette[color_index];
-        }
-    }
-}
-
 // much of this information was from the pandocs (https://gbdev.io/pandocs/OAM.html)
-void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset) {
+void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tileset_info) {
+    // Zero-intitialize tileset_info
+    memset(tileset_info, 0, sizeof(*tileset_info));
+
     // Get the OAM data
     uint8_t *oam_data = GB_get_direct_access(gb, GB_DIRECT_ACCESS_OAM, NULL, NULL);
     uint8_t lcdc = GB_read_memory(gb, 0xFF40);
@@ -208,10 +183,6 @@ void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset) {
 
     bool background_window_8800 = !(lcdc & 0b10000);
 
-    // Clear these
-    bool tile_colored[TILESET_PAGE_BLOCK_COUNT][2];
-    memset(tile_colored, 0, sizeof(tile_colored));
-
     for(uint32_t y = 0; y < TILESET_BLOCK_HEIGHT; y++) {
         for(uint32_t x = 0; x < TILESET_BLOCK_WIDTH; x++) {
             uint16_t tile_number = 0;
@@ -227,7 +198,14 @@ void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset) {
             // Get the tile number
             tile_number = virtual_x + (y * TILESET_PAGE_BLOCK_WIDTH);
 
-            if(tile_colored[tile_number][tileset_number]) {
+            // Set these
+            tileset_object_info_tile *block_info = tileset_info->tiles + x + y * TILESET_BLOCK_WIDTH;
+            block_info->tile_index = tile_number;
+            block_info->tile_bank = tileset_number;
+            block_info->tile_address = 0x8000 + tile_number;
+
+            // If we already accessed it, continue
+            if(block_info->accessed_type != TILESET_INFO_NONE) {
                 continue;
             }
 
@@ -264,15 +242,16 @@ void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset) {
                     }
 
                     // If in CGB mode, it's the lower 3 bits. Otherwise, it's the 5th bit
-                    uint16_t palette_number = gb->cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
+                    block_info->accessed_type = TILESET_INFO_OAM;
+                    block_info->accessed_tile_palette_index = gb->cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
+                    block_info->accessed_tile_index = oam_tile;
 
-                    tile_colored[tile_number][tileset_number] = true;
-                    apply_palette_to_block(tileset, tile_number, tileset_number, get_gb_palette(gb, GB_PALETTE_OAM, palette_number));
-
-                    // Color the next tile if 16 height sprite
+                    // Do the next tile if 16 height sprite
                     if(sprite_height == 16) {
-                        apply_palette_to_block(tileset, tile_number + 1, tileset_number, get_gb_palette(gb, GB_PALETTE_OAM, palette_number));
-                        tile_colored[tile_number | 0x01][tileset_number] = true;
+                        tileset_object_info_tile *next = block_info + 1;
+                        next->accessed_type = TILESET_INFO_OAM;
+                        next->accessed_tile_palette_index = gb->cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
+                        next->accessed_tile_index = oam_tile;
                     }
 
                     // We're done here
@@ -280,33 +259,33 @@ void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset) {
                 }
             }
 
-            #define READ_BG_WINDOW(x, y, tile_data, tile_data_attributes) { \
-                uint16_t tile = tile_data[x + y * 32]; \
+            #define READ_BG_WINDOW(x, y, tile_data, tile_data_attributes, access_type) { \
+                uint8_t accessed_tile_index = tile_data[x + y * 32]; \
+                uint16_t tile = accessed_tile_index; \
                 if(background_window_8800) { \
                     if(tile < 128) { \
                         tile += 0x100; \
                     } \
                 } \
              \
-                uint8_t palette_number; \
-                uint8_t bw_tileset_number; \
-             \
+                uint8_t bw_tileset_number, tile_palette; \
                 if(gb->cgb_mode) { \
                     uint8_t tile_attributes = tile_data_attributes[x + y * 32]; \
                     bw_tileset_number = (tile_attributes & 0b1000) >> 3; \
-                    palette_number = tile_attributes & 0b111; \
+                    tile_palette = tile_attributes & 0b111; \
                 } \
                 else { \
                     bw_tileset_number = 0; \
-                    palette_number = 0; \
+                    tile_palette = 0; \
                 } \
              \
                 if(tile != tile_number || tileset_number != bw_tileset_number) { \
                     continue; \
                 } \
              \
-                apply_palette_to_block(tileset, tile_number, tileset_number, get_gb_palette(gb, GB_PALETTE_BACKGROUND, palette_number)); \
-                tile_colored[tile_number][tileset_number] = true; \
+                block_info->accessed_type = access_type; \
+                block_info->accessed_tile_index = accessed_tile_index; \
+                block_info->accessed_tile_palette_index = tile_palette; \
                 goto spaghetti_done_with_this_block; \
             }
 
@@ -315,7 +294,7 @@ void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset) {
                 // First, background
                 for(uint8_t by = 0; by < 32; by++) {
                     for(uint8_t bx = 0; bx < 32; bx++) {
-                        READ_BG_WINDOW(bx, by, background, background_attributes)
+                        READ_BG_WINDOW(bx, by, background, background_attributes, TILESET_INFO_BACKGROUND)
                     }
                 }
 
@@ -323,7 +302,7 @@ void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset) {
                 if(window_enabled && window_x <= 166 && window_y <= 143) {
                     for(uint8_t wy = 0; wy < (32 - window_y / 8); wy++) {
                         for(uint8_t wx = 0; wx < (32 - window_x / 8); wx++) {
-                            READ_BG_WINDOW(wx, wy, window, window_attributes)
+                            READ_BG_WINDOW(wx, wy, window, window_attributes, TILESET_INFO_WINDOW)
                         }
                     }
                 }

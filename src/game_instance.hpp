@@ -506,7 +506,7 @@ public: // all public functions assume the mutex is not locked
      */
     void set_rewind_length(double seconds) noexcept;
 
-    static const constexpr std::size_t GB_TILESET_WIDTH = 256, GB_TILESET_HEIGHT = 192;
+    static const constexpr std::size_t GB_TILESET_WIDTH = 256, GB_TILESET_HEIGHT = 192, GB_TILESET_TILE_LENGTH = 8;
 
     /**
      * Draw the tileset to the given pointer. The pointer must be big enough to hold GB_TILESET_WIDTH*GB_TILESET_HEIGHT 32-bit pixels.

@@ -35,7 +35,28 @@ uint16_t get_gb_breakpoint_address(const struct GB_gameboy_s *gb, uint32_t bt);
 
 const uint32_t *get_gb_palette(const struct GB_gameboy_s *gb, GB_palette_type_t palette_type, unsigned char palette_index);
 
-void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset);
+typedef enum {
+    TILESET_INFO_NONE = 0,
+    TILESET_INFO_OAM,
+    TILESET_INFO_BACKGROUND,
+    TILESET_INFO_WINDOW
+} tileset_object_info_tile_type;
+
+typedef struct {
+    uint16_t tile_address;
+    uint16_t tile_index;
+    uint8_t tile_bank;
+
+    uint8_t accessed_type;
+    uint8_t accessed_tile_index;
+    uint8_t accessed_tile_palette_index;
+} tileset_object_info_tile;
+
+typedef struct {
+    tileset_object_info_tile tiles[384*2];
+} tileset_object_info;
+
+void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tileset_info);
 
 #ifdef __cplusplus
 }

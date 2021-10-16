@@ -943,7 +943,45 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
     GB_draw_tileset(&this->gameboy, destination, palette_type == GB_palette_type_t::GB_PALETTE_AUTO ? GB_palette_type_t::GB_PALETTE_NONE : palette_type, index); // if we specify auto, get a none (since SameBoy currently treats auto as monochrome - remove this if/when it does not)
 
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
-        gb_auto_color_tileset(&this->gameboy, destination);
+        // Get the tilset info
+        tileset_object_info ti;
+        get_tileset_object_info(&this->gameboy, &ti);
+        for(uint16_t i = 0; i < sizeof(ti.tiles) / sizeof(ti.tiles[0]); i++) {
+            const tileset_object_info_tile &info = ti.tiles[i];
+            tileset_object_info_tile_type accessed_type = static_cast<tileset_object_info_tile_type>(info.accessed_type);
+
+            if(accessed_type == tileset_object_info_tile_type::TILESET_INFO_NONE) {
+                continue;
+            }
+
+            GB_palette_type_t type = accessed_type == tileset_object_info_tile_type::TILESET_INFO_OAM ? GB_palette_type_t::GB_PALETTE_OAM : GB_palette_type_t::GB_PALETTE_BACKGROUND;
+
+            // Get the block data
+            auto *block = destination;
+            std::uint8_t x = i % (GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH);
+            std::uint8_t y = i / (GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH);
+
+            // Convert x,y to the block on the tileset bitmap
+            block += x * GB_TILESET_TILE_LENGTH + y * GB_TILESET_TILE_LENGTH * (GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH) * GB_TILESET_TILE_LENGTH;
+
+            auto *none_palette = get_gb_palette(&this->gameboy, GB_palette_type_t::GB_PALETTE_NONE, 0);
+            auto *palette = get_gb_palette(&this->gameboy, type, info.accessed_tile_palette_index);
+
+            // Go through each pixel in the tile and color it
+            for(std::size_t ty = 0; ty < GB_TILESET_TILE_LENGTH; ty++) {
+                for(std::size_t tx = 0; tx < GB_TILESET_TILE_LENGTH; tx++) {
+                    auto &pixel = block[tx + ty * GB_TILESET_WIDTH];
+                    std::size_t color_index = 0;
+                    for(std::size_t c = 0; c < 4; c++) {
+                        if((pixel & 0xFF) == (none_palette[c] & 0xFF)) {
+                            color_index = c;
+                            break;
+                        }
+                    }
+                    pixel = palette[color_index];
+                }
+            }
+        }
     }
     this->mutex.unlock();
 }
