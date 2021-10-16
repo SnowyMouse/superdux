@@ -153,6 +153,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
 
     this->tileset_palette_type = new QComboBox(central_w);
     std::pair<const char *, GB_palette_type_t> palettes[] = {
+        {"Auto", GB_palette_type_t::GB_PALETTE_AUTO},
         {"None", GB_palette_type_t::GB_PALETTE_NONE},
         {"Background", GB_palette_type_t::GB_PALETTE_BACKGROUND},
         {"OAM", GB_palette_type_t::GB_PALETTE_OAM}
@@ -215,8 +216,8 @@ void VRAMViewer::redraw_palette() noexcept {
     }
 
     // Gray out the index if we're on none
-    this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE);
-    this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE);
+    this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE || type != GB_palette_type_t::GB_PALETTE_AUTO);
+    this->tileset_palette_index->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE || type != GB_palette_type_t::GB_PALETTE_AUTO);
 
     this->redraw_tilemap();
     this->redraw_tileset();

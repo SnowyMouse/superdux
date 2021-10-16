@@ -35,6 +35,8 @@ uint16_t get_gb_breakpoint_address(const struct GB_gameboy_s *gb, uint32_t bt);
 
 const uint32_t *get_gb_palette(const struct GB_gameboy_s *gb, GB_palette_type_t palette_type, unsigned char palette_index);
 
+void gb_auto_color_tileset(struct GB_gameboy_s *gb, uint32_t *tileset);
+
 #ifdef __cplusplus
 }
 #endif

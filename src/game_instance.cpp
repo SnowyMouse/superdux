@@ -938,7 +938,15 @@ bool GameInstance::is_paused_from_zero_speed() noexcept MAKE_GETTER(this->pause_
 
 void GameInstance::set_rewind_length(double seconds) noexcept MAKE_SETTER(GB_set_rewind_length(&this->gameboy, seconds))
 
-void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t palette_type, std::uint8_t index) noexcept MAKE_SETTER(GB_draw_tileset(&this->gameboy, destination, palette_type, index))
+void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t palette_type, std::uint8_t index) noexcept {
+    this->mutex.lock();
+    GB_draw_tileset(&this->gameboy, destination, palette_type == GB_palette_type_t::GB_PALETTE_AUTO ? GB_palette_type_t::GB_PALETTE_NONE : palette_type, index); // if we specify auto, get a none (since SameBoy currently treats auto as monochrome - remove this if/when it does not)
+
+    if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
+        gb_auto_color_tileset(&this->gameboy, destination);
+    }
+    this->mutex.unlock();
+}
 
 void GameInstance::draw_tilemap(std::uint32_t *destination, GB_map_type_t map_type, GB_tileset_type_t tileset_type) noexcept MAKE_SETTER(GB_draw_tilemap(&this->gameboy, destination, GB_palette_type_t::GB_PALETTE_AUTO, 0, map_type, tileset_type))
 
