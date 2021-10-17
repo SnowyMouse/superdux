@@ -11,8 +11,12 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QFontDatabase>
+#include <QSettings>
 
 #include "game_window.hpp"
+
+#define SETTING_SHOW_GRID "vram_show_grid"
+#define SETTING_SHOW_VIEWPORT "vram_show_viewport"
 
 class TilesetView : public QGraphicsView {
 public:
@@ -57,10 +61,12 @@ private:
     VRAMViewer *window;
 };
 
-VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
+VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window),
     gb_tilemap_image(reinterpret_cast<uchar *>(this->gb_tilemap_image_data), GameInstance::GB_TILEMAP_WIDTH, GameInstance::GB_TILEMAP_HEIGHT, QImage::Format::Format_ARGB32),
     gb_tileset_image(reinterpret_cast<uchar *>(this->gb_tileset_image_data), GameInstance::GB_TILESET_WIDTH, GameInstance::GB_TILESET_HEIGHT, QImage::Format::Format_ARGB32),
     gb_tileset_grid_image(reinterpret_cast<uchar *>(this->gb_tileset_grid_data), GameInstance::GB_TILESET_WIDTH*2, GameInstance::GB_TILESET_HEIGHT*2, QImage::Format::Format_ARGB32) {
+
+    QSettings settings;
 
     auto table_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     table_font.setPixelSize(14);
@@ -131,7 +137,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
 
     this->gb_tilemap_show_viewport_box = new QCheckBox("Show Viewport", this->gb_tilemap_view_frame);
     this->gb_tilemap_show_viewport_box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    this->gb_tilemap_show_viewport_box->setChecked(true);
+    this->gb_tilemap_show_viewport_box->setChecked(settings.value(SETTING_SHOW_VIEWPORT, true).toBool());
     connect(this->gb_tilemap_show_viewport_box, &QCheckBox::clicked, this, &VRAMViewer::redraw_tilemap);
     this->gb_tilemap_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
@@ -192,7 +198,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
 
     this->gb_show_tileset_grid = new QCheckBox("Show Grid", tileset_mouse_over_widget);
     this->gb_show_tileset_grid->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Ignored);
-    this->gb_show_tileset_grid->setChecked(true);
+    this->gb_show_tileset_grid->setChecked(settings.value(SETTING_SHOW_GRID, true).toBool());
     tileset_mouse_over_layout->addWidget(this->gb_show_tileset_grid, palette_row_index, 1);
 
     // Palette
@@ -269,7 +275,11 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     this->setFixedSize(this->sizeHint());
 }
 
-VRAMViewer::~VRAMViewer() {}
+VRAMViewer::~VRAMViewer() {
+    QSettings settings;
+    settings.setValue(SETTING_SHOW_VIEWPORT, this->gb_tilemap_show_viewport_box->isChecked());
+    settings.setValue(SETTING_SHOW_GRID, this->gb_show_tileset_grid->isChecked());
+}
 
 void VRAMViewer::refresh_view() {
     if(this->isHidden()) {
