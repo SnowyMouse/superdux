@@ -379,11 +379,14 @@ void VRAMViewer::redraw_tileset() noexcept {
         this->moused_over_tile_address->setText(tile_address);
 
         char tile_index[256];
-        if(info.tile_index >= 0x80) {
-            std::snprintf(tile_index, sizeof(tile_index), "Index: %s$%04x ($8000 mode),%s $%02x ($8800 mode)", info.tile_index >= 0x100 ? "<s>" : "", info.tile_index, info.tile_index >= 0x100 ? "</s>" : "", info.tile_index - 0x80);
+        if(info.tile_index >= 0x100) {
+            std::snprintf(tile_index, sizeof(tile_index), "Index: $%02x ($8800 mode)", info.tile_index - 0x100);
+        }
+        else if(info.tile_index >= 0x80) {
+            std::snprintf(tile_index, sizeof(tile_index), "Index: $%02x ($8000 / $8800 mode)", info.tile_index);
         }
         else {
-            std::snprintf(tile_index, sizeof(tile_index), "Index: $%04x ($8000 mode)", info.tile_index);
+            std::snprintf(tile_index, sizeof(tile_index), "Index: $%02x ($8000 mode)", info.tile_index);
         }
         this->moused_over_tile_accessed_index->setText(tile_index);
 
