@@ -191,7 +191,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     int palette_row_index = row_count - 1;
 
     this->gb_show_tileset_grid = new QCheckBox("Show Grid", tileset_mouse_over_widget);
-    this->gb_show_tileset_grid->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    this->gb_show_tileset_grid->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Ignored);
     this->gb_show_tileset_grid->setChecked(true);
     tileset_mouse_over_layout->addWidget(this->gb_show_tileset_grid, palette_row_index, 1);
 
