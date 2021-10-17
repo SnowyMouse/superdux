@@ -33,9 +33,13 @@ private:
     QWidget *gb_tilemap_view_frame;
 
     std::uint32_t gb_tileset_image_data[GameInstance::GB_TILESET_WIDTH * GameInstance::GB_TILESET_HEIGHT] = {};
+    std::uint32_t gb_tileset_grid_data[GameInstance::GB_TILESET_WIDTH * 2 * GameInstance::GB_TILESET_HEIGHT * 2] = {};
+    QImage gb_tileset_grid_image;
     QGraphicsScene *gb_tileset_scene;
     QGraphicsView *gb_tileset_view;
     QGraphicsPixmapItem *gb_tileset_pixmap;
+    QGraphicsPixmapItem *gb_tileset_grid_pixelmap;
+    QCheckBox *gb_show_tileset_grid;
     QImage gb_tileset_image;
     void redraw_tileset() noexcept;
 

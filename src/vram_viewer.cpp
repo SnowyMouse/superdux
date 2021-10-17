@@ -59,7 +59,8 @@ private:
 
 VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     gb_tilemap_image(reinterpret_cast<uchar *>(this->gb_tilemap_image_data), GameInstance::GB_TILEMAP_WIDTH, GameInstance::GB_TILEMAP_HEIGHT, QImage::Format::Format_ARGB32),
-    gb_tileset_image(reinterpret_cast<uchar *>(this->gb_tileset_image_data), GameInstance::GB_TILESET_WIDTH, GameInstance::GB_TILESET_HEIGHT, QImage::Format::Format_ARGB32) {
+    gb_tileset_image(reinterpret_cast<uchar *>(this->gb_tileset_image_data), GameInstance::GB_TILESET_WIDTH, GameInstance::GB_TILESET_HEIGHT, QImage::Format::Format_ARGB32),
+    gb_tileset_grid_image(reinterpret_cast<uchar *>(this->gb_tileset_grid_data), GameInstance::GB_TILESET_WIDTH*2, GameInstance::GB_TILESET_HEIGHT*2, QImage::Format::Format_ARGB32) {
 
     auto table_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     table_font.setPixelSize(14);
@@ -140,6 +141,9 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     connect(this->tilemap_tileset_type, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &VRAMViewer::redraw_tilemap);
     tilemap_options_layout->addWidget(this->gb_tilemap_show_viewport_box);
     tilemap_options_layout->setContentsMargins(0,0,0,0);
+
+
+    tilemap_options->setContentsMargins(0,0,0,0);
     gb_tilemap_view_frame_layout->addWidget(tilemap_options);
 
     this->gb_tab_view->addTab(this->gb_tilemap_view_frame, "Tilemap");
@@ -159,8 +163,13 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     gb_tileset_view_frame->setLayout(gb_tileset_view_frame_layout);
     this->gb_tileset_view = new TilesetView(gb_tileset_view_frame, this);
     this->gb_tileset_scene = new QGraphicsScene(this->gb_tileset_view);
+
     this->gb_tileset_pixmap = this->gb_tileset_scene->addPixmap(QPixmap::fromImage(this->gb_tileset_image));
     this->gb_tileset_pixmap->setTransform(QTransform::fromScale(2, 2));
+
+    this->gb_tileset_grid_pixelmap = this->gb_tileset_scene->addPixmap(QPixmap::fromImage(this->gb_tileset_grid_image));
+
+
     this->gb_tileset_view->setScene(this->gb_tileset_scene);
     //this->gb_tileset_view->setDisabled(true);
     gb_tileset_view_frame_layout->addWidget(this->gb_tileset_view);
@@ -181,6 +190,11 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     add_tileset_mouse_over_info(&this->moused_over_tile_palette);
     int palette_row_index = row_count - 1;
 
+    this->gb_show_tileset_grid = new QCheckBox("Show grid", tileset_mouse_over_widget);
+    this->gb_show_tileset_grid->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    this->gb_show_tileset_grid->setChecked(true);
+    tileset_mouse_over_layout->addWidget(this->gb_show_tileset_grid, palette_row_index, 1);
+
     // Palette
     auto *palette_preview = new QWidget(tileset_mouse_over_widget);
     auto *palette_preview_layout = new QHBoxLayout(palette_preview);
@@ -200,7 +214,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : window(window),
     this->palette_c->setFixedSize(palette_hw, palette_hw);
     this->palette_d->setFixedSize(palette_hw, palette_hw);
     palette_preview->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    tileset_mouse_over_layout->addWidget(palette_preview, palette_row_index, 1);
+    tileset_mouse_over_layout->addWidget(palette_preview, palette_row_index, 2);
 
     tileset_mouse_over_widget->setLayout(tileset_mouse_over_layout);
     gb_tileset_view_frame_layout->addWidget(tileset_mouse_over_widget);
@@ -368,6 +382,26 @@ void VRAMViewer::redraw_tileset() noexcept {
     instance.draw_tileset(this->gb_tileset_image_data, static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt()), this->tileset_palette_index->value());
     this->gb_tileset_pixmap->setPixmap(QPixmap::fromImage(this->gb_tileset_image));
     this->tileset_object_info = instance.get_tileset_object_info();
+
+    // update the grid
+    if(this->gb_show_tileset_grid->isChecked()) {
+        for(std::size_t y = GameInstance::GB_TILESET_TILE_LENGTH*2-1; y < GameInstance::GB_TILESET_HEIGHT * 2; y+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
+            for(std::size_t x = 0; x < GameInstance::GB_TILESET_WIDTH * 2; x++) {
+                this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = (this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]) ^ 0xFFFFFF;
+            }
+        }
+
+        for(std::size_t x = GameInstance::GB_TILESET_TILE_LENGTH*2-1; x < GameInstance::GB_TILESET_WIDTH * 2; x+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
+            for(std::size_t y = 0; y < GameInstance::GB_TILESET_HEIGHT * 2; y++) {
+                this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = (this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]) ^ 0xFFFFFF;
+            }
+        }
+        this->gb_tileset_grid_pixelmap->setPixmap(QPixmap::fromImage(this->gb_tileset_grid_image));
+        this->gb_tileset_grid_pixelmap->setVisible(true);
+    }
+    else {
+        this->gb_tileset_grid_pixelmap->setVisible(false);
+    }
 
     // if we are mousing over a tile, show data for that tile
     const std::uint32_t *new_palette;
