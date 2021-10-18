@@ -156,9 +156,11 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     if(!bnt) {
         for(auto b = instance->break_and_trace_breakpoints.begin(); b != instance->break_and_trace_breakpoints.end(); b++) {
             auto pc = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_PC);
-            if(pc == std::get<0>(*b)) {
-                instance->current_break_and_trace_remaining = std::get<1>(*b);
-                instance->current_break_and_trace_step_over = std::get<2>(*b);
+
+            auto &[bp_address, break_count, stepped_over] = *b;
+            if(pc == bp_address) {
+                instance->current_break_and_trace_remaining = break_count;
+                instance->current_break_and_trace_step_over = stepped_over;
                 instance->break_and_trace_result.clear();
                 instance->break_and_trace_result.reserve(instance->current_break_and_trace_remaining + 1);
                 bnt = true;
