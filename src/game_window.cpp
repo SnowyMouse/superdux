@@ -76,7 +76,7 @@
 #define GB_WIDTH 160
 #define GB_HEIGHT 144
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #define print_debug_message(...) std::printf("Debug: " __VA_ARGS__)
 #else
 #define print_debug_message(...) (void(0))

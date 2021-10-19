@@ -37,8 +37,6 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
-
 # And lastly our executable
 macro(make_sameboy_dx target_name qt_widgets)
     add_executable(${target_name}
@@ -50,12 +48,6 @@ macro(make_sameboy_dx target_name qt_widgets)
         PRIVATE "${SAMEBOY_SOURCE_DIR}"
         PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
     )
-
-    if(CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
-        target_compile_definitions(${target_name}
-            PRIVATE DEBUG
-        )
-    endif()
 
     target_compile_definitions(${target_name}
         PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
