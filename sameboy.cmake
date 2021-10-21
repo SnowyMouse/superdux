@@ -24,6 +24,7 @@ string(REGEX MATCH "([0-9]+\.)+[0-9]+" GB_VERSION "${GB_VERSION_TEXT}")
 target_compile_definitions(sameboy-core
     PRIVATE GB_VERSION="${GB_VERSION}"
     PRIVATE GB_INTERNAL
+    PRIVATE _GNU_SOURCE
 )
 
 # Build the boot ROMs
