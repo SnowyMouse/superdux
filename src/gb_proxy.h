@@ -51,51 +51,11 @@ uint32_t get_gb_breakpoint_size(const struct GB_gameboy_s *gb);
 // Then get their addresses
 uint16_t get_gb_breakpoint_address(const struct GB_gameboy_s *gb, uint32_t bt);
 
+// Get whether or not the game boy is in GBC mode
+bool get_gb_get_cgb_mode(const struct GB_gameboy_s *gb);
+
+// Get a pointer to the palette
 const uint32_t *get_gb_palette(const struct GB_gameboy_s *gb, GB_palette_type_t palette_type, unsigned char palette_index);
-
-typedef enum {
-    // No access made
-    TILESET_INFO_NONE = 0,
-
-    // OAM
-    TILESET_INFO_OAM,
-
-    // Background
-    TILESET_INFO_BACKGROUND,
-
-    // Window (uses background palette)
-    TILESET_INFO_WINDOW
-} tileset_object_info_tile_type_t;
-
-typedef struct {
-    // Address in VRAM
-    uint16_t tile_address;
-
-    // Index in the tileset
-    uint16_t tile_index;
-
-    // Tileset bank used (applies only to GameBoy Color games)
-    uint8_t tile_bank;
-
-    // Did we access it? If so, refer to tileset_object_info_tile_sype
-    uint8_t accessed_type;
-
-    // If we accessed it, what's the index used to access it? (applies mainly to background/window. otherwise it's the same as tile_index for OAM)
-    uint8_t accessed_tile_index;
-
-    // If we accessed it, palette used for this tile.
-    uint8_t accessed_tile_palette_index;
-
-    // If we accessed it, what's the index of the user (0 if background/window, the index if oam)
-    uint8_t accessed_user_index;
-} tileset_object_info_tile_s;
-
-typedef struct {
-    tileset_object_info_tile_s tiles[384*2];
-} tileset_object_info_s;
-
-// Get the tileset info (used for getting information on each tile in the tileset)
-void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info_s *tileset_info);
 
 #ifdef __cplusplus
 }

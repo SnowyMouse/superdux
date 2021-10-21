@@ -22,7 +22,6 @@ public: // all public functions assume the mutex is not locked
     GameInstance(GB_model_t model);
     ~GameInstance();
 
-
     enum PixelBufferMode {
         /** Use single buffering. Calls to read_pixel_buffer() will give you the work buffer. This will result in slightly less visual latency, but in most cases, this will result in heavy tearing that will look terrible on any LCD display. */
         PixelBufferSingle,
@@ -506,7 +505,13 @@ public: // all public functions assume the mutex is not locked
      */
     void set_rewind_length(double seconds) noexcept;
 
-    static const constexpr std::size_t GB_TILESET_WIDTH = 256, GB_TILESET_HEIGHT = 192, GB_TILESET_TILE_LENGTH = 8;
+    static const constexpr std::size_t GB_TILESET_WIDTH = 256,
+                                       GB_TILESET_PAGE_WIDTH = GB_TILESET_WIDTH / 2,
+                                       GB_TILESET_HEIGHT = 192,
+                                       GB_TILESET_TILE_LENGTH = 8,
+                                       GB_TILESET_BLOCK_WIDTH = GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH,
+                                       GB_TILESET_PAGE_BLOCK_WIDTH = GB_TILESET_PAGE_WIDTH / GB_TILESET_TILE_LENGTH,
+                                       GB_TILESET_BLOCK_HEIGHT = GB_TILESET_HEIGHT / GB_TILESET_TILE_LENGTH;
 
     /**
      * Draw the tileset to the given pointer. The pointer must be big enough to hold GB_TILESET_WIDTH*GB_TILESET_HEIGHT 32-bit pixels.
@@ -537,11 +542,6 @@ public: // all public functions assume the mutex is not locked
     std::uint8_t read_memory(std::uint16_t address) noexcept;
 
     /**
-     * Get tileset metadata information
-     */
-    tileset_object_info_s get_tileset_object_info() noexcept;
-
-    /**
      * Get the palete colors. There are 4 colors.
      *
      * @param palette_type  type of palette
@@ -550,6 +550,52 @@ public: // all public functions assume the mutex is not locked
      */
     const uint32_t *get_palette(GB_palette_type_t palette_type, unsigned char palette_index) noexcept;
 
+    enum TilesetInfoTileType : std::uint8_t {
+        /** No access made */
+        TILESET_INFO_NONE = 0,
+
+        /** OAM */
+        TILESET_INFO_OAM,
+
+        /** Background */
+        TILESET_INFO_BACKGROUND,
+
+        /** Window (uses background palette) */
+        TILESET_INFO_WINDOW
+    };
+
+    struct TilesetInfoTile {
+        /** Address in VRAM */
+        std::uint16_t tile_address;
+
+        /** Index in the tileset */
+        std::uint16_t tile_index;
+
+        /** Tileset bank used (applies only to GameBoy Color games) */
+        std::uint8_t tile_bank;
+
+        /** Did we access it? */
+        TilesetInfoTileType accessed_type;
+
+        /** If we accessed it, what's the index used to access it? (applies mainly to background/window. otherwise it's the same as tile_index for OAM) */
+        std::uint8_t accessed_tile_index;
+
+        /** If we accessed it, palette used for this tile. */
+        std::uint8_t accessed_tile_palette_index;
+
+        /** If we accessed it, what's the index of the user (0 if background/window, the index if oam) */
+        std::uint8_t accessed_user_index;
+    };
+
+    struct TilesetInfo {
+        /** Tiles */
+        TilesetInfoTile tiles[384*2];
+    };
+
+    /**
+     * Get tileset metadata information
+     */
+    TilesetInfo get_tileset_object_info() noexcept;
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -705,6 +751,11 @@ private: // all private functions assume the mutex is locked by the caller
     std::uint8_t rapid_button_switch_frames = 4;
 
     bool rewinding = false;
+
+    // Do it without mutex
+    TilesetInfo get_tileset_object_info_without_mutex() noexcept;
 };
+
+
 
 #endif
