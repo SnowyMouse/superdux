@@ -504,6 +504,11 @@ void VRAMViewer::redraw_tileset() noexcept {
 }
 
 void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile, bool show_on_left_pane) {
+    // If the tile is the same, don't do anything.
+    if(this->moused_over_tile_index == tile) {
+        return;
+    }
+
     this->moused_over_tile_index = tile;
     this->redraw_tileset();
 
