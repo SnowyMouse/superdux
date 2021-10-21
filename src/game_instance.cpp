@@ -142,7 +142,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     if(instance->current_break_and_trace_remaining > 0) {
         bnt = (--instance->current_break_and_trace_remaining) > 0;
         if(bnt) {
-            auto pc = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_PC);
+            auto pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
             for(auto i : instance->get_breakpoints_without_mutex()) {
                 if(i == pc) {
                     bnt = false; // if we hit a breakpoint in the middle of breaking and tracing, end prematurely
@@ -155,7 +155,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     // If that didn't satisfy it, maybe we have something set here?
     if(!bnt) {
         for(auto b = instance->break_and_trace_breakpoints.begin(); b != instance->break_and_trace_breakpoints.end(); b++) {
-            auto pc = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_PC);
+            auto pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
 
             auto &[bp_address, break_count, stepped_over] = *b;
             if(pc == bp_address) {
@@ -179,15 +179,15 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     // If we are, continue after we record the current state
     if(bnt) {
         auto &b = instance->break_and_trace_result.emplace_back();
-        b.a = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_A);
-        b.b = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_B);
-        b.c = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_C);
-        b.d = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_D);
-        b.e = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_E);
-        b.f = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_F);
-        b.hl = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_HL);
-        b.sp = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_SP);
-        b.pc = get_gb_register(&instance->gameboy, sm83_register::SM83_REG_PC);
+        b.a = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_A);
+        b.b = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_B);
+        b.c = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_C);
+        b.d = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_D);
+        b.e = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_E);
+        b.f = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_F);
+        b.hl = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_HL);
+        b.sp = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_SP);
+        b.pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
         b.carry = b.f & GB_CARRY_FLAG;
         b.half_carry = b.f & GB_HALF_CARRY_FLAG;
         b.subtract = b.f & GB_SUBTRACT_FLAG;
@@ -344,7 +344,7 @@ std::vector<std::pair<std::string, std::uint16_t>> GameInstance::get_backtrace()
         backtrace[bt_count - b].second = get_gb_backtrace_address(&this->gameboy, b);
     }
     if(bt_count > 0) {
-        backtrace[0].second = get_gb_register(&this->gameboy, sm83_register::SM83_REG_PC);
+        backtrace[0].second = get_gb_register(&this->gameboy, sm83_register_t::SM83_REG_PC);
     }
 
     this->mutex.unlock();
@@ -609,8 +609,8 @@ void GameInstance::unbreak(const char *command) {
     }
 }
 
-std::uint16_t GameInstance::get_register_value(sm83_register reg) noexcept MAKE_GETTER(get_gb_register(&this->gameboy, reg))
-void GameInstance::set_register_value(sm83_register reg, std::uint16_t value) noexcept MAKE_SETTER(set_gb_register(&this->gameboy, reg, value))
+std::uint16_t GameInstance::get_register_value(sm83_register_t reg) noexcept MAKE_GETTER(get_gb_register(&this->gameboy, reg))
+void GameInstance::set_register_value(sm83_register_t reg, std::uint16_t value) noexcept MAKE_SETTER(set_gb_register(&this->gameboy, reg, value))
 
 std::optional<std::uint16_t> GameInstance::evaluate_expression(const char *expression) noexcept {
     std::uint16_t result_maybe;
@@ -946,17 +946,17 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
 
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
         // Get the tilset info
-        tileset_object_info ti;
+        tileset_object_info_s ti;
         ::get_tileset_object_info(&this->gameboy, &ti);
         for(uint16_t i = 0; i < sizeof(ti.tiles) / sizeof(ti.tiles[0]); i++) {
-            const tileset_object_info_tile &info = ti.tiles[i];
-            tileset_object_info_tile_type accessed_type = static_cast<tileset_object_info_tile_type>(info.accessed_type);
+            const tileset_object_info_tile_s &info = ti.tiles[i];
+            tileset_object_info_tile_type_t accessed_type = static_cast<tileset_object_info_tile_type_t>(info.accessed_type);
 
-            if(accessed_type == tileset_object_info_tile_type::TILESET_INFO_NONE) {
+            if(accessed_type == tileset_object_info_tile_type_t::TILESET_INFO_NONE) {
                 continue;
             }
 
-            GB_palette_type_t type = accessed_type == tileset_object_info_tile_type::TILESET_INFO_OAM ? GB_palette_type_t::GB_PALETTE_OAM : GB_palette_type_t::GB_PALETTE_BACKGROUND;
+            GB_palette_type_t type = accessed_type == tileset_object_info_tile_type_t::TILESET_INFO_OAM ? GB_palette_type_t::GB_PALETTE_OAM : GB_palette_type_t::GB_PALETTE_BACKGROUND;
 
             // Get the block data
             auto *block = destination;
@@ -994,8 +994,8 @@ std::uint8_t GameInstance::read_memory(std::uint16_t address) noexcept MAKE_GETT
 
 const uint32_t *GameInstance::get_palette(GB_palette_type_t palette_type, unsigned char palette_index) noexcept MAKE_GETTER(get_gb_palette(&this->gameboy, palette_type, palette_index))
 
-tileset_object_info GameInstance::get_tileset_object_info() noexcept {
-    tileset_object_info info;
+tileset_object_info_s GameInstance::get_tileset_object_info() noexcept {
+    tileset_object_info_s info;
     this->mutex.lock();
     ::get_tileset_object_info(&this->gameboy, &info);
     this->mutex.unlock();

@@ -178,7 +178,7 @@ public: // all public functions assume the mutex is not locked
      * @param  reg register to probe
      * @return     register value
      */
-    std::uint16_t get_register_value(sm83_register reg) noexcept;
+    std::uint16_t get_register_value(sm83_register_t reg) noexcept;
     
     /**
      * Set the current value of the given register
@@ -186,7 +186,7 @@ public: // all public functions assume the mutex is not locked
      * @param reg   register to probe
      * @param value value to set it to
      */
-    void set_register_value(sm83_register reg, std::uint16_t value) noexcept;
+    void set_register_value(sm83_register_t reg, std::uint16_t value) noexcept;
     
     /**
      * Get the current sample buffer and clear it
@@ -539,7 +539,7 @@ public: // all public functions assume the mutex is not locked
     /**
      * Get tileset metadata information
      */
-    tileset_object_info get_tileset_object_info() noexcept;
+    tileset_object_info_s get_tileset_object_info() noexcept;
 
     /**
      * Get the palete colors. There are 4 colors.

@@ -31,13 +31,13 @@ typedef enum {
 
     // PC (current instruction pointer)
     SM83_REG_PC,
-} sm83_register;
+} sm83_register_t;
 
 // Get a value in a register
-uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register r);
+uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register_t r);
 
 // Set a value in a reguster
-void set_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint16_t v);
+void set_gb_register(struct GB_gameboy_s *gb, sm83_register_t r, uint16_t v);
 
 // Get the # of backtraces
 uint32_t get_gb_backtrace_size(const struct GB_gameboy_s *gb);
@@ -65,7 +65,7 @@ typedef enum {
 
     // Window (uses background palette)
     TILESET_INFO_WINDOW
-} tileset_object_info_tile_type;
+} tileset_object_info_tile_type_t;
 
 typedef struct {
     // Address in VRAM
@@ -77,7 +77,7 @@ typedef struct {
     // Tileset bank used (applies only to GameBoy Color games)
     uint8_t tile_bank;
 
-    // Did we access it? If so, refer to tileset_object_info_tile_type
+    // Did we access it? If so, refer to tileset_object_info_tile_sype
     uint8_t accessed_type;
 
     // If we accessed it, what's the index used to access it? (applies mainly to background/window. otherwise it's the same as tile_index for OAM)
@@ -88,14 +88,14 @@ typedef struct {
 
     // If we accessed it, what's the index of the user (0 if background/window, the index if oam)
     uint8_t accessed_user_index;
-} tileset_object_info_tile;
+} tileset_object_info_tile_s;
 
 typedef struct {
-    tileset_object_info_tile tiles[384*2];
-} tileset_object_info;
+    tileset_object_info_tile_s tiles[384*2];
+} tileset_object_info_s;
 
 // Get the tileset info (used for getting information on each tile in the tileset)
-void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tileset_info);
+void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info_s *tileset_info);
 
 #ifdef __cplusplus
 }

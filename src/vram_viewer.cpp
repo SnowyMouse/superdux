@@ -439,7 +439,7 @@ void VRAMViewer::redraw_tileset() noexcept {
             char palette_text[256];
 
             // Find the palette
-            GB_palette_type_t palette = info.accessed_type == tileset_object_info_tile_type::TILESET_INFO_OAM ? GB_palette_type_t::GB_PALETTE_OAM : GB_palette_type_t::GB_PALETTE_BACKGROUND;
+            GB_palette_type_t palette = info.accessed_type == tileset_object_info_tile_type_t::TILESET_INFO_OAM ? GB_palette_type_t::GB_PALETTE_OAM : GB_palette_type_t::GB_PALETTE_BACKGROUND;
             std::snprintf(palette_text, sizeof(palette_text), "Palette: %u (%s)", info.accessed_tile_palette_index, palette == GB_palette_type_t::GB_PALETTE_OAM ? "sprite" : "background");
             this->moused_over_tile_palette->setText(palette_text);
 
@@ -447,13 +447,13 @@ void VRAMViewer::redraw_tileset() noexcept {
             char user_name[256] = "???";
 
             switch(info.accessed_type) {
-                case tileset_object_info_tile_type::TILESET_INFO_OAM:
+                case tileset_object_info_tile_type_t::TILESET_INFO_OAM:
                     std::snprintf(user_name, sizeof(user_name), "sprite #%02u ($%02x)", info.accessed_user_index, info.accessed_user_index);
                     break;
-                case tileset_object_info_tile_type::TILESET_INFO_WINDOW:
+                case tileset_object_info_tile_type_t::TILESET_INFO_WINDOW:
                     std::snprintf(user_name, sizeof(user_name), "window");
                     break;
-                case tileset_object_info_tile_type::TILESET_INFO_BACKGROUND:
+                case tileset_object_info_tile_type_t::TILESET_INFO_BACKGROUND:
                     std::snprintf(user_name, sizeof(user_name), "background");
                     break;
                 default:
@@ -509,19 +509,19 @@ void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile, bo
 
     if(show_on_left_pane && tile.has_value()) {
         auto &t = this->tileset_object_info.tiles[*tile];
-        switch(static_cast<tileset_object_info_tile_type>(t.accessed_type)) {
-            case tileset_object_info_tile_type::TILESET_INFO_BACKGROUND:
+        switch(static_cast<tileset_object_info_tile_type_t>(t.accessed_type)) {
+            case tileset_object_info_tile_type_t::TILESET_INFO_BACKGROUND:
                 this->tilemap_map_type->setCurrentIndex(0);
                 this->gb_tab_view->setCurrentWidget(this->gb_tilemap_view_frame);
                 break;
-            case tileset_object_info_tile_type::TILESET_INFO_WINDOW:
+            case tileset_object_info_tile_type_t::TILESET_INFO_WINDOW:
                 this->tilemap_map_type->setCurrentIndex(1);
                 this->gb_tab_view->setCurrentWidget(this->gb_tilemap_view_frame);
                 break;
-            case tileset_object_info_tile_type::TILESET_INFO_OAM:
+            case tileset_object_info_tile_type_t::TILESET_INFO_OAM:
                 std::printf("Unimplemented! This should switch to the OAM tab.\n");
                 break;
-            case tileset_object_info_tile_type::TILESET_INFO_NONE:
+            case tileset_object_info_tile_type_t::TILESET_INFO_NONE:
                 break;
         }
     }

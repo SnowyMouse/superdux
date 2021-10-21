@@ -14,7 +14,7 @@ struct GB_breakpoint_s {
     bool is_jump_to;
 };
 
-static inline uint8_t *get_8_bit_gb_register_address(struct GB_gameboy_s *gb, sm83_register r) {
+static inline uint8_t *get_8_bit_gb_register_address(struct GB_gameboy_s *gb, sm83_register_t r) {
     switch(r) {
         case SM83_REG_A:
             return &gb->a;
@@ -36,7 +36,7 @@ static inline uint8_t *get_8_bit_gb_register_address(struct GB_gameboy_s *gb, sm
             return NULL;
     }
 }
-static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, sm83_register r) {
+static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, sm83_register_t r) {
     switch(r) {
         case SM83_REG_HL:
             return &gb->hl;
@@ -55,21 +55,21 @@ static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, 
     }
 }
 
-static inline uint8_t get_8_bit_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
+static inline uint8_t get_8_bit_gb_register(const struct GB_gameboy_s *gb, sm83_register_t r) {
     return *get_8_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
 }
-static inline uint16_t get_16_bit_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
+static inline uint16_t get_16_bit_gb_register(const struct GB_gameboy_s *gb, sm83_register_t r) {
     return *get_16_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
 }
 
-static void set_8_bit_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint8_t v) {
+static void set_8_bit_gb_register(struct GB_gameboy_s *gb, sm83_register_t r, uint8_t v) {
     *get_8_bit_gb_register_address(gb, r) = v;
 }
-static void set_16_bit_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint16_t v) {
+static void set_16_bit_gb_register(struct GB_gameboy_s *gb, sm83_register_t r, uint16_t v) {
     *get_16_bit_gb_register_address(gb, r) = v;
 }
 
-uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
+uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register_t r) {
     switch(r) {
         case SM83_REG_A:
         case SM83_REG_B:
@@ -92,7 +92,7 @@ uint16_t get_gb_register(const struct GB_gameboy_s *gb, sm83_register r) {
     }
 }
 
-void set_gb_register(struct GB_gameboy_s *gb, sm83_register r, uint16_t v) {
+void set_gb_register(struct GB_gameboy_s *gb, sm83_register_t r, uint16_t v) {
     switch(r) {
         case SM83_REG_A:
         case SM83_REG_B:
@@ -162,7 +162,7 @@ static const uint32_t TILESET_PAGE_BLOCK_WIDTH = TILESET_BLOCK_WIDTH / 2;
 static const uint32_t TILESET_PAGE_BLOCK_COUNT = TILESET_PAGE_BLOCK_WIDTH * TILESET_BLOCK_HEIGHT;
 
 // much of this information was from the pandocs (https://gbdev.io/pandocs/OAM.html)
-void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tileset_info) {
+void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info_s *tileset_info) {
     // Zero-intitialize tileset_info
     memset(tileset_info, 0, sizeof(*tileset_info));
 
@@ -207,7 +207,7 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
             tile_number = virtual_x + (y * TILESET_PAGE_BLOCK_WIDTH);
 
             // Set these
-            tileset_object_info_tile *block_info = tileset_info->tiles + x + y * TILESET_BLOCK_WIDTH;
+            tileset_object_info_tile_s *block_info = tileset_info->tiles + x + y * TILESET_BLOCK_WIDTH;
             block_info->tile_index = tile_number;
             block_info->tile_bank = tileset_number;
             block_info->tile_address = 0x8000 + tile_number * 0x10;
@@ -257,7 +257,7 @@ void get_tileset_object_info(struct GB_gameboy_s *gb, tileset_object_info *tiles
 
                     // Do the next tile if 16 height sprite
                     if(sprite_height == 16) {
-                        tileset_object_info_tile *next = block_info + 1;
+                        tileset_object_info_tile_s *next = block_info + 1;
                         next->accessed_type = TILESET_INFO_OAM;
                         next->accessed_tile_palette_index = gb->cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
                         next->accessed_tile_index = oam_tile;
