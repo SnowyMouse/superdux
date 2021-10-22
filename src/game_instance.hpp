@@ -575,7 +575,7 @@ public: // all public functions assume the mutex is not locked
         std::uint8_t tile_bank;
 
         /** Did we access it? */
-        TilesetInfoTileType accessed_type;
+        TilesetInfoTileType accessed_type = TilesetInfoTileType::TILESET_INFO_NONE;
 
         /** If we accessed it, what's the index used to access it? (applies mainly to background/window. otherwise it's the same as tile_index for OAM) */
         std::uint8_t accessed_tile_index;
@@ -589,13 +589,60 @@ public: // all public functions assume the mutex is not locked
 
     struct TilesetInfo {
         /** Tiles */
-        TilesetInfoTile tiles[384*2];
+        TilesetInfoTile tiles[GB_TILESET_PAGE_BLOCK_WIDTH * GB_TILESET_BLOCK_HEIGHT * 2];
+    };
+
+
+    /**
+     * Get tileset metadata
+     *
+     * @param tileset info
+     */
+    TilesetInfo get_tileset_info() noexcept;
+
+
+    struct ObjectAttributeInfoObject {
+        /** X coordinate */
+        std::uint8_t x;
+
+        /** Y coordinate */
+        std::uint8_t y;
+
+        /** Tileset tile (offset from $8800) */
+        std::uint8_t tile;
+
+        /** Tileset bank */
+        std::uint8_t tileset_bank : 1;
+
+        /** Palette number */
+        std::uint8_t palette : 3;
+
+        /** X flip */
+        bool flip_x : 1;
+
+        /** Y flip */
+        bool flip_y : 1;
+
+        /** Onscreen (can still be obscured by 10 object limit) */
+        bool on_screen : 1;
+
+        /** BG/window colors 1-3 over this object */
+        bool bg_window_over_obj : 1;
+    };
+
+    struct ObjectAttributeInfo {
+        /** Objects */
+        ObjectAttributeInfoObject objects[40];
     };
 
     /**
-     * Get tileset metadata information
+     * Get object metadata
+     *
+     * @return object metadata
      */
-    TilesetInfo get_tileset_object_info() noexcept;
+    ObjectAttributeInfo get_object_attribute_info() noexcept;
+
+
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
@@ -753,7 +800,10 @@ private: // all private functions assume the mutex is locked by the caller
     bool rewinding = false;
 
     // Do it without mutex
-    TilesetInfo get_tileset_object_info_without_mutex() noexcept;
+    TilesetInfo get_tileset_info_without_mutex() noexcept;
+
+    // Do it without mutex too
+    ObjectAttributeInfo get_object_attribute_info_without_mutex() noexcept;
 };
 
 

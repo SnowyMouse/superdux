@@ -946,7 +946,7 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
 
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
         // Get the tilset info
-        auto ti = this->get_tileset_object_info_without_mutex();
+        auto ti = this->get_tileset_info_without_mutex();
         for(uint16_t i = 0; i < sizeof(ti.tiles) / sizeof(ti.tiles[0]); i++) {
             const auto &info = ti.tiles[i];
             auto accessed_type = info.accessed_type;
@@ -993,19 +993,19 @@ std::uint8_t GameInstance::read_memory(std::uint16_t address) noexcept MAKE_GETT
 
 const uint32_t *GameInstance::get_palette(GB_palette_type_t palette_type, unsigned char palette_index) noexcept MAKE_GETTER(get_gb_palette(&this->gameboy, palette_type, palette_index))
 
-GameInstance::TilesetInfo GameInstance::get_tileset_object_info() noexcept MAKE_GETTER(this->get_tileset_object_info_without_mutex())
+GameInstance::TilesetInfo GameInstance::get_tileset_info() noexcept MAKE_GETTER(this->get_tileset_info_without_mutex())
 
-GameInstance::TilesetInfo GameInstance::get_tileset_object_info_without_mutex() noexcept {
+GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcept {
     // Instantiate this
-    GameInstance::TilesetInfo tileset_info = {};
+    GameInstance::TilesetInfo tileset_info;
 
     // Are we in GBC mode?
     bool cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
 
     // Get the OAM data
-    const auto *oam_data = reinterpret_cast<const std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_DIRECT_ACCESS_OAM, NULL, NULL));
     std::uint8_t lcdc = GB_read_memory(&this->gameboy, 0xFF40);
-    std::uint16_t sprite_height = (lcdc & 0b100) ? 16 : 8;
+    bool double_sprite_height = (lcdc & 0b100) != 0;
+    auto oam = this->get_object_attribute_info_without_mutex();
 
     std::uint16_t bank = 0;
     std::size_t size = 0;
@@ -1043,62 +1043,37 @@ GameInstance::TilesetInfo GameInstance::get_tileset_object_info_without_mutex() 
             tile_number = virtual_x + (y * GB_TILESET_PAGE_BLOCK_WIDTH);
 
             // Set these
-            auto *block_info = tileset_info.tiles + x + y * GB_TILESET_BLOCK_WIDTH;
-            block_info->tile_index = tile_number;
-            block_info->tile_bank = tileset_number;
-            block_info->tile_address = 0x8000 + tile_number * 0x10;
+            auto &block_info = tileset_info.tiles[x + y * GB_TILESET_BLOCK_WIDTH];
+            block_info.tile_index = tile_number;
+            block_info.tile_bank = tileset_number;
+            block_info.tile_address = 0x8000 + tile_number * 0x10;
 
-            // If we already accessed it, continue
-            if(block_info->accessed_type != TILESET_INFO_NONE) {
+            // If we're done, next
+            if(block_info.accessed_type != TilesetInfoTileType::TILESET_INFO_NONE) {
                 continue;
             }
 
             // Check if a sprite uses this tile
             if(sprites_enabled) {
-                for(uint8_t i = 0; i < 40; i++) {
-                    auto *object = oam_data + i * 4;
-                    auto flags = object[3];
-                    std::uint16_t o_tileset_number = cgb_mode ? (
-                                                                    (flags & 0b1000) >> 3
-                                                                ) : 0; // DMG is always tileset 0
-
-                    std::uint16_t oam_tile = object[2];
-                    if(sprite_height == 16) {
-                        oam_tile = oam_tile & 0xFE; // from pandocs
-                    }
-
-                    // Is this the right tile?
-                    if(oam_tile != tile_number || o_tileset_number != tileset_number) {
+                for(std::uint8_t i = 0; i < sizeof(oam.objects) / sizeof(oam.objects[0]); i++) {
+                    auto &object = oam.objects[i];
+                    if(!object.on_screen || object.tileset_bank != tileset_number || object.tile != tile_number) {
                         continue;
                     }
 
-                    // Are we offscreen?
-                    uint8_t oam_x = object[1];
-                    uint8_t oam_y = object[0];
+                    block_info.accessed_tile_index = tile_number;
+                    block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
+                    block_info.accessed_tile_palette_index = object.palette;
+                    block_info.accessed_user_index = i;
 
-                    if(oam_x == 0 || oam_x >= 168) {
-                        continue;
-                    }
-                    if(oam_y + sprite_height <= 16 || oam_y >= 160) {
-                        continue;
-                    }
-
-                    // If in CGB mode, it's the lower 3 bits. Otherwise, it's the 5th bit
-                    block_info->accessed_type = TILESET_INFO_OAM;
-                    block_info->accessed_tile_palette_index = cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
-                    block_info->accessed_tile_index = oam_tile;
-                    block_info->accessed_user_index = i;
-
-                    // Do the next tile if 16 height sprite
-                    if(sprite_height == 16) {
-                        auto *next = block_info + 1;
-                        next->accessed_type = TILESET_INFO_OAM;
-                        next->accessed_tile_palette_index = cgb_mode ? (flags & 0b111) : ((flags & 0b10000) >> 4);
-                        next->accessed_tile_index = oam_tile;
-                        next->accessed_user_index = i;
+                    if(double_sprite_height) {
+                        auto &next_block_info = *(&block_info + 1);
+                        next_block_info.accessed_tile_index = tile_number + 1;
+                        next_block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
+                        next_block_info.accessed_tile_palette_index = object.palette;
+                        next_block_info.accessed_user_index = i;
                     }
 
-                    // We're done here
                     goto spaghetti_done_with_this_block;
                 }
             }
@@ -1127,9 +1102,9 @@ GameInstance::TilesetInfo GameInstance::get_tileset_object_info_without_mutex() 
                     continue; \
                 } \
              \
-                block_info->accessed_type = access_type; \
-                block_info->accessed_tile_index = tile; \
-                block_info->accessed_tile_palette_index = tile_palette; \
+                block_info.accessed_type = access_type; \
+                block_info.accessed_tile_index = tile; \
+                block_info.accessed_tile_palette_index = tile_palette; \
                 goto spaghetti_done_with_this_block; \
             }
 
@@ -1139,7 +1114,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_object_info_without_mutex() 
                 if(window_enabled && window_x <= 166 && window_y <= 143) {
                     for(uint8_t wy = 0; wy < (32 - window_y / 8); wy++) {
                         for(uint8_t wx = 0; wx < (32 - window_x / 8); wx++) {
-                            READ_BG_WINDOW(wx, wy, window, window_attributes, TILESET_INFO_WINDOW)
+                            READ_BG_WINDOW(wx, wy, window, window_attributes, TilesetInfoTileType::TILESET_INFO_WINDOW)
                         }
                     }
                 }
@@ -1147,7 +1122,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_object_info_without_mutex() 
                 // Next, background
                 for(uint8_t by = 0; by < 32; by++) {
                     for(uint8_t bx = 0; bx < 32; bx++) {
-                        READ_BG_WINDOW(bx, by, background, background_attributes, TILESET_INFO_BACKGROUND)
+                        READ_BG_WINDOW(bx, by, background, background_attributes, TilesetInfoTileType::TILESET_INFO_BACKGROUND)
                     }
                 }
             }
@@ -1159,4 +1134,56 @@ GameInstance::TilesetInfo GameInstance::get_tileset_object_info_without_mutex() 
     }
 
     return tileset_info;
+}
+
+GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info() noexcept MAKE_GETTER(this->get_object_attribute_info_without_mutex())
+
+GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_without_mutex() noexcept {
+    ObjectAttributeInfo oam;
+
+    // Get this data
+    auto cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
+    std::uint8_t lcdc = GB_read_memory(&this->gameboy, 0xFF40);
+    std::uint16_t sprite_height = (lcdc & 0b100) ? 16 : 8;
+    const auto *oam_data = reinterpret_cast<const std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_DIRECT_ACCESS_OAM, NULL, NULL));
+
+    // Go through each object and get the info
+    for(std::uint8_t i = 0; i < sizeof(oam.objects) / sizeof(oam.objects[0]); i++) {
+        auto &object_info = oam.objects[i];
+        auto *object = oam_data + i * 4;
+
+        // Tileset bank
+        auto flags = object[3];
+        object_info.tileset_bank = cgb_mode ? (
+                                                  (flags & 0b1000) >> 3 // CGB uses bit#3 (the fourth bit)
+                                              ) : 0; // DMG is always tileset 0
+
+        // Tile
+        std::uint8_t oam_tile = object[2];
+        if(sprite_height == 16) {
+            oam_tile = oam_tile & 0xFE; // from pandocs
+        }
+        object_info.tile = oam_tile;
+
+        // Are we offscreen?
+        auto oam_x = object[1];
+        auto oam_y = object[0];
+        object_info.on_screen = !(oam_x == 0 || oam_x >= 168 || oam_y + sprite_height <= 16 || oam_y >= 160);
+        object_info.x = oam_x;
+        object_info.y = oam_y;
+
+        // Palette number
+        object_info.palette = cgb_mode ? (
+                                             (flags & 0b111) // CGB uses the first three bits (up to 2^3 or 8 palettes)
+                                         ) : ((flags & 0b10000) >> 4); // DMG uses the 5th bit
+
+        // Voltorb flip
+        object_info.flip_x = (flags & 0b100000) != 0;
+        object_info.flip_y = (flags & 0b1000000) != 0;
+
+        // This flag
+        object_info.bg_window_over_obj = (flags& 0b10000000) != 0;
+    }
+
+    return oam;
 }

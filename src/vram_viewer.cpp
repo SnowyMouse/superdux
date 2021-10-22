@@ -391,7 +391,7 @@ void VRAMViewer::redraw_tileset() noexcept {
     auto &instance = this->window->get_instance();
     instance.draw_tileset(this->gb_tileset_image_data, static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt()), this->tileset_palette_index->value());
     this->gb_tileset_pixmap->setPixmap(QPixmap::fromImage(this->gb_tileset_image));
-    this->tileset_object_info = instance.get_tileset_object_info();
+    this->tileset_info = instance.get_tileset_info();
 
     // update the grid
     if(this->gb_show_tileset_grid->isChecked()) {
@@ -416,7 +416,7 @@ void VRAMViewer::redraw_tileset() noexcept {
     // if we are mousing over a tile, show data for that tile
     const std::uint32_t *new_palette;
     if(moused_over_tile_index.has_value()) {
-        auto &info = tileset_object_info.tiles[*moused_over_tile_index];
+        auto &info = tileset_info.tiles[*moused_over_tile_index];
 
         char tile_address[256];
         std::snprintf(tile_address, sizeof(tile_address), "Tile address: $%i:%04x", info.tile_bank, info.tile_address);
@@ -512,7 +512,7 @@ void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile, bo
 
     // Show the tile
     if(show_on_left_pane && tile.has_value()) {
-        auto &t = this->tileset_object_info.tiles[*tile];
+        auto &t = this->tileset_info.tiles[*tile];
         switch(static_cast<GameInstance::TilesetInfoTileType>(t.accessed_type)) {
             case GameInstance::TilesetInfoTileType::TILESET_INFO_BACKGROUND:
                 this->tilemap_map_type->setCurrentIndex(0);
