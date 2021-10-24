@@ -292,7 +292,6 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->gb_oam_view_frame = gb_oam_frame;
     auto *gb_oam_view_frame_inner = new QWidget(this->gb_oam_view_frame);
     auto *gb_oam_view_frame_layout = new QGridLayout(gb_oam_view_frame_inner);
-    table_font.setPixelSize(14);
     for(std::size_t o = 0; o < sizeof(this->objects) / sizeof(this->objects[0]); o++) {
         auto &object_view_data = this->objects[o];
 
@@ -308,13 +307,13 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
 
         // Start with the view
         object_view_data.view = new QGraphicsView(object_view_data.frame);
-        object_view_data.view->setStyleSheet("background-color: #FFF");
         object_view_data.view->setFrameShape(QFrame::Shape::NoFrame);
         object_view_data.scene = new QGraphicsScene(object_view_data.view);
         object_view_data.pixmap = object_view_data.scene->addPixmap(QPixmap::fromImage(object_view_data.image));
         object_view_data.pixmap->setTransform(QTransform::fromScale(4, 4));
         object_view_data.view->setScene(object_view_data.scene);
         object_view_data.view->setFixedSize(object_view_data.view->sizeHint());
+        object_view_data.view->setBackgroundRole(QWidget::backgroundRole());
         flayout->addWidget(object_view_data.view);
 
         // Now the metadata
@@ -362,6 +361,7 @@ void VRAMViewer::redraw_oam_data() noexcept {
     }
 
     auto oam = this->window->get_instance().get_object_attribute_info();
+    bool double_resolution = oam.height == 16; // 8x16
 
     for(std::size_t o = 0; o < sizeof(this->objects) / sizeof(this->objects[0]); o++) {
         auto &object = this->objects[o];
@@ -369,7 +369,13 @@ void VRAMViewer::redraw_oam_data() noexcept {
         format_label(object.info, object_data, o);
 
         static_assert(sizeof(object.sprite_pixel_data) == sizeof(object_data.pixel_data));
-        std::memcpy(object.sprite_pixel_data, object_data.pixel_data, sizeof(object_data.pixel_data));
+        if(double_resolution) {
+            std::memcpy(object.sprite_pixel_data, object_data.pixel_data, sizeof(object_data.pixel_data));
+        }
+        else {
+            std::memcpy(object.sprite_pixel_data, object_data.pixel_data, sizeof(object_data.pixel_data) / 2);
+            std::memset(reinterpret_cast<std::byte *>(object.sprite_pixel_data) + sizeof(object_data.pixel_data) / 2, 0, sizeof(object_data.pixel_data) / 2);
+        }
 
         object.pixmap->setPixmap(QPixmap::fromImage(object.image));
         object.frame->setEnabled(object_data.on_screen);
