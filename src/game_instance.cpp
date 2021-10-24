@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstring>
 #include <thread>
+#include <cassert>
 
 #define MAKE_GETTER(what) { \
     this->mutex.lock(); \
@@ -940,9 +941,36 @@ bool GameInstance::is_paused_from_zero_speed() noexcept MAKE_GETTER(this->pause_
 
 void GameInstance::set_rewind_length(double seconds) noexcept MAKE_SETTER(GB_set_rewind_length(&this->gameboy, seconds))
 
+void color_block(GB_gameboy_s *gb, std::uint32_t *block, const std::uint8_t *tile_data, GB_palette_type_t palette_type, unsigned int palette_index, unsigned int stride = GameInstance::GB_TILESET_TILE_LENGTH) {
+    // Get palettes
+    auto *new_palette = get_gb_palette(gb, palette_type, palette_index);
+
+    // Go through each pixel in the tile and color it
+    for(std::size_t ty = 0; ty < GameInstance::GB_TILESET_TILE_LENGTH; ty++) {
+        for(std::size_t tx = 0, access_shift = GameInstance::GB_TILESET_TILE_LENGTH - 1; tx < GameInstance::GB_TILESET_TILE_LENGTH; tx++, access_shift--) {
+            auto &pixel = block[tx + ty * stride];
+            auto *tile_pixel = tile_data + ty * 2;
+
+            // Bit shift left-to-right - https://gbdev.io/pandocs/Tile_Data.html
+            // First byte is lower bit. Second byte is upper bit
+            std::uint8_t color_index_low = (tile_pixel[0] >> access_shift) & 0b1;
+            std::uint8_t color_index_high = (tile_pixel[1] >> access_shift) & 0b1;
+
+            std::uint8_t color_index = color_index_low | (color_index_high << 1);
+
+            pixel = new_palette[color_index];
+        }
+    }
+}
+
 void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t palette_type, std::uint8_t index) noexcept {
     this->mutex.lock();
     GB_draw_tileset(&this->gameboy, destination, palette_type == GB_palette_type_t::GB_PALETTE_AUTO ? GB_palette_type_t::GB_PALETTE_NONE : palette_type, index); // if we specify auto, get a none (since SameBoy currently treats auto as monochrome - remove this if/when it does not)
+
+    std::size_t size;
+    const auto *tileset = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_direct_access_t::GB_DIRECT_ACCESS_VRAM, &size, nullptr));
+    assert(size > 0x2000);
+    const std::uint8_t *tileset_banks[2] = {tileset, tileset + 0x2000};
 
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
         // Get the tilset info
@@ -965,23 +993,8 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
             // Convert x,y to the block on the tileset bitmap
             block += x * GB_TILESET_TILE_LENGTH + y * GB_TILESET_TILE_LENGTH * (GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH) * GB_TILESET_TILE_LENGTH;
 
-            auto *none_palette = get_gb_palette(&this->gameboy, GB_palette_type_t::GB_PALETTE_NONE, 0);
-            auto *palette = get_gb_palette(&this->gameboy, type, info.accessed_tile_palette_index);
-
             // Go through each pixel in the tile and color it
-            for(std::size_t ty = 0; ty < GB_TILESET_TILE_LENGTH; ty++) {
-                for(std::size_t tx = 0; tx < GB_TILESET_TILE_LENGTH; tx++) {
-                    auto &pixel = block[tx + ty * GB_TILESET_WIDTH];
-                    std::size_t color_index = 0;
-                    for(std::size_t c = 0; c < 4; c++) {
-                        if((pixel & 0xFF) == (none_palette[c] & 0xFF)) {
-                            color_index = c;
-                            break;
-                        }
-                    }
-                    pixel = palette[color_index];
-                }
-            }
+            color_block(&this->gameboy, block, tileset_banks[info.tile_bank] + info.tile_index * 0x10, type, info.accessed_tile_palette_index, GB_TILESET_WIDTH);
         }
     }
     this->mutex.unlock();
@@ -1007,12 +1020,11 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
     bool double_sprite_height = (lcdc & 0b100) != 0;
     auto oam = this->get_object_attribute_info_without_mutex();
 
-    std::uint16_t bank = 0;
-    std::size_t size = 0;
-
     // Background tile data
-    const auto *tile_9800 = reinterpret_cast<const std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_DIRECT_ACCESS_VRAM, &size, &bank)) + 0x1800;
+    std::size_t size = 0;
+    const auto *tile_9800 = reinterpret_cast<const std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_DIRECT_ACCESS_VRAM, &size, nullptr)) + 0x1800;
     const auto *tile_9C00 = tile_9800 + 0x400;
+    assert(size >= 0x1C00);
 
     bool sprites_enabled = (lcdc & 0b10);
     bool bg_window_enabled = cgb_mode || (lcdc & 0b1);
@@ -1139,33 +1151,38 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
 GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info() noexcept MAKE_GETTER(this->get_object_attribute_info_without_mutex())
 
 GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_without_mutex() noexcept {
-    std::uint8_t sprite_height;
-
-    GB_oam_info_t info[40] = {};
+    std::uint8_t lcdc = GB_read_memory(&this->gameboy, 0xFF40);
     auto cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
-    GB_get_oam_info(&this->gameboy, info, &sprite_height);
+    std::uint8_t sprite_height = (lcdc & 0b100) != 0 ? 16 : 8;
+    bool sprites_enabled = (lcdc & 0b10);
+    const auto *oam_data = reinterpret_cast<const std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_DIRECT_ACCESS_OAM, NULL, NULL));
+
+    std::size_t size;
+    const auto *tileset = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_direct_access_t::GB_DIRECT_ACCESS_VRAM, &size, nullptr));
+    assert(size > 0x2000);
+    const std::uint8_t *tileset_banks[2] = {tileset, tileset + 0x2000};
 
     ObjectAttributeInfo oam;
     oam.height = sprite_height;
 
-    for(std::uint8_t i = 0; i < sizeof(info) / sizeof(info[0]); i++) {
+    for(std::uint8_t i = 0; i < sizeof(oam.objects) / sizeof(oam.objects[0]); i++) {
         auto &object_info = oam.objects[i];
-        auto &object = info[i];
+        auto *object = oam_data + i * 4;
 
         // Tileset bank
-        auto flags = object.flags;
+        auto flags = object[3];
         object_info.tileset_bank = cgb_mode ? (
                                                   (flags & 0b1000) >> 3 // CGB uses bit#3 (the fourth bit)
                                               ) : 0; // DMG is always tileset 0
 
         // Tile
-        object_info.tile = object.tile;
+        object_info.tile = object[2];
 
         // Are we offscreen?
-        auto oam_x = object.x;
-        auto oam_y = object.y;
-        object_info.on_screen = !(oam_x == 0 || oam_x >= 168 || oam_y + sprite_height <= 16 || oam_y >= 160);
-        object_info.obscurred_by_line_limit = object.obscured_by_line_limit;
+        auto oam_x = object[1];
+        auto oam_y = object[0];
+        object_info.on_screen = sprites_enabled && !(oam_x == 0 || oam_x >= 168 || oam_y + sprite_height <= 16 || oam_y >= 160);
+        object_info.obscurred_by_line_limit = false; // todo: figure this out
         object_info.x = oam_x;
         object_info.y = oam_y;
 
@@ -1181,9 +1198,39 @@ GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_withou
         // This flag
         object_info.bg_window_over_obj = (flags& 0b10000000) != 0;
 
-        // Draw it
-        static_assert(sizeof(object.image) == sizeof(object_info.pixel_data));
-        std::memcpy(object_info.pixel_data, object.image, sizeof(object.image));
+        // Color it
+        auto *first_half = object_info.pixel_data;
+        auto *second_half = first_half + sizeof(object_info.pixel_data) / sizeof(object_info.pixel_data[0]) / 2;
+        auto *tile = tileset_banks[object_info.tileset_bank] + 0x10 * object_info.tile;
+        color_block(&this->gameboy, first_half, tile, GB_palette_type_t::GB_PALETTE_OAM, object_info.palette);
+
+        // Color the second half too
+        if(sprite_height == 16) {
+            color_block(&this->gameboy, second_half, tile + 0x10, GB_palette_type_t::GB_PALETTE_OAM, object_info.palette);
+        }
+
+        // Or not!
+        else {
+            std::memset(second_half, 0, sizeof(object_info.pixel_data) / sizeof(object_info.pixel_data[0]) / 2);
+        }
+
+        // Flip X
+        if(object_info.flip_x) {
+            for(std::size_t y = 0; y < sprite_height; y++) {
+                for(std::size_t x = 0, sx = GB_TILESET_TILE_LENGTH - 1; x < GB_TILESET_TILE_LENGTH / 2; x++, sx--) {
+                    std::swap(object_info.pixel_data[y * GB_TILESET_TILE_LENGTH + x], object_info.pixel_data[y * GB_TILESET_TILE_LENGTH + sx]);
+                }
+            }
+        }
+
+        // Flip Y
+        if(object_info.flip_y) {
+            for(std::size_t x = 0; x < GB_TILESET_TILE_LENGTH; x++) {
+                for(std::size_t y = 0, sy = sprite_height - 1; y < sprite_height / 2; y++, sy--) {
+                    std::swap(object_info.pixel_data[y * GB_TILESET_TILE_LENGTH + x], object_info.pixel_data[sy * GB_TILESET_TILE_LENGTH + x]);
+                }
+            }
+        }
     }
 
     return oam;
