@@ -592,7 +592,6 @@ public: // all public functions assume the mutex is not locked
         TilesetInfoTile tiles[GB_TILESET_PAGE_BLOCK_WIDTH * GB_TILESET_BLOCK_HEIGHT * 2];
     };
 
-
     /**
      * Get tileset metadata
      *
@@ -600,6 +599,8 @@ public: // all public functions assume the mutex is not locked
      */
     TilesetInfo get_tileset_info() noexcept;
 
+    /** OAM object count */
+    static constexpr const std::size_t GB_OAM_OBJECT_COUNT = 40;
 
     struct ObjectAttributeInfoObject {
         /** X coordinate */
@@ -628,11 +629,14 @@ public: // all public functions assume the mutex is not locked
 
         /** BG/window colors 1-3 over this object */
         bool bg_window_over_obj : 1;
+
+        /** Drawn data */
+        std::uint32_t pixel_data[GB_TILESET_TILE_LENGTH*2*GB_TILESET_TILE_LENGTH] = {};
     };
 
     struct ObjectAttributeInfo {
         /** Objects */
-        ObjectAttributeInfoObject objects[40];
+        ObjectAttributeInfoObject objects[GB_OAM_OBJECT_COUNT];
     };
 
     /**

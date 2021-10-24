@@ -1139,36 +1139,31 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
 GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info() noexcept MAKE_GETTER(this->get_object_attribute_info_without_mutex())
 
 GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_without_mutex() noexcept {
+    std::uint8_t sprite_height;
+
+    GB_oam_info_t info[40] = {};
+    auto cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
+    GB_get_oam_info(&this->gameboy, info, &sprite_height);
+
     ObjectAttributeInfo oam;
 
-    // Get this data
-    auto cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
-    std::uint8_t lcdc = GB_read_memory(&this->gameboy, 0xFF40);
-    std::uint16_t sprite_height = (lcdc & 0b100) ? 16 : 8;
-    const auto *oam_data = reinterpret_cast<const std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_DIRECT_ACCESS_OAM, NULL, NULL));
-
-    // Go through each object and get the info
-    for(std::uint8_t i = 0; i < sizeof(oam.objects) / sizeof(oam.objects[0]); i++) {
+    for(std::uint8_t i = 0; i < sizeof(info) / sizeof(info[0]); i++) {
         auto &object_info = oam.objects[i];
-        auto *object = oam_data + i * 4;
+        auto &object = info[i];
 
         // Tileset bank
-        auto flags = object[3];
+        auto flags = object.flags;
         object_info.tileset_bank = cgb_mode ? (
                                                   (flags & 0b1000) >> 3 // CGB uses bit#3 (the fourth bit)
                                               ) : 0; // DMG is always tileset 0
 
         // Tile
-        std::uint8_t oam_tile = object[2];
-        if(sprite_height == 16) {
-            oam_tile = oam_tile & 0xFE; // from pandocs
-        }
-        object_info.tile = oam_tile;
+        object_info.tile = object.tile;
 
         // Are we offscreen?
-        auto oam_x = object[1];
-        auto oam_y = object[0];
-        object_info.on_screen = !(oam_x == 0 || oam_x >= 168 || oam_y + sprite_height <= 16 || oam_y >= 160);
+        auto oam_x = object.x;
+        auto oam_y = object.y;
+        object_info.on_screen = !(oam_x == 0 || oam_x >= 168 || oam_y + sprite_height <= 16 || oam_y >= 160) && !object.obscured_by_line_limit;
         object_info.x = oam_x;
         object_info.y = oam_y;
 
@@ -1183,6 +1178,10 @@ GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_withou
 
         // This flag
         object_info.bg_window_over_obj = (flags& 0b10000000) != 0;
+
+        // Draw it
+        static_assert(sizeof(object.image) == sizeof(object_info.pixel_data));
+        std::memcpy(object_info.pixel_data, object.image, sizeof(object.image));
     }
 
     return oam;

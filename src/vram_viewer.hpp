@@ -12,6 +12,7 @@ class QCheckBox;
 class QSpinBox;
 class QComboBox;
 class QLabel;
+class QFrame;
 
 #include "game_instance.hpp"
 
@@ -30,7 +31,7 @@ private:
     GameWindow *window;
 
     QTabWidget *gb_tab_view;
-    QWidget *gb_tilemap_view_frame;
+    QWidget *gb_tilemap_view_frame, *gb_oam_view_frame;
 
     std::uint32_t gb_tileset_image_data[GameInstance::GB_TILESET_WIDTH * GameInstance::GB_TILESET_HEIGHT] = {};
     std::uint32_t gb_tileset_grid_data[GameInstance::GB_TILESET_WIDTH * 2 * GameInstance::GB_TILESET_HEIGHT * 2] = {};
@@ -63,6 +64,19 @@ private:
     QWidget *palette_a, *palette_b, *palette_c, *palette_d;
     std::uint32_t current_palette[4] = { 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000 };
     void redraw_palette() noexcept;
+
+    struct OAMObjectViewData {
+        std::uint32_t sprite_pixel_data[GameInstance::GB_TILESET_TILE_LENGTH * GameInstance::GB_TILESET_TILE_LENGTH * 2];
+        QImage image;
+
+        QFrame *frame;
+        QLabel *info;
+        QGraphicsScene *scene;
+        QGraphicsView *view;
+        QGraphicsPixmapItem *pixmap;
+    };
+    OAMObjectViewData objects[sizeof(GameInstance::ObjectAttributeInfo::objects) / sizeof(GameInstance::ObjectAttributeInfo::objects[0])];
+    void redraw_oam_data() noexcept;
 };
 
 #endif

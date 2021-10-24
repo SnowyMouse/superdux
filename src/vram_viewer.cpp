@@ -11,12 +11,20 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QFontDatabase>
+#include <QScrollBar>
 #include <QSettings>
+#include <QScrollArea>
 
 #include "game_window.hpp"
 
 #define SETTING_SHOW_GRID "vram_show_grid"
 #define SETTING_SHOW_VIEWPORT "vram_show_viewport"
+
+void format_label(QLabel *label, const GameInstance::ObjectAttributeInfoObject &object, std::size_t index) {
+    char str[64];
+    std::snprintf(str, sizeof(str), "%02zu ($%02zx)\nXY: $%02x,%02x\nT#: $%02x:%02x\nFL: %s%s", index, index, object.x, object.y, object.tileset_bank, object.tile, object.flip_x ? "X" : "_", object.flip_y ? "Y" : "_");
+    label->setText(str);
+}
 
 class TilesetView : public QGraphicsView {
 public:
@@ -85,13 +93,22 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->gb_tilemap_view_frame = new QWidget(this->gb_tab_view);
     auto *gb_tilemap_view_frame_layout = new QVBoxLayout(this->gb_tilemap_view_frame);
     this->gb_tilemap_view_frame->setLayout(gb_tilemap_view_frame_layout);
+
+    auto *gb_tilemap_view_inner_widget = new QWidget(gb_tilemap_view_frame);
+    auto *gb_tilemap_view_inner_widget_layout = new QGridLayout(gb_tilemap_view_inner_widget);
+    gb_tilemap_view_inner_widget_layout->setContentsMargins(0,0,0,0);
+    gb_tilemap_view_inner_widget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+
     this->gb_tilemap_view = new QGraphicsView(this->gb_tilemap_view_frame);
+    this->gb_tilemap_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     this->gb_tilemap_scene = new QGraphicsScene(this->gb_tilemap_view);
     this->gb_tilemap_pixmap = this->gb_tilemap_scene->addPixmap(QPixmap::fromImage(this->gb_tilemap_image));
     this->gb_tilemap_pixmap->setTransform(QTransform::fromScale(2, 2));
     this->gb_tilemap_view->setScene(this->gb_tilemap_scene);
     this->gb_tilemap_view->setDisabled(true);
-    gb_tilemap_view_frame_layout->addWidget(this->gb_tilemap_view);
+
+    gb_tilemap_view_inner_widget_layout->addWidget(this->gb_tilemap_view);
+    gb_tilemap_view_frame_layout->addWidget(gb_tilemap_view_inner_widget);
 
     std::pair<const char *, GB_tileset_type_t> tilesets[] = {
         {"Auto", GB_tileset_type_t::GB_TILESET_AUTO},
@@ -139,7 +156,6 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->gb_tilemap_show_viewport_box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     this->gb_tilemap_show_viewport_box->setChecked(settings.value(SETTING_SHOW_VIEWPORT, true).toBool());
     connect(this->gb_tilemap_show_viewport_box, &QCheckBox::clicked, this, &VRAMViewer::redraw_tilemap);
-    this->gb_tilemap_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     tilemap_options_layout->addWidget(map_w);
     tilemap_options_layout->addWidget(tileset_w);
@@ -183,7 +199,10 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     // Tileset mouse over info
     auto *tileset_mouse_over_widget = new QWidget(gb_tileset_view_frame);
     auto *tileset_mouse_over_layout = new QGridLayout(tileset_mouse_over_widget);
-    int row_count = 0;
+    auto *spacing_widget = new QWidget(tileset_mouse_over_widget);
+    spacing_widget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+    tileset_mouse_over_layout->addWidget(spacing_widget);
+    int row_count = 1;
     auto add_tileset_mouse_over_info = [&row_count, &tileset_mouse_over_widget, &tileset_mouse_over_layout, &table_font](QLabel **label) {
         *label = new QLabel("TEST", tileset_mouse_over_widget);
         (*label)->setFont(table_font);
@@ -209,10 +228,6 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     palette_preview_layout->addWidget(this->palette_b = new QWidget(palette_preview));
     palette_preview_layout->addWidget(this->palette_c = new QWidget(palette_preview));
     palette_preview_layout->addWidget(this->palette_d = new QWidget(palette_preview));
-    this->palette_a->setStyleSheet("background-color: #000");
-    this->palette_b->setStyleSheet("background-color: #000");
-    this->palette_c->setStyleSheet("background-color: #000");
-    this->palette_d->setStyleSheet("background-color: #000");
 
     int palette_hw = this->moused_over_tile_palette->sizeHint().height();
     this->palette_a->setFixedSize(palette_hw, palette_hw);
@@ -270,8 +285,54 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     palette_selector->setLayout(palette_selector_layout);
     palette_group_layout->addWidget(palette_selector);
     tileset_palette_layout->addWidget(palette_group);
-
     layout->addWidget(tileset_palette);
+
+    // OAM
+    auto *gb_oam_frame = new QScrollArea(this->gb_tab_view);
+    this->gb_oam_view_frame = gb_oam_frame;
+    auto *gb_oam_view_frame_inner = new QWidget(this->gb_oam_view_frame);
+    auto *gb_oam_view_frame_layout = new QGridLayout(gb_oam_view_frame_inner);
+    table_font.setPixelSize(14);
+    for(std::size_t o = 0; o < sizeof(this->objects) / sizeof(this->objects[0]); o++) {
+        auto &object_view_data = this->objects[o];
+
+        // Initialize the image
+        object_view_data.image = QImage(reinterpret_cast<const uchar *>(object_view_data.sprite_pixel_data), GameInstance::GB_TILESET_TILE_LENGTH, GameInstance::GB_TILESET_TILE_LENGTH * 2, QImage::Format::Format_ARGB32);
+
+        // Create our frame
+        object_view_data.frame = new QFrame(this->gb_oam_view_frame);
+        auto *flayout = new QHBoxLayout(object_view_data.frame);
+        object_view_data.frame->setLayout(flayout);
+        object_view_data.frame->setFrameShape(QFrame::Shape::Panel);
+        object_view_data.frame->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        // Start with the view
+        object_view_data.view = new QGraphicsView(object_view_data.frame);
+        object_view_data.view->setStyleSheet("background-color: #FFF");
+        object_view_data.view->setFrameShape(QFrame::Shape::NoFrame);
+        object_view_data.scene = new QGraphicsScene(object_view_data.view);
+        object_view_data.pixmap = object_view_data.scene->addPixmap(QPixmap::fromImage(object_view_data.image));
+        object_view_data.pixmap->setTransform(QTransform::fromScale(4, 4));
+        object_view_data.view->setScene(object_view_data.scene);
+        object_view_data.view->setFixedSize(object_view_data.view->sizeHint());
+        flayout->addWidget(object_view_data.view);
+
+        // Now the metadata
+        object_view_data.info = new QLabel(object_view_data.frame);
+        object_view_data.info->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::MinimumExpanding);
+        format_label(object_view_data.info, {}, o);
+        object_view_data.info->setAlignment(Qt::AlignmentFlag::AlignVCenter | Qt::AlignmentFlag::AlignLeft);
+        object_view_data.info->setFont(table_font);
+        flayout->addWidget(object_view_data.info);
+
+        gb_oam_view_frame_layout->addWidget(object_view_data.frame, o / 4, o % 4);
+    }
+    gb_oam_frame->setMinimumWidth(gb_oam_view_frame_inner->sizeHint().width() + gb_oam_frame->verticalScrollBar()->sizeHint().width());
+    gb_oam_frame->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
+    gb_oam_frame->setWidget(gb_oam_view_frame_inner);
+    gb_oam_view_frame_inner->setLayout(gb_oam_view_frame_layout);
+    this->gb_tab_view->addTab(this->gb_oam_view_frame, "Sprite Attributes");
+
     this->setFixedSize(this->sizeHint());
 }
 
@@ -292,9 +353,34 @@ void VRAMViewer::refresh_view() {
 void VRAMViewer::redraw_palette() noexcept {
     this->redraw_tilemap();
     this->redraw_tileset();
+    this->redraw_oam_data();
+}
+
+void VRAMViewer::redraw_oam_data() noexcept {
+    if(this->gb_oam_view_frame->isHidden()) {
+        return;
+    }
+
+    auto oam = this->window->get_instance().get_object_attribute_info();
+
+    for(std::size_t o = 0; o < sizeof(this->objects) / sizeof(this->objects[0]); o++) {
+        auto &object = this->objects[o];
+        auto &object_data = oam.objects[o];
+        format_label(object.info, object_data, o);
+
+        static_assert(sizeof(object.sprite_pixel_data) == sizeof(object_data.pixel_data));
+        std::memcpy(object.sprite_pixel_data, object_data.pixel_data, sizeof(object_data.pixel_data));
+
+        object.pixmap->setPixmap(QPixmap::fromImage(object.image));
+        object.frame->setEnabled(object_data.on_screen);
+    }
 }
 
 void VRAMViewer::redraw_tilemap() noexcept {
+    if(this->gb_tilemap_view_frame->isHidden()) {
+        return; // return if not visible (such as if we're on a different tab)
+    }
+
     auto &instance = this->window->get_instance();
     auto tilemap_index = this->tilemap_map_type->currentIndex();
     auto tilemap_type = static_cast<GB_map_type_t>(this->tilemap_map_type->currentData().toInt());
@@ -523,7 +609,7 @@ void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile, bo
                 this->gb_tab_view->setCurrentWidget(this->gb_tilemap_view_frame);
                 break;
             case GameInstance::TilesetInfoTileType::TILESET_INFO_OAM:
-                std::printf("Unimplemented! This should switch to the OAM tab.\n");
+                this->gb_tab_view->setCurrentWidget(this->gb_oam_view_frame);
                 break;
             case GameInstance::TilesetInfoTileType::TILESET_INFO_NONE:
                 break;
