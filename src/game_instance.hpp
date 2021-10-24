@@ -627,6 +627,9 @@ public: // all public functions assume the mutex is not locked
         /** Onscreen (can still be obscured by 10 object limit) */
         bool on_screen : 1;
 
+        /** Obscured by line limit */
+        bool obscurred_by_line_limit : 1;
+
         /** BG/window colors 1-3 over this object */
         bool bg_window_over_obj : 1;
 
@@ -637,6 +640,12 @@ public: // all public functions assume the mutex is not locked
     struct ObjectAttributeInfo {
         /** Objects */
         ObjectAttributeInfoObject objects[GB_OAM_OBJECT_COUNT];
+
+        /** Width dimension */
+        std::uint8_t width = 8;
+
+        /** Height dimension */
+        std::uint8_t height;
     };
 
     /**

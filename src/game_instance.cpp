@@ -1146,6 +1146,7 @@ GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_withou
     GB_get_oam_info(&this->gameboy, info, &sprite_height);
 
     ObjectAttributeInfo oam;
+    oam.height = sprite_height;
 
     for(std::uint8_t i = 0; i < sizeof(info) / sizeof(info[0]); i++) {
         auto &object_info = oam.objects[i];
@@ -1163,7 +1164,8 @@ GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_withou
         // Are we offscreen?
         auto oam_x = object.x;
         auto oam_y = object.y;
-        object_info.on_screen = !(oam_x == 0 || oam_x >= 168 || oam_y + sprite_height <= 16 || oam_y >= 160) && !object.obscured_by_line_limit;
+        object_info.on_screen = !(oam_x == 0 || oam_x >= 168 || oam_y + sprite_height <= 16 || oam_y >= 160);
+        object_info.obscurred_by_line_limit = object.obscured_by_line_limit;
         object_info.x = oam_x;
         object_info.y = oam_y;
 
