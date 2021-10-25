@@ -333,6 +333,8 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->gb_tab_view->addTab(this->gb_oam_view_frame, "Sprite Attributes");
 
     this->setFixedSize(this->sizeHint());
+
+    this->show_info_for_tile(std::nullopt, false);
 }
 
 VRAMViewer::~VRAMViewer() {
@@ -567,7 +569,7 @@ void VRAMViewer::redraw_tileset() noexcept {
         new_palette = instance.get_palette(type, this->tileset_palette_index->value());
         this->moused_over_tile_address->setText(" ");
         this->moused_over_tile_accessed_index->setText(" ");
-        this->moused_over_tile_palette->setText(" ");
+        this->moused_over_tile_palette->setText("Mouse over a tile for information.");
         this->moused_over_tile_user->setText(" ");
     }
 
