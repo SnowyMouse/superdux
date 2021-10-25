@@ -1,7 +1,42 @@
 # SameBoy DX
 
-SameBoy DX is a Qt-based interface of SameBoy, a free, highly accurate Game
-Boy and Game Boy Color emulator.
+SameBoy DX is a Qt-based interface of [SameBoy], a free Game Boy and Game Boy
+Color emulator.
+
+## Features
+* Supports most of SameBoy's core features
+   * Highly accurate Game Boy and Game Boy Color emulation
+       * High-level Super Game Boy emulation for games that support it
+   * Save states, including BESS save states which can be used interchangeably
+     with other emulators
+   * High pass audio filters
+   * Color correction
+   * SRAM support
+   * RTC support
+   * Rumble support
+   * Rewind support
+   * Built-in boot ROMs, supportting palette switching for both DMG and CGB
+* Controller support
+   * Per-controller configuration (based on name)
+   * Multiple buttons/axes per control
+   * Analog turbo and slowdown
+* Debugging features
+   * Debugger
+      * Disassembles into RGBDS-compatible assembly
+      * Display and manipulate CPU registers
+      * Supports creating breakpoints
+      * Backtrace
+   * VRAM (video RAM) viewer
+      * Tileset preview (using automatic palettes or specific palettes)
+         * Displays metadata such as memory address, bank, usage, etc.
+      * Tilemap preview (background, window, as well as specific tilemaps)
+      * Sprite preview (also shows coordinates, flipping, and tileset info)
+      * Palette preview (shows all background palettes and OAM/sprite palettes)
+
+Note that this interface is a work-in-progress. More features are (hopefully) to
+come.
+
+## Building
 
 Build requirements:
 * CMake
@@ -10,10 +45,10 @@ Build requirements:
 * Qt5 and/or Qt6 (executable will be placed in qt5/ or qt6/)
 * [SDL] version 2.0.16 or later
 * [SameBoy]\*
-    * [RGBDS] (for building SameBoy's boot ROMs)
+    * [RGBDS]  (for building SameBoy's boot ROMs)
 
-[SDL]:     https://www.libsdl.org/
 [SameBoy]: https://github.com/LIJI32/SameBoy
+[SDL]:     https://www.libsdl.org/
 [RGBDS]:   https://github.com/gbdev/rgbds
 
 \* You need a copy of SameBoy's source code. One is tracked via `git submodule`,
