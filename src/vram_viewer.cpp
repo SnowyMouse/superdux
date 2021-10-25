@@ -69,6 +69,28 @@ private:
     VRAMViewer *window;
 };
 
+void VRAMViewer::update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index) {
+    auto *new_palette = this->window->get_instance().get_palette(type, index);
+
+    if(std::memcmp(new_palette, palette.current_palette, sizeof(palette.current_palette)) != 0) {
+        std::memcpy(palette.current_palette, new_palette, sizeof(palette.current_palette));
+
+        auto format_background_color_for_palette = [](const std::uint32_t &p, QWidget *w) {
+            std::uint8_t b = (p & 0xFF);
+            std::uint8_t g = ((p & 0xFF00) >> 8) & 0xFF;
+            std::uint8_t r = ((p & 0xFF0000) >> 16) & 0xFF;
+
+            char stylesheet[256];
+            std::snprintf(stylesheet, sizeof(stylesheet), "background-color: #%02x%02x%02x", r, g, b);
+            w->setStyleSheet(stylesheet);
+        };
+
+        for(std::size_t p = 0; p < sizeof(palette.colors) / sizeof(palette.colors[p]); p++) {
+            format_background_color_for_palette(palette.current_palette[p], palette.colors[p]);
+        }
+    }
+}
+
 VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window),
     gb_tilemap_image(reinterpret_cast<uchar *>(this->gb_tilemap_image_data), GameInstance::GB_TILEMAP_WIDTH, GameInstance::GB_TILEMAP_HEIGHT, QImage::Format::Format_ARGB32),
     gb_tileset_image(reinterpret_cast<uchar *>(this->gb_tileset_image_data), GameInstance::GB_TILESET_WIDTH, GameInstance::GB_TILESET_HEIGHT, QImage::Format::Format_ARGB32),
@@ -221,21 +243,27 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     tileset_mouse_over_layout->addWidget(this->gb_show_tileset_grid, palette_row_index, 1);
 
     // Palette
-    auto *palette_preview = new QWidget(tileset_mouse_over_widget);
-    auto *palette_preview_layout = new QHBoxLayout(palette_preview);
-    palette_preview_layout->setContentsMargins(0,0,0,0);
-    palette_preview_layout->addWidget(this->palette_a = new QWidget(palette_preview));
-    palette_preview_layout->addWidget(this->palette_b = new QWidget(palette_preview));
-    palette_preview_layout->addWidget(this->palette_c = new QWidget(palette_preview));
-    palette_preview_layout->addWidget(this->palette_d = new QWidget(palette_preview));
-
     int palette_hw = this->moused_over_tile_palette->sizeHint().height();
-    this->palette_a->setFixedSize(palette_hw, palette_hw);
-    this->palette_b->setFixedSize(palette_hw, palette_hw);
-    this->palette_c->setFixedSize(palette_hw, palette_hw);
-    this->palette_d->setFixedSize(palette_hw, palette_hw);
-    palette_preview->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    tileset_mouse_over_layout->addWidget(palette_preview, palette_row_index, 2);
+
+    auto initialize_palette = [&palette_hw](PaletteViewData &palette, QWidget *parent) {
+        palette.widget = new QWidget(parent);
+        auto *palette_preview_layout = new QHBoxLayout(palette.widget);
+        palette_preview_layout->setContentsMargins(0,0,0,0);
+
+        for(auto &c : palette.colors) {
+            c = new QWidget(palette.widget);
+            c->setFixedSize(palette_hw, palette_hw);
+            c->setStyleSheet("background-color: #000");
+            palette_preview_layout->addWidget(c);
+        }
+        palette.widget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        // Initialize the palette background
+        std::memset(palette.current_palette, 0, sizeof(palette.current_palette));
+    };
+
+    initialize_palette(this->tileset_view_palette, tileset_mouse_over_widget);
+    tileset_mouse_over_layout->addWidget(this->tileset_view_palette.widget, palette_row_index, 2);
 
     tileset_mouse_over_widget->setLayout(tileset_mouse_over_layout);
     gb_tileset_view_frame_layout->addWidget(tileset_mouse_over_widget);
@@ -280,8 +308,8 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->tileset_palette_index->setMaximum(7);
     palette_selector_layout->addWidget(this->tileset_palette_index);
     this->tileset_palette_index->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    connect(this->tileset_palette_index, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &VRAMViewer::redraw_palette);
-    connect(this->tileset_palette_type, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &VRAMViewer::redraw_palette);
+    connect(this->tileset_palette_index, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &VRAMViewer::redraw_tileset_palette);
+    connect(this->tileset_palette_type, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &VRAMViewer::redraw_tileset_palette);
     palette_selector->setLayout(palette_selector_layout);
     palette_group_layout->addWidget(palette_selector);
     tileset_palette_layout->addWidget(palette_group);
@@ -334,7 +362,73 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
 
     this->setFixedSize(this->sizeHint());
 
+    // Show the default text
     this->show_info_for_tile(std::nullopt, false);
+
+    // Next, palettes
+    this->gb_palette_view_frame = new QWidget(this->gb_tab_view);
+    auto *gb_palette_view_frame_layout = new QVBoxLayout(this->gb_palette_view_frame);
+    gb_palette_view_frame_layout->setContentsMargins(0,0,0,0);
+
+    auto gb_palette_row_count = std::max(sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]), sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]));
+    QWidget *gb_palette_view_frame_row_widgets[gb_palette_row_count];
+    QHBoxLayout *gb_palette_view_frame_row_layouts[gb_palette_row_count];
+    for(std::size_t r = 0; r < gb_palette_row_count; r++) {
+        auto *&widget = gb_palette_view_frame_row_widgets[r];
+        auto *&layout = gb_palette_view_frame_row_layouts[r];
+
+        widget = new QWidget(this->gb_palette_view_frame);
+        layout = new QHBoxLayout(widget);
+        layout->setContentsMargins(0,0,0,0);
+        widget->setLayout(layout);
+
+        gb_palette_view_frame_layout->addWidget(widget);
+    }
+    gb_palette_view_frame_layout->addWidget(new QWidget(this->gb_palette_view_frame), 32);
+
+    // Add the palette to the row
+    auto add_palette_widget = [&gb_palette_view_frame_row_widgets, &gb_palette_view_frame_row_layouts, &initialize_palette, &table_font](std::size_t i, PaletteViewData &view_data, const char *title, int margin_left, int margin_right) {
+        auto *&row_widget = gb_palette_view_frame_row_widgets[i];
+        auto *&row_layout = gb_palette_view_frame_row_layouts[i];
+
+        auto *entry_widget = new QWidget(row_widget);
+        auto *entry_layout = new QHBoxLayout(entry_widget);
+
+        // Label
+        char text[256];
+        std::snprintf(text, sizeof(text), "%s %zu", title, i);
+        auto *label = new QLabel(text, entry_widget);
+        label->setFont(table_font);
+        entry_layout->addWidget(label, 1);
+
+        // Set up the actual widgets
+        initialize_palette(view_data, entry_widget);
+        entry_layout->addWidget(view_data.widget);
+        entry_widget->setLayout(entry_layout);
+        row_layout->addWidget(entry_widget);
+
+        // Don't have the bottom have any extra margins. Format left/right margins for aesthetics.
+        auto m = entry_layout->contentsMargins();
+        m.setBottom(0);
+        if(margin_left > 0) {
+            m.setLeft(margin_left);
+        }
+        if(margin_right > 0) {
+            m.setRight(margin_right);
+        }
+        entry_layout->setContentsMargins(m);
+    };
+
+    // Initialize the palettes here
+    for(std::size_t i = 0; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
+        add_palette_widget(i, this->gb_palette_background[i], "Background", 0, 30);
+    }
+    for(std::size_t i = 0; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
+        add_palette_widget(i, this->gb_palette_oam[i], "OAM (Sprite)", 30, 0);
+    }
+    this->gb_palette_view_frame->setLayout(gb_palette_view_frame_layout);
+    this->gb_palette_view_frame->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+    this->gb_tab_view->addTab(this->gb_palette_view_frame, "Palettes");
 }
 
 VRAMViewer::~VRAMViewer() {
@@ -348,13 +442,14 @@ void VRAMViewer::refresh_view() {
         return;
     }
 
-    this->redraw_palette();
+    this->redraw_tileset_palette();
 }
 
-void VRAMViewer::redraw_palette() noexcept {
+void VRAMViewer::redraw_tileset_palette() noexcept {
     this->redraw_tilemap();
     this->redraw_tileset();
     this->redraw_oam_data();
+    this->redraw_palette();
 }
 
 void VRAMViewer::redraw_oam_data() noexcept {
@@ -508,7 +603,9 @@ void VRAMViewer::redraw_tileset() noexcept {
     }
 
     // if we are mousing over a tile, show data for that tile
-    const std::uint32_t *new_palette;
+    GB_palette_type_t new_palette_type;
+    std::size_t new_palette_index;
+
     if(moused_over_tile_index.has_value()) {
         auto &info = tileset_info.tiles[*moused_over_tile_index];
 
@@ -555,18 +652,25 @@ void VRAMViewer::redraw_tileset() noexcept {
             }
 
             std::snprintf(palette_text, sizeof(palette_text), "User: %s", user_name);
-            new_palette = instance.get_palette(palette, info.accessed_tile_palette_index);
+
+            new_palette_type = palette;
+            new_palette_index = info.accessed_tile_palette_index;
+
             this->moused_over_tile_user->setText(palette_text);
         }
         else {
             this->moused_over_tile_palette->setText(" ");
             this->moused_over_tile_user->setText(" ");
-            new_palette = instance.get_palette(type, this->tileset_palette_index->value());
+
+            new_palette_type = type;
+            new_palette_index = this->tileset_palette_index->value();
         }
 
     }
     else {
-        new_palette = instance.get_palette(type, this->tileset_palette_index->value());
+        new_palette_type = type;
+        new_palette_index = this->tileset_palette_index->value();
+
         this->moused_over_tile_address->setText(" ");
         this->moused_over_tile_accessed_index->setText(" ");
         this->moused_over_tile_palette->setText("Mouse over a tile for information.");
@@ -574,23 +678,7 @@ void VRAMViewer::redraw_tileset() noexcept {
     }
 
     // Is the palette different?
-    if(std::memcmp(new_palette, this->current_palette, sizeof(this->current_palette)) != 0) {
-        std::memcpy(this->current_palette, new_palette, sizeof(this->current_palette));
-
-        auto format_background_color_for_palette = [](const std::uint32_t &p, QWidget *w) {
-            std::uint8_t b = (p & 0xFF);
-            std::uint8_t g = ((p & 0xFF00) >> 8) & 0xFF;
-            std::uint8_t r = ((p & 0xFF0000) >> 16) & 0xFF;
-
-            char stylesheet[256];
-            std::snprintf(stylesheet, sizeof(stylesheet), "background-color: #%02x%02x%02x", r, g, b);
-            w->setStyleSheet(stylesheet);
-        };
-        format_background_color_for_palette(this->current_palette[0], this->palette_a);
-        format_background_color_for_palette(this->current_palette[1], this->palette_b);
-        format_background_color_for_palette(this->current_palette[2], this->palette_c);
-        format_background_color_for_palette(this->current_palette[3], this->palette_d);
-    }
+    this->update_palette(this->tileset_view_palette, new_palette_type, new_palette_index);
 
     // Gray out the index if we're on none
     this->tileset_palette_index_label->setEnabled(type != GB_palette_type_t::GB_PALETTE_NONE && type != GB_palette_type_t::GB_PALETTE_AUTO);
@@ -622,5 +710,17 @@ void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile, bo
             case GameInstance::TilesetInfoTileType::TILESET_INFO_NONE:
                 break;
         }
+    }
+}
+
+void VRAMViewer::redraw_palette() noexcept {
+    if(this->gb_palette_view_frame->isHidden()) {
+        return;
+    }
+    for(std::size_t i = 0; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
+        this->update_palette(this->gb_palette_background[i], GB_palette_type_t::GB_PALETTE_BACKGROUND, i);
+    }
+    for(std::size_t i = 0; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
+        this->update_palette(this->gb_palette_oam[i], GB_palette_type_t::GB_PALETTE_OAM, i);
     }
 }
