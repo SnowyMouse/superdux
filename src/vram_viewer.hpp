@@ -26,6 +26,7 @@ public:
     void refresh_view();
 
     void show_info_for_tile(const std::optional<std::uint16_t> &tile, bool show_on_left_pane);
+    void show_info_for_palette(std::optional<GB_palette_type_t> palette, std::size_t index = 0);
 
 private:
     GameWindow *window;
@@ -90,6 +91,12 @@ private:
     // Palettes
     PaletteViewData gb_palette_background[8];
     PaletteViewData gb_palette_oam[8];
+    QLabel *gb_palette_background_color_codes[8];
+    QLabel *gb_palette_oam_color_codes[8];
+    QLabel *mouse_over_palette_label;
+
+    std::optional<GB_palette_type_t> moused_over_palette;
+    std::size_t moused_over_palette_index;
 
     void redraw_palette() noexcept;
 };

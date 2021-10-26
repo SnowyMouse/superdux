@@ -4,7 +4,7 @@ SameBoy DX is a Qt-based interface of [SameBoy], a free Game Boy and Game Boy
 Color emulator.
 
 ## Features
-* Supports most of SameBoy's core features
+* Supports most of [SameBoy's core features]
    * Highly accurate Game Boy and Game Boy Color emulation
        * High-level Super Game Boy emulation for games that support it
    * Save states, including BESS save states which can be used interchangeably
@@ -32,6 +32,8 @@ Color emulator.
       * Tilemap preview (background, window, as well as specific tilemaps)
       * Sprite preview (also shows coordinates, flipping, and tileset info)
       * Palette preview (shows all background palettes and OAM/sprite palettes)
+
+[SameBoy's core features]: https://sameboy.github.io/features/
 
 Note that this interface is a work-in-progress. More features are (hopefully) to
 come.

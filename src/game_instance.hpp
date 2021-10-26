@@ -655,6 +655,14 @@ public: // all public functions assume the mutex is not locked
      */
     ObjectAttributeInfo get_object_attribute_info() noexcept;
 
+    /**
+     * Get the raw 15-bit palette
+     *
+     * @param type    type of palette
+     * @param palette palette index
+     * @param output  pointer to 4 integers
+     */
+    void get_raw_palette(GB_palette_type_t type, std::size_t palette, std::uint16_t *output) noexcept;
 
     
 private: // all private functions assume the mutex is locked by the caller

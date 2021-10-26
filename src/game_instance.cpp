@@ -1235,3 +1235,23 @@ GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_withou
 
     return oam;
 }
+
+void GameInstance::get_raw_palette(GB_palette_type_t type, std::size_t palette, std::uint16_t *output) noexcept {
+    this->mutex.lock();
+
+    // No.
+    assert(type == GB_palette_type_t::GB_PALETTE_BACKGROUND || type == GB_palette_type_t::GB_PALETTE_OAM);
+    assert(palette <= 8);
+
+    // Get the color data
+    std::size_t size;
+    auto *direct_access = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, type == GB_palette_type_t::GB_PALETTE_BACKGROUND ? GB_direct_access_t::GB_DIRECT_ACCESS_BGP : GB_direct_access_t::GB_DIRECT_ACCESS_OBP, &size, nullptr));
+    assert(size >= sizeof(*output) * 4 * 8);
+    direct_access += sizeof(*output) * 4 * palette;
+
+    for(std::size_t i = 0; i < 4; i++) {
+        output[i] = reinterpret_cast<std::uint16_t *>(direct_access)[i]; // todo: figure out if this is little endian or native endian. if it's little endian, convert to native endian
+    }
+
+    this->mutex.unlock();
+}
