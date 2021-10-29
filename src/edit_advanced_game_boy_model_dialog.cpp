@@ -36,6 +36,9 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
             QCheckBox **allow_custom_boot_rom,
             bool allow_custom_boot_rom_v,
 
+            QCheckBox **show_border,
+            bool show_border_v,
+
             const std::vector<std::pair<QString, std::vector<QWidget *>>> &additional_controls = {}
         ) -> QVBoxLayout * {
         auto *w = new QWidget(tab_widget);
@@ -100,9 +103,22 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
         revisions_widget->setLayout(revisions_layout);
         layout->addWidget(revisions_widget);
 
+        // Add border thing?
+        auto *border_widget = new QWidget(w);
+        auto *border_layout = new QHBoxLayout(border_widget);
+        border_layout->setContentsMargins(0,0,0,0);
+        (*show_border) = new QCheckBox(border_widget);
+        auto *border_label = new QLabel("Show SGB border:", border_widget);
+        border_label->setMinimumWidth(label_width);
+        border_layout->addWidget(border_label);
+        border_layout->addWidget(*show_border, 1);
+        (*show_border)->setChecked(show_border_v);
+        layout->addWidget(border_widget);
+
         // set the height of these so they look OK
         boot_rom_widget->setFixedHeight(revisions_widget->sizeHint().height());
         use_custom_w->setFixedHeight(revisions_widget->sizeHint().height());
+        border_widget->setFixedHeight(revisions_widget->sizeHint().height());
 
         // Any extra widgets to add? (e.g. checkboxes)
         for(auto &i : additional_controls) {
@@ -133,36 +149,29 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
     // Add each model
     add_tab("Game Boy", &this->gb_boot_rom_le, this->window->gb_boot_rom_path, &gb_rev, {
                 {"DMG_B", GB_model_t::GB_MODEL_DMG_B}
-            }, this->window->gb_rev, &EditAdvancedGameBoyModelDialog::find_gb_boot_rom, &this->gb_allow_custom_boot_rom, window->gb_allow_custom_boot_rom);
+            }, this->window->gb_rev, &EditAdvancedGameBoyModelDialog::find_gb_boot_rom, &this->gb_allow_custom_boot_rom, window->gb_allow_custom_boot_rom, &this->gb_border_cb, window->gb_border);
 
     add_tab("Game Boy Color", &this->gbc_boot_rom_le, this->window->gbc_boot_rom_path, &this->gbc_rev, {
                 {"CGB_C", GB_model_t::GB_MODEL_CGB_C},
                 {"CGB_E", GB_model_t::GB_MODEL_CGB_E}
-            }, this->window->gbc_rev, &EditAdvancedGameBoyModelDialog::find_gbc_boot_rom, &this->gbc_allow_custom_boot_rom, window->gbc_allow_custom_boot_rom, {
+            }, this->window->gbc_rev, &EditAdvancedGameBoyModelDialog::find_gbc_boot_rom, &this->gbc_allow_custom_boot_rom, window->gbc_allow_custom_boot_rom, &this->gbc_border_cb, window->gbc_border, {
                 { "Skip intro:", {this->gbc_fast_cb = new QCheckBox(), new QLabel("(overrides boot ROM)")} }
             });
     this->gbc_fast_cb->setChecked(window->gbc_fast_boot_rom);
 
     add_tab("Game Boy Advance", &this->gba_boot_rom_le, this->window->gba_boot_rom_path, &this->gba_rev, {
                 {"AGB", GB_model_t::GB_MODEL_AGB}
-            }, this->window->gba_rev, &EditAdvancedGameBoyModelDialog::find_gba_boot_rom, &this->gba_allow_custom_boot_rom, window->gba_allow_custom_boot_rom);
+            }, this->window->gba_rev, &EditAdvancedGameBoyModelDialog::find_gba_boot_rom, &this->gba_allow_custom_boot_rom, window->gba_allow_custom_boot_rom, &this->gba_border_cb, window->gba_border);
 
     add_tab("Super Game Boy", &this->sgb_boot_rom_le, this->window->sgb_boot_rom_path, &this->sgb_rev, {
                 {"NTSC", GB_model_t::GB_MODEL_SGB_NTSC},
                 {"PAL", GB_model_t::GB_MODEL_SGB_PAL}
-            }, this->window->sgb_rev, &EditAdvancedGameBoyModelDialog::find_sgb_boot_rom, &this->sgb_allow_custom_boot_rom, window->sgb_allow_custom_boot_rom, {
-                { "Crop border:", {this->sgb_crop_border_cb = new QCheckBox()} }
-            });
+            }, this->window->sgb_rev, &EditAdvancedGameBoyModelDialog::find_sgb_boot_rom, &this->sgb_allow_custom_boot_rom, window->sgb_allow_custom_boot_rom, &this->sgb_border_cb, window->sgb_border);
     add_tab("Super Game Boy 2", &this->sgb2_boot_rom_le, this->window->sgb2_boot_rom_path, &this->sgb2_rev, {
                 {"SGB2", GB_model_t::GB_MODEL_SGB2}
-            }, this->window->sgb2_rev, &EditAdvancedGameBoyModelDialog::find_sgb2_boot_rom, &this->sgb2_allow_custom_boot_rom, window->sgb2_allow_custom_boot_rom, {
-                { "Crop border:", {this->sgb2_crop_border_cb = new QCheckBox()} }
-            });
+            }, this->window->sgb2_rev, &EditAdvancedGameBoyModelDialog::find_sgb2_boot_rom, &this->sgb2_allow_custom_boot_rom, window->sgb2_allow_custom_boot_rom, &this->sgb2_border_cb, window->sgb2_border);
 
     tab_widget->setCurrentIndex(this->window->gb_type);
-
-    this->sgb_crop_border_cb->setChecked(window->sgb_crop_border);
-    this->sgb2_crop_border_cb->setChecked(window->sgb2_crop_border);
 
     layout->addWidget(tab_widget);
 
@@ -228,8 +237,11 @@ void EditAdvancedGameBoyModelDialog::perform_accept() {
     this->window->sgb_rev = static_cast<GB_model_t>(this->sgb_rev->currentData().toInt());
     this->window->sgb2_rev = static_cast<GB_model_t>(this->sgb2_rev->currentData().toInt());
     this->window->gbc_fast_boot_rom = this->gbc_fast_cb->isChecked();
-    this->window->sgb_crop_border = this->sgb_crop_border_cb->isChecked();
-    this->window->sgb2_crop_border = this->sgb2_crop_border_cb->isChecked();
+    this->window->gb_border = this->gb_border_cb->isChecked();
+    this->window->gbc_border = this->gbc_border_cb->isChecked();
+    this->window->gba_border = this->gba_border_cb->isChecked();
+    this->window->sgb_border = this->sgb_border_cb->isChecked();
+    this->window->sgb2_border = this->sgb2_border_cb->isChecked();
     this->window->gb_allow_custom_boot_rom = this->gb_allow_custom_boot_rom->isChecked();
     this->window->gbc_allow_custom_boot_rom = this->gbc_allow_custom_boot_rom->isChecked();
     this->window->gba_allow_custom_boot_rom = this->gba_allow_custom_boot_rom->isChecked();
@@ -251,11 +263,14 @@ void EditAdvancedGameBoyModelDialog::perform_accept() {
     set_possible_path(this->window->sgb_boot_rom_path, this->sgb_boot_rom_le->text());
     set_possible_path(this->window->sgb2_boot_rom_path, this->sgb2_boot_rom_le->text());
 
+    auto border_mode = this->window->use_border_for_type(this->window->gb_type) ? GB_border_mode_t::GB_BORDER_ALWAYS : GB_border_mode_t::GB_BORDER_NEVER;
+    this->window->instance->set_border_mode(border_mode);
+
     // If resetting, set the model, boot ROM path, etc.
     if(requires_reset) {
         this->window->instance->set_boot_rom_path(this->window->boot_rom_for_type(this->window->gb_type));
         this->window->instance->set_use_fast_boot_rom(this->window->use_fast_boot_rom_for_type(this->window->gb_type));
-        this->window->instance->set_model(this->window->model_for_type(this->window->gb_type));
+        this->window->instance->set_model(this->window->model_for_type(this->window->gb_type), border_mode);
     }
 
     // Reset scaling

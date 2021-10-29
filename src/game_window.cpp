@@ -66,8 +66,11 @@
 #define SETTINGS_SGB_REVISION "sgb_model_revision"
 #define SETTINGS_SGB2_REVISION "sgb2_model_revision"
 
-#define SETTINGS_SGB_CROP_BORDER "sgb_crop_border"
-#define SETTINGS_SGB2_CROP_BORDER "sgb2_crop_border"
+#define SETTINGS_GB_BORDER "gb_border"
+#define SETTINGS_GBC_BORDER "gbc_border"
+#define SETTINGS_GBA_BORDER "gba_border"
+#define SETTINGS_SGB_BORDER "sgb_border"
+#define SETTINGS_SGB2_BORDER "sgb2_border"
 
 #define SETTINGS_GBC_FAST_BOOT "gbc_fast_boot_rom"
 
@@ -217,18 +220,18 @@ bool GameWindow::use_fast_boot_rom_for_type(GameBoyType type) const noexcept {
     }
 }
 
-bool GameWindow::use_crop_border_for_type(GameBoyType type) const noexcept {
+bool GameWindow::use_border_for_type(GameBoyType type) const noexcept {
     switch(type) {
         case GameBoyType::GameBoyGB:
-            return false;
+            return this->gb_border;
         case GameBoyType::GameBoyGBC:
-            return false;
+            return this->gbc_border;
         case GameBoyType::GameBoyGBA:
-            return false;
+            return this->gba_border;
         case GameBoyType::GameBoySGB:
-            return this->sgb_crop_border;
+            return this->sgb_border;
         case GameBoyType::GameBoySGB2:
-            return this->sgb2_crop_border;
+            return this->sgb2_border;
         default:
             std::terminate();
     }
@@ -284,8 +287,6 @@ GameWindow::GameWindow() {
     LOAD_UINT_SETTING_VALUE(this->sample_rate, SETTINGS_SAMPLE_RATE);
     LOAD_UINT_SETTING_VALUE(this->sample_count, SETTINGS_SAMPLE_BUFFER_SIZE);
 
-    LOAD_BOOL_SETTING_VALUE(this->sgb_crop_border, SETTINGS_SGB_CROP_BORDER);
-    LOAD_BOOL_SETTING_VALUE(this->sgb2_crop_border, SETTINGS_SGB2_CROP_BORDER);
     LOAD_BOOL_SETTING_VALUE(this->gbc_fast_boot_rom, SETTINGS_GBC_FAST_BOOT);
     LOAD_BOOL_SETTING_VALUE(this->status_text_hidden, SETTINGS_STATUS_TEXT_HIDDEN);
     LOAD_BOOL_SETTING_VALUE(this->turbo_enabled, SETTINGS_TURBO_ENABLED);
@@ -296,6 +297,12 @@ GameWindow::GameWindow() {
     LOAD_BOOL_SETTING_VALUE(this->gba_allow_custom_boot_rom, SETTINGS_GBA_allow_custom_BOOT_ROM);
     LOAD_BOOL_SETTING_VALUE(this->sgb_allow_custom_boot_rom, SETTINGS_SGB_allow_custom_BOOT_ROM);
     LOAD_BOOL_SETTING_VALUE(this->sgb2_allow_custom_boot_rom, SETTINGS_SGB2_allow_custom_BOOT_ROM);
+
+    LOAD_BOOL_SETTING_VALUE(this->sgb_border, SETTINGS_SGB_BORDER);
+    LOAD_BOOL_SETTING_VALUE(this->sgb2_border, SETTINGS_SGB2_BORDER);
+    LOAD_BOOL_SETTING_VALUE(this->gb_border, SETTINGS_GB_BORDER);
+    LOAD_BOOL_SETTING_VALUE(this->gbc_border, SETTINGS_GBC_BORDER);
+    LOAD_BOOL_SETTING_VALUE(this->gba_border, SETTINGS_GBA_BORDER);
 
     LOAD_DOUBLE_SETTING_VALUE(this->rewind_length, SETTINGS_REWIND_LENGTH);
     LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
@@ -310,7 +317,7 @@ GameWindow::GameWindow() {
     #undef LOAD_BOOL_SETTING_VALUE
     
     // Instantiate the gameboy
-    this->instance = std::make_unique<GameInstance>(this->model_for_type(this->gb_type));
+    this->instance = std::make_unique<GameInstance>(this->model_for_type(this->gb_type), this->use_border_for_type(this->gb_type) ? GB_border_mode_t::GB_BORDER_ALWAYS : GB_border_mode_t::GB_BORDER_NEVER);
     this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
@@ -808,25 +815,8 @@ void GameWindow::redraw_pixel_buffer() {
         this->instance->read_pixel_buffer(this->pixel_buffer.data(), this->pixel_buffer.size());
     }
 
-    // If we aren't cropping SGB border, just output the pixel buffer
-    if(!this->use_crop_border_for_type(this->gb_type)) {
-        this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), width, height, QImage::Format::Format_ARGB32));
-    }
-
-    // Otherwise, crop it
-    else {
-        assert(width == SGB_WIDTH && height == SGB_HEIGHT);
-
-        // Perform the crop
-        for(std::uint32_t y = 0; y < GB_HEIGHT; y++) {
-            for(std::uint32_t x = 0; x < GB_WIDTH; x++) {
-                this->pixel_buffer[x + y * GB_WIDTH] = this->pixel_buffer[x + (SGB_WIDTH - GB_WIDTH) / 2 + (y + (SGB_HEIGHT - GB_HEIGHT) / 2) * SGB_WIDTH];
-            }
-        }
-
-        // Boom
-        this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), GB_WIDTH, GB_HEIGHT, QImage::Format::Format_ARGB32));
-    }
+    // Output pixel buffer
+    this->pixel_buffer_pixmap.convertFromImage(QImage(reinterpret_cast<const uchar *>(this->pixel_buffer.data()), width, height, QImage::Format::Format_ARGB32));
 
     // Set our pixmap
     pixel_buffer_pixmap_item->setPixmap(this->pixel_buffer_pixmap);
@@ -890,12 +880,6 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     
     std::uint32_t width, height;
     this->instance->get_dimensions(width, height);
-
-    // If cropping border, override
-    if(this->use_crop_border_for_type(this->gb_type)) {
-        width = GB_WIDTH;
-        height = GB_HEIGHT;
-    }
 
     this->pixel_buffer_view->setMinimumSize(width * this->scaling, height * this->scaling);
     this->pixel_buffer_view->setMaximumSize(width * this->scaling, height * this->scaling);
@@ -1179,7 +1163,7 @@ void GameWindow::action_set_model() noexcept {
     this->gb_type = static_cast<decltype(this->gb_type)>(action->data().toInt());
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
-    this->instance->set_model(this->model_for_type(this->gb_type));
+    this->instance->set_model(this->model_for_type(this->gb_type), this->use_border_for_type(this->gb_type) ? GB_border_mode_t::GB_BORDER_ALWAYS : GB_border_mode_t::GB_BORDER_NEVER);
     
     for(auto &i : this->gb_model_actions) {
         i->setChecked(i->data().toInt() == this->gb_type);
@@ -1260,8 +1244,11 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SGB_REVISION, this->sgb_rev);
     settings.setValue(SETTINGS_SGB2_REVISION, this->sgb2_rev);
 
-    settings.setValue(SETTINGS_SGB_CROP_BORDER, this->sgb_crop_border);
-    settings.setValue(SETTINGS_SGB2_CROP_BORDER, this->sgb2_crop_border);
+    settings.setValue(SETTINGS_SGB_BORDER, this->sgb_border);
+    settings.setValue(SETTINGS_SGB2_BORDER, this->sgb2_border);
+    settings.setValue(SETTINGS_GB_BORDER, this->gb_border);
+    settings.setValue(SETTINGS_GBC_BORDER, this->gbc_border);
+    settings.setValue(SETTINGS_GBA_BORDER, this->gba_border);
 
     settings.setValue(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom);
 

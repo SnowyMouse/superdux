@@ -113,8 +113,9 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     instance->should_rewind = instance->rewinding;
 }
 
-GameInstance::GameInstance(GB_model_t model) {
+GameInstance::GameInstance(GB_model_t model, GB_border_mode_t border) {
     GB_init(&this->gameboy, model);
+    GB_set_border_mode(&this->gameboy, border);
     GB_set_user_data(&this->gameboy, this);
     GB_set_boot_rom_load_callback(&this->gameboy, GameInstance::load_boot_rom);
     GB_set_rgb_encode_callback(&this->gameboy, rgb_encode);
@@ -249,10 +250,18 @@ void GameInstance::reset() noexcept {
     this->mutex.unlock();
 }
 
-void GameInstance::set_model(GB_model_t model) {
+void GameInstance::set_model(GB_model_t model, GB_border_mode_t border) {
     this->mutex.lock();
     GB_switch_model_and_reset(&this->gameboy, model);
+    GB_set_border_mode(&this->gameboy, border);
     this->reset_audio();
+    this->update_pixel_buffer_size();
+    this->mutex.unlock();
+}
+
+void GameInstance::set_border_mode(GB_border_mode_t border) noexcept {
+    this->mutex.lock();
+    GB_set_border_mode(&this->gameboy, border);
     this->update_pixel_buffer_size();
     this->mutex.unlock();
 }

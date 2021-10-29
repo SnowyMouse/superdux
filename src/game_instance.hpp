@@ -19,7 +19,7 @@ class GameInstance {
 public: // all public functions assume the mutex is not locked
     using clock = std::chrono::steady_clock;
     
-    GameInstance(GB_model_t model);
+    GameInstance(GB_model_t model, GB_border_mode_t border);
     ~GameInstance();
 
     enum PixelBufferMode {
@@ -153,9 +153,17 @@ public: // all public functions assume the mutex is not locked
     /**
      * Reset the gameboy and switch models.
      * 
-     * @param model model to set to
+     * @param model  model to set to
+     * @param border border mode to use
      */
-    void set_model(GB_model_t model);
+    void set_model(GB_model_t model, GB_border_mode_t border);
+
+    /**
+     * Set the border mode
+     *
+     * @param border border mode
+     */
+    void set_border_mode(GB_border_mode_t border) noexcept;
     
     /**
      * Get all currently set breakpoints
