@@ -148,12 +148,13 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
 
     // Add each model
     add_tab("Game Boy", &this->gb_boot_rom_le, this->window->gb_boot_rom_path, &gb_rev, {
-                {"DMG_B", GB_model_t::GB_MODEL_DMG_B}
+                {"DMG-B", GB_model_t::GB_MODEL_DMG_B}
             }, this->window->gb_rev, &EditAdvancedGameBoyModelDialog::find_gb_boot_rom, &this->gb_allow_custom_boot_rom, window->gb_allow_custom_boot_rom, &this->gb_border_cb, window->gb_border);
 
     add_tab("Game Boy Color", &this->gbc_boot_rom_le, this->window->gbc_boot_rom_path, &this->gbc_rev, {
-                {"CGB_C", GB_model_t::GB_MODEL_CGB_C},
-                {"CGB_E", GB_model_t::GB_MODEL_CGB_E}
+                {"CGB-C", GB_model_t::GB_MODEL_CGB_C},
+                {"CGB-D", GB_model_t::GB_MODEL_CGB_D},
+                {"CGB-E", GB_model_t::GB_MODEL_CGB_E}
             }, this->window->gbc_rev, &EditAdvancedGameBoyModelDialog::find_gbc_boot_rom, &this->gbc_allow_custom_boot_rom, window->gbc_allow_custom_boot_rom, &this->gbc_border_cb, window->gbc_border, {
                 { "Skip intro:", {this->gbc_fast_cb = new QCheckBox(), new QLabel("(overrides boot ROM)")} }
             });
