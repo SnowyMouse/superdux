@@ -1025,7 +1025,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
     bool cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
 
     // Get the OAM data
-    std::uint8_t lcdc = GB_read_memory(&this->gameboy, 0xFF40);
+    auto lcdc = GB_read_memory(&this->gameboy, 0xFF40);
     bool double_sprite_height = (lcdc & 0b100) != 0;
     auto oam = this->get_object_attribute_info_without_mutex();
 
@@ -1038,18 +1038,22 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
     bool sprites_enabled = (lcdc & 0b10);
     bool bg_window_enabled = cgb_mode || (lcdc & 0b1);
     bool window_enabled = (lcdc & 0b100000) && bg_window_enabled;
-    std::uint8_t window_x = GB_read_memory(&this->gameboy, 0xFF4B), window_y = GB_read_memory(&this->gameboy, 0xFF4A);
+    auto window_x = GB_read_memory(&this->gameboy, 0xFF4B), window_y = GB_read_memory(&this->gameboy, 0xFF4A);
 
     const auto *background = (lcdc & 0b1000) ? tile_9C00 : tile_9800;
     const auto *background_attributes = background + 0x2000;
 
     const auto *window = (lcdc & 0b1000000) ? tile_9C00 : tile_9800;
     const auto *window_attributes = window + 0x2000;
+    auto window_x_end = (32 - window_x / 8);
+    auto window_y_end = (32 - window_y / 8);
+    auto window_visible = window_x <= 166 && window_y <= 143 && window_enabled;
 
     bool background_window_8800 = !(lcdc & 0b10000);
 
-    for(uint32_t y = 0; y < GB_TILESET_BLOCK_HEIGHT; y++) {
-        for(uint32_t x = 0; x < GB_TILESET_BLOCK_WIDTH; x++) {
+    // First, set all of these base attributes
+    for(auto y = 0; y < GB_TILESET_BLOCK_HEIGHT; y++) {
+        for(auto x = 0; x < GB_TILESET_BLOCK_WIDTH; x++) {
             std::uint16_t tile_number = 0;
 
             std::uint16_t tileset_number = 0;
@@ -1068,89 +1072,81 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
             block_info.tile_index = tile_number;
             block_info.tile_bank = tileset_number;
             block_info.tile_address = 0x8000 + tile_number * 0x10;
+        }
+    }
 
-            // If we're done, next
-            if(block_info.accessed_type != TilesetInfoTileType::TILESET_INFO_NONE) {
+    // Next, check background and window
+    if(bg_window_enabled) {
+        #define READ_BG_WINDOW(index, tile_data, tile_data_attributes, access_type) { \
+            std::uint8_t accessed_tile_index = tile_data[index]; \
+            std::uint16_t tile = accessed_tile_index; \
+            if(background_window_8800) { \
+                if(tile < 128) { \
+                    tile += 0x100; \
+                } \
+            } \
+            std::uint8_t bw_tileset_number, tile_palette; \
+            if(cgb_mode) { \
+                std::uint8_t tile_attributes = tile_data_attributes[index]; \
+                bw_tileset_number = (tile_attributes & 0b1000) >> 3; \
+                tile_palette = tile_attributes & 0b111; \
+            } \
+            else { \
+                bw_tileset_number = 0; \
+                tile_palette = 0; \
+            } \
+         \
+            auto x = tile % GB_TILESET_PAGE_BLOCK_WIDTH + (bw_tileset_number == 1 ? GB_TILESET_PAGE_BLOCK_WIDTH : 0); \
+            auto y = tile / GB_TILESET_PAGE_BLOCK_WIDTH; \
+            auto &block_info = tileset_info.tiles[x + y * GB_TILESET_BLOCK_WIDTH]; \
+            block_info.accessed_type = access_type; \
+            block_info.accessed_tile_index = tile; \
+            block_info.accessed_tile_palette_index = tile_palette; \
+        }
+
+        // First, background. Always 32x32 blocks
+        for(auto block = 0; block < 32 * 32; block++) {
+            READ_BG_WINDOW(block, background, background_attributes, TilesetInfoTileType::TILESET_INFO_BACKGROUND)
+        }
+
+        // Next, window
+        if(window_visible) {
+            for(auto wy = 0; wy < window_y_end; wy++) {
+                for(auto wx = 0; wx < window_x_end; wx++) {
+                    auto block = (wx + wy * 32);
+                    READ_BG_WINDOW(block, window, window_attributes, TilesetInfoTileType::TILESET_INFO_WINDOW)
+                }
+            }
+        }
+    }
+
+    // Lastly check sprites
+    if(sprites_enabled) {
+        for(auto i = 0; i < sizeof(oam.objects) / sizeof(oam.objects[0]); i++) {
+            auto &object = oam.objects[i];
+
+            if(!object.on_screen) {
                 continue;
             }
 
-            // Check if a sprite uses this tile
-            if(sprites_enabled) {
-                for(std::uint8_t i = 0; i < sizeof(oam.objects) / sizeof(oam.objects[0]); i++) {
-                    auto &object = oam.objects[i];
-                    if(!object.on_screen || object.tileset_bank != tileset_number || object.tile != tile_number) {
-                        continue;
-                    }
+            auto tile = object.tile;
+            auto x = tile % GB_TILESET_PAGE_BLOCK_WIDTH + (object.tileset_bank == 1 ? GB_TILESET_PAGE_BLOCK_WIDTH : 0);
+            auto y = tile / GB_TILESET_PAGE_BLOCK_WIDTH;
+            auto &block_info = tileset_info.tiles[x + y * GB_TILESET_BLOCK_WIDTH];
 
-                    block_info.accessed_tile_index = tile_number;
-                    block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
-                    block_info.accessed_tile_palette_index = object.palette;
-                    block_info.accessed_user_index = i;
+            block_info.accessed_tile_index = tile;
+            block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
+            block_info.accessed_tile_palette_index = object.palette;
+            block_info.accessed_user_index = i;
 
-                    if(double_sprite_height) {
-                        auto &next_block_info = *(&block_info + 1);
-                        next_block_info.accessed_tile_index = tile_number + 1;
-                        next_block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
-                        next_block_info.accessed_tile_palette_index = object.palette;
-                        next_block_info.accessed_user_index = i;
-                    }
-
-                    goto spaghetti_done_with_this_block;
-                }
+            // If double sprite height, include the next tile as well
+            if(double_sprite_height) {
+                auto &next_block_info = *(&block_info + 1);
+                next_block_info.accessed_tile_index = tile + 1;
+                next_block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
+                next_block_info.accessed_tile_palette_index = object.palette;
+                next_block_info.accessed_user_index = i;
             }
-
-            #define READ_BG_WINDOW(x, y, tile_data, tile_data_attributes, access_type) { \
-                uint8_t accessed_tile_index = tile_data[x + y * 32]; \
-                uint16_t tile = accessed_tile_index; \
-                if(background_window_8800) { \
-                    if(tile < 128) { \
-                        tile += 0x100; \
-                    } \
-                } \
-             \
-                uint8_t bw_tileset_number, tile_palette; \
-                if(cgb_mode) { \
-                    uint8_t tile_attributes = tile_data_attributes[x + y * 32]; \
-                    bw_tileset_number = (tile_attributes & 0b1000) >> 3; \
-                    tile_palette = tile_attributes & 0b111; \
-                } \
-                else { \
-                    bw_tileset_number = 0; \
-                    tile_palette = 0; \
-                } \
-             \
-                if(tile != tile_number || tileset_number != bw_tileset_number) { \
-                    continue; \
-                } \
-             \
-                block_info.accessed_type = access_type; \
-                block_info.accessed_tile_index = tile; \
-                block_info.accessed_tile_palette_index = tile_palette; \
-                goto spaghetti_done_with_this_block; \
-            }
-
-            // Next, check if a background tile uses this
-            if(bg_window_enabled) {
-                // First, window
-                if(window_enabled && window_x <= 166 && window_y <= 143) {
-                    for(uint8_t wy = 0; wy < (32 - window_y / 8); wy++) {
-                        for(uint8_t wx = 0; wx < (32 - window_x / 8); wx++) {
-                            READ_BG_WINDOW(wx, wy, window, window_attributes, TilesetInfoTileType::TILESET_INFO_WINDOW)
-                        }
-                    }
-                }
-
-                // Next, background
-                for(uint8_t by = 0; by < 32; by++) {
-                    for(uint8_t bx = 0; bx < 32; bx++) {
-                        READ_BG_WINDOW(bx, by, background, background_attributes, TilesetInfoTileType::TILESET_INFO_BACKGROUND)
-                    }
-                }
-            }
-
-
-            spaghetti_done_with_this_block:
-            continue;
         }
     }
 
