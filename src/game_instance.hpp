@@ -583,7 +583,10 @@ public: // all public functions assume the mutex is not locked
         std::uint8_t tile_bank;
 
         /** Did we access it? */
-        TilesetInfoTileType accessed_type = TilesetInfoTileType::TILESET_INFO_NONE;
+        TilesetInfoTileType accessed_type;
+
+        /** Palette type */
+        GB_palette_type_t accessed_palette_type;
 
         /** If we accessed it, what's the index used to access it? (applies mainly to background/window. otherwise it's the same as tile_index for OAM) */
         std::uint8_t accessed_tile_index;

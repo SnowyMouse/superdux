@@ -973,39 +973,56 @@ void color_block(GB_gameboy_s *gb, std::uint32_t *block, const std::uint8_t *til
 }
 
 void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t palette_type, std::uint8_t index) noexcept {
-    this->mutex.lock();
-    GB_draw_tileset(&this->gameboy, destination, palette_type == GB_palette_type_t::GB_PALETTE_AUTO ? GB_palette_type_t::GB_PALETTE_NONE : palette_type, index); // if we specify auto, get a none (since SameBoy currently treats auto as monochrome - remove this if/when it does not)
+    // Yes I know that SameBoy has GB_draw_tileset and it's quite good, but it does not implement
+    // automatic palette detection (GB_PALETTE_AUTO does the same thing as GB_PALETTE_NONE).
 
+    this->mutex.lock();
+
+    // Get the tileset info here
     std::size_t size;
     const auto *tileset = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_direct_access_t::GB_DIRECT_ACCESS_VRAM, &size, nullptr));
     assert(size > 0x2000);
     const std::uint8_t *tileset_banks[2] = {tileset, tileset + 0x2000};
 
+    // Get the tilset info if we are doing auto
+    static constexpr const auto tile_count = sizeof(TilesetInfo::tiles) / sizeof(TilesetInfo::tiles[0]);
+
+    #define DEFINE_X_Y_BLOCK(i) \
+    std::uint8_t x = i % (GB_TILESET_BLOCK_WIDTH); \
+    std::uint8_t y = i / (GB_TILESET_BLOCK_WIDTH); \
+    auto *block = destination + x * GB_TILESET_TILE_LENGTH + y * GB_TILESET_TILE_LENGTH * GB_TILESET_BLOCK_WIDTH * GB_TILESET_TILE_LENGTH; \
+    auto bank = y >= GB_TILESET_PAGE_BLOCK_WIDTH; \
+
+    // Automatic palette detection
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
-        // Get the tilset info
-        auto ti = this->get_tileset_info_without_mutex();
-        for(uint16_t i = 0; i < sizeof(ti.tiles) / sizeof(ti.tiles[0]); i++) {
-            const auto &info = ti.tiles[i];
-            auto accessed_type = info.accessed_type;
+        // Get the tileset info
+        TilesetInfo ti = this->get_tileset_info_without_mutex();
 
-            if(accessed_type == TilesetInfoTileType::TILESET_INFO_NONE) {
-                continue;
-            }
+        // In case we change types.
+        static_assert(sizeof(ti.tiles) / sizeof(ti.tiles[0]) == tile_count);
 
-            auto type = accessed_type == TilesetInfoTileType::TILESET_INFO_OAM ? GB_palette_type_t::GB_PALETTE_OAM : GB_palette_type_t::GB_PALETTE_BACKGROUND;
-
+        // Loop
+        for(auto i = 0; i < tile_count; i++) {
             // Get the block data
-            auto *block = destination;
-            std::uint8_t x = i % (GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH);
-            std::uint8_t y = i / (GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH);
-
-            // Convert x,y to the block on the tileset bitmap
-            block += x * GB_TILESET_TILE_LENGTH + y * GB_TILESET_TILE_LENGTH * (GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH) * GB_TILESET_TILE_LENGTH;
+            const auto &info = ti.tiles[i];
+            DEFINE_X_Y_BLOCK(i);
 
             // Go through each pixel in the tile and color it
-            color_block(&this->gameboy, block, tileset_banks[info.tile_bank] + info.tile_index * 0x10, type, info.accessed_tile_palette_index, GB_TILESET_WIDTH);
+            color_block(&this->gameboy, block, tileset_banks[info.tile_bank] + info.tile_index * 0x10, info.accessed_palette_type, info.accessed_tile_palette_index, GB_TILESET_WIDTH);
         }
     }
+
+    // Using a fixed palette
+    else {
+        for(auto i = 0; i < tile_count; i++) {
+            // Do it
+            DEFINE_X_Y_BLOCK(i);
+            color_block(&this->gameboy, block, tileset_banks[bank] + (x % GB_TILESET_PAGE_BLOCK_WIDTH + y * GB_TILESET_PAGE_BLOCK_WIDTH) * 0x10, palette_type, index, GB_TILESET_WIDTH);
+        }
+    }
+
+    #undef DEFINE_X_Y_BLOCK
+
     this->mutex.unlock();
 }
 
@@ -1072,6 +1089,10 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
             block_info.tile_index = tile_number;
             block_info.tile_bank = tileset_number;
             block_info.tile_address = 0x8000 + tile_number * 0x10;
+
+            // Some defaults
+            block_info.accessed_palette_type = GB_palette_type_t::GB_PALETTE_NONE;
+            block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_NONE;
         }
     }
 
@@ -1102,6 +1123,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
             block_info.accessed_type = access_type; \
             block_info.accessed_tile_index = tile; \
             block_info.accessed_tile_palette_index = tile_palette; \
+            block_info.accessed_palette_type = GB_palette_type_t::GB_PALETTE_BACKGROUND; \
         }
 
         // First, background. Always 32x32 blocks
@@ -1138,6 +1160,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
             block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
             block_info.accessed_tile_palette_index = object.palette;
             block_info.accessed_user_index = i;
+            block_info.accessed_palette_type = GB_palette_type_t::GB_PALETTE_OAM;
 
             // If double sprite height, include the next tile as well
             if(double_sprite_height) {
@@ -1146,6 +1169,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
                 next_block_info.accessed_type = TilesetInfoTileType::TILESET_INFO_OAM;
                 next_block_info.accessed_tile_palette_index = object.palette;
                 next_block_info.accessed_user_index = i;
+                next_block_info.accessed_palette_type = GB_palette_type_t::GB_PALETTE_OAM;
             }
         }
     }
