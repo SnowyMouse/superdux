@@ -836,6 +836,12 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Do it without mutex too
     ObjectAttributeInfo get_object_attribute_info_without_mutex() noexcept;
+
+    // Model to change to (if we changed model due to a save state)
+    std::optional<GB_model_t> original_model;
+
+    // Switch back to the original model if we need to. Otherwise, do a simple reset.
+    void reset_to_original_model() noexcept;
 };
 
 

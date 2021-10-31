@@ -87,8 +87,8 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
 
     // If we need to wait for a frame, do it
     if(instance->turbo_mode_enabled) {
-        while(clock::now() < instance->next_expected_frame) {
-        }
+        // Burn the thread until we get the next frame (I never said I was a good coder)
+        while(clock::now() < instance->next_expected_frame) {}
         instance->next_expected_frame = clock::now() + std::chrono::microseconds(static_cast<unsigned long>(1000000.0 / GB_get_usual_frame_rate(&instance->gameboy) / instance->turbo_mode_speed_ratio));
     }
     
@@ -245,13 +245,14 @@ float GameInstance::get_frame_rate() noexcept MAKE_GETTER(this->frame_rate)
 
 void GameInstance::reset() noexcept {
     this->mutex.lock();
-    GB_reset(&this->gameboy);
+    this->reset_to_original_model();
     this->reset_audio();
     this->mutex.unlock();
 }
 
 void GameInstance::set_model(GB_model_t model, GB_border_mode_t border) {
     this->mutex.lock();
+    this->original_model = std::nullopt; // we're changing models so it doesn't matter
     GB_switch_model_and_reset(&this->gameboy, model);
     GB_set_border_mode(&this->gameboy, border);
     this->reset_audio();
@@ -647,7 +648,7 @@ int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::opt
     this->reset_audio();
     
     // Reset the gameboy
-    GB_reset(&this->gameboy);
+    this->reset_to_original_model();
     
     // Reset frame times
     this->frame_time_index = 0;
@@ -672,7 +673,7 @@ int GameInstance::load_isx(const std::filesystem::path &isx_path, const std::opt
     this->reset_audio();
     
     // Reset the gameboy
-    GB_reset(&this->gameboy);
+    this->reset_to_original_model();
     
     // Load the ISX
     int result = GB_load_isx(&this->gameboy, isx_path.string().c_str());
@@ -911,7 +912,22 @@ std::vector<std::uint8_t> GameInstance::create_save_state() {
     return data;
 }
 
-bool GameInstance::load_save_state(const std::filesystem::path &path) noexcept MAKE_GETTER(GB_load_state(&this->gameboy, path.string().c_str()) == 0)
+bool GameInstance::load_save_state(const std::filesystem::path &path) noexcept {
+    // Load the state maybe
+    this->mutex.lock();
+    auto model_before = GB_get_model(&this->gameboy);
+    auto success = GB_load_state(&this->gameboy, path.string().c_str()) == 0;
+    auto model_after = GB_get_model(&this->gameboy);
+
+    // If we changed models due to the save state change, store what we had before
+    if(model_before != model_after && !original_model.has_value()) {
+        original_model = model_before;
+    }
+
+    // Done
+    this->mutex.unlock();
+    return success;
+}
 
 bool GameInstance::load_save_state(const std::vector<std::uint8_t> &state) noexcept MAKE_GETTER(GB_load_state_from_buffer(&this->gameboy, state.data(), state.size()) == 0)
 
@@ -1283,4 +1299,17 @@ void GameInstance::get_raw_palette(GB_palette_type_t type, std::size_t palette, 
     }
 
     this->mutex.unlock();
+}
+
+void GameInstance::reset_to_original_model() noexcept {
+    // If we have an original model set, use that
+    if(this->original_model.has_value()) {
+        GB_switch_model_and_reset(&this->gameboy, *this->original_model);
+        this->original_model = std::nullopt;
+    }
+
+    // Otherwise reset
+    else {
+        GB_reset(&this->gameboy);
+    }
 }
