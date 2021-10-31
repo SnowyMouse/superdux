@@ -55,10 +55,10 @@
 #define SETTINGS_SGB2_BOOT_ROM "sgb2_boot_rom"
 
 #define SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM "gb_allow_custom_boot_rom"
-#define SETTINGS_GBC_allow_custom_BOOT_ROM "gbc_allow_custom_boot_rom"
-#define SETTINGS_GBA_allow_custom_BOOT_ROM "gba_allow_custom_boot_rom"
-#define SETTINGS_SGB_allow_custom_BOOT_ROM "sgb_allow_custom_boot_rom"
-#define SETTINGS_SGB2_allow_custom_BOOT_ROM "sgb2_allow_custom_boot_rom"
+#define SETTINGS_GBC_ALLOW_CUSTOM_BOOT_ROM "gbc_allow_custom_boot_rom"
+#define SETTINGS_GBA_ALLOW_CUSTOM_BOOT_ROM "gba_allow_custom_boot_rom"
+#define SETTINGS_SGB_ALLOW_CUSTOM_BOOT_ROM "sgb_allow_custom_boot_rom"
+#define SETTINGS_SGB2_ALLOW_CUSTOM_BOOT_ROM "sgb2_allow_custom_boot_rom"
 
 #define SETTINGS_GB_REVISION "gb_model_revision"
 #define SETTINGS_GBC_REVISION "gbc_model_revision"
@@ -293,10 +293,10 @@ GameWindow::GameWindow() {
     LOAD_BOOL_SETTING_VALUE(this->slowmo_enabled, SETTINGS_SLOWMO_ENABLED);
     LOAD_BOOL_SETTING_VALUE(this->rewind_enabled, SETTINGS_REWIND_ENABLED);
     LOAD_BOOL_SETTING_VALUE(this->gb_allow_custom_boot_rom, SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->gbc_allow_custom_boot_rom, SETTINGS_GBC_allow_custom_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->gba_allow_custom_boot_rom, SETTINGS_GBA_allow_custom_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->sgb_allow_custom_boot_rom, SETTINGS_SGB_allow_custom_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->sgb2_allow_custom_boot_rom, SETTINGS_SGB2_allow_custom_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->gbc_allow_custom_boot_rom, SETTINGS_GBC_ALLOW_CUSTOM_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->gba_allow_custom_boot_rom, SETTINGS_GBA_ALLOW_CUSTOM_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->sgb_allow_custom_boot_rom, SETTINGS_SGB_ALLOW_CUSTOM_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->sgb2_allow_custom_boot_rom, SETTINGS_SGB2_ALLOW_CUSTOM_BOOT_ROM);
 
     LOAD_BOOL_SETTING_VALUE(this->sgb_border, SETTINGS_SGB_BORDER);
     LOAD_BOOL_SETTING_VALUE(this->sgb2_border, SETTINGS_SGB2_BORDER);
@@ -1233,10 +1233,10 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SGB2_BOOT_ROM, this->sgb2_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
 
     settings.setValue(SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM, this->gb_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_GBC_allow_custom_BOOT_ROM, this->gbc_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_GBA_allow_custom_BOOT_ROM, this->gba_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_SGB_allow_custom_BOOT_ROM, this->sgb_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_SGB2_allow_custom_BOOT_ROM, this->sgb2_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_GBC_ALLOW_CUSTOM_BOOT_ROM, this->gbc_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_GBA_ALLOW_CUSTOM_BOOT_ROM, this->gba_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_SGB_ALLOW_CUSTOM_BOOT_ROM, this->sgb_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_SGB2_ALLOW_CUSTOM_BOOT_ROM, this->sgb2_allow_custom_boot_rom);
 
     settings.setValue(SETTINGS_GB_REVISION, this->gb_rev);
     settings.setValue(SETTINGS_GBC_REVISION, this->gbc_rev);
