@@ -20,6 +20,7 @@
 #include <QScrollBar>
 #include <QMouseEvent>
 
+#include "debugger_break_and_trace_results_dialog.hpp"
 #include "gb_proxy.h"
 
 class GameDebugger::GameDebuggerTable : public QTableWidget {
@@ -356,17 +357,9 @@ void GameDebugger::refresh_view() {
                     }
                 }
 
-                auto go_through_directory = [](const ProcessedBNTResultNode::directory_t &directory, auto &go_through_directory_r, std::size_t depth = 0) -> void {
-                    for(auto &d : directory) {
-                        for(std::size_t z = 0; z < depth; z++) {
-                            std::printf("    ");
-                        }
-                        std::printf("($%04x) %s\n", d.result.pc, d.result.instruction.c_str());
-                        go_through_directory_r(d.children, go_through_directory_r, depth + 1);
-                    }
-                };
-
-                go_through_directory(top_directory, go_through_directory);
+                auto *dialog = new BreakAndTraceResultsDialog(this, this, std::move(top_directory));
+                dialog->show();
+                std::printf("done\n");
             }
         }
     }
@@ -428,6 +421,7 @@ void GameDebugger::format_table(QTableWidget *widget) {
     widget->setFont(this->table_font);
     widget->setTextElideMode(Qt::TextElideMode::ElideNone);
     widget->setWordWrap(false);
+    widget->setAlternatingRowColors(true);
 }
 
 void GameDebugger::action_register_flag_state_changed(int) noexcept {

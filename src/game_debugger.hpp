@@ -60,6 +60,7 @@ private:
     GameDisassembler *disassembler;
     
     class GameDebuggerTable;
+    class BreakAndTraceResultsDialog;
     
     // Copy of breakpoints and backtrace
     std::vector<std::pair<std::string, std::uint16_t>> backtrace_copy;
