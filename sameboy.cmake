@@ -43,7 +43,7 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp"
     COMMAND rgbgfx -h -u -o "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp" "${SAMEBOY_SOURCE_DIR}/BootROMs/SameBoyLogo.png"
 )
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12"
-    COMMAND pb12 < "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp" > "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12"
+    COMMAND "${CMAKE_CURRENT_BINARY_DIR}/pb12${CMAKE_EXECUTABLE_SUFFIX}" < "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp" > "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12"
     DEPENDS pb12 "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp"
 )
 
