@@ -1,11 +1,5 @@
 #include "game_instance.hpp"
-
-#include <agb_boot.h>
-#include <sgb_boot.h>
-#include <cgb_boot.h>
-#include <dmg_boot.h>
-#include <sgb2_boot.h>
-#include <cgb_boot_fast.h>
+#include "built_in_boot_rom.h"
 
 #include <chrono>
 #include <cstring>
@@ -49,33 +43,38 @@ void GameInstance::load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept 
     }
 
     // Otherwise, load a built-in one
+    const std::uint8_t *boot_rom;
+    std::size_t boot_rom_size;
+
     switch(type) {
         case GB_BOOT_ROM_DMG0:
         case GB_BOOT_ROM_DMG:
-            GB_load_boot_rom_from_buffer(gb, dmg_boot, sizeof(dmg_boot));
+            boot_rom = built_in_dmg_boot_room(&boot_rom_size);
             break;
         case GB_BOOT_ROM_SGB2:
-            GB_load_boot_rom_from_buffer(gb, sgb2_boot, sizeof(sgb2_boot));
+            boot_rom = built_in_sgb_boot_room(&boot_rom_size);
             break;
         case GB_BOOT_ROM_SGB:
-            GB_load_boot_rom_from_buffer(gb, sgb_boot, sizeof(sgb_boot));
+            boot_rom = built_in_sgb2_boot_room(&boot_rom_size);
             break;
         case GB_BOOT_ROM_AGB:
-            GB_load_boot_rom_from_buffer(gb, agb_boot, sizeof(agb_boot));
+            boot_rom = built_in_agb_boot_room(&boot_rom_size);
             break;
         case GB_BOOT_ROM_CGB0:
         case GB_BOOT_ROM_CGB:
             if(fast_override) {
-                GB_load_boot_rom_from_buffer(gb, cgb_boot_fast, sizeof(cgb_boot_fast));
+                boot_rom = built_in_fast_cgb_boot_room(&boot_rom_size);
             }
             else {
-                GB_load_boot_rom_from_buffer(gb, cgb_boot, sizeof(cgb_boot));
+                boot_rom = built_in_cgb_boot_room(&boot_rom_size);
             }
             break;
         default:
             std::fprintf(stderr, "Unable to find a suitable boot ROM for GB_boot_rom_t type %i\n", type);
-            break;
+            return;
     }
+
+    GB_load_boot_rom_from_buffer(gb, boot_rom, boot_rom_size);
 }
 
 static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b) {

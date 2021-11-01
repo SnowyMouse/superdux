@@ -23,12 +23,22 @@ set(SDX_FILES
     src/edit_speed_control_settings_dialog.cpp
     src/game_debugger.cpp
     src/game_disassembler.cpp
-    src/game_instance.cpp
     src/game_window.cpp
-    src/gb_proxy.c
     src/input_device.cpp
     src/main.cpp
     src/vram_viewer.cpp
+)
+
+add_library(sameboy-dx-shared-br
+    src/built_in_boot_rom.c
+    src/gb_proxy.c
+    src/game_instance.cpp
+    ${BOOT_ROMS_HEADER}
+)
+
+target_include_directories(sameboy-dx-shared-br
+    PRIVATE "${SAMEBOY_SOURCE_DIR}"
+    PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 option(BUILD_QT5_VERSION "Build the Qt5 version" ${Qt5_FOUND})
@@ -42,7 +52,6 @@ set(CMAKE_AUTOUIC ON)
 macro(make_sameboy_dx target_name qt_widgets)
     add_executable(${target_name}
         ${SDX_FILES}
-        ${BOOT_ROMS_HEADER}
     )
 
     target_include_directories(${target_name}
@@ -54,7 +63,7 @@ macro(make_sameboy_dx target_name qt_widgets)
         PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
     )
 
-    target_link_libraries(${target_name} sameboy-core ${SDL2_LIBRARIES} pthread ${qt_widgets})
+    target_link_libraries(${target_name} sameboy-dx-shared-br sameboy-core ${SDL2_LIBRARIES} pthread ${qt_widgets})
 endmacro()
 
 if(${BUILD_QT5_VERSION})
