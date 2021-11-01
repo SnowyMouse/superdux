@@ -784,6 +784,25 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->game_loop();
 }
 
+
+void GameWindow::action_clear_all_roms() noexcept {
+    this->recent_roms.clear();
+    this->update_recent_roms_list();
+}
+
+void GameWindow::action_clear_missing_roms() noexcept {
+    auto recent_roms_copy = this->recent_roms;
+    this->recent_roms.clear();
+
+    for(auto &i : recent_roms_copy) {
+        if(std::filesystem::exists(i.toStdString())) {
+            this->recent_roms.append(i);
+        }
+    }
+
+    this->update_recent_roms_list();
+}
+
 void GameWindow::update_recent_roms_list() {
     // Regenerate the ROM menu
     this->recent_roms_menu->clear();
@@ -796,6 +815,20 @@ void GameWindow::update_recent_roms_list() {
             recent->setData(i);
             connect(recent, &QAction::triggered, this, &GameWindow::action_open_recent_rom);
         }
+    }
+
+    // Add some clean up buttons
+    bool recent_roms_empty = this->recent_roms.empty();
+    if(!recent_roms_empty) {
+        this->recent_roms_menu->addSeparator();
+    }
+
+    // Add buttons for removing missing/all ROMs
+    if(!recent_roms_empty) {
+        auto *clear_missing = this->recent_roms_menu->addAction("Clear Missing");
+        auto *clear_all = this->recent_roms_menu->addAction("Clear All");
+        connect(clear_all, &QAction::triggered, this, &GameWindow::action_clear_all_roms);
+        connect(clear_missing, &QAction::triggered, this, &GameWindow::action_clear_missing_roms);
     }
 }
 

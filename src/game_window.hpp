@@ -224,6 +224,9 @@ private slots:
     void action_edit_controls();
     void action_edit_speed_control();
 
+    void action_clear_all_roms() noexcept;
+    void action_clear_missing_roms() noexcept;
+
     void action_create_save_state();
     void action_load_save_state();
     void action_import_save_state();
