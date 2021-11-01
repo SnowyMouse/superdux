@@ -141,7 +141,7 @@ private:
     GameBoyType gb_type = GameBoyType::GameBoyGB;
 
     GB_model_t gb_rev = GB_model_t::GB_MODEL_DMG_B;
-    GB_model_t gbc_rev = GB_model_t::GB_MODEL_CGB_D;
+    GB_model_t gbc_rev = GB_model_t::GB_MODEL_CGB_E;
     GB_model_t gba_rev = GB_model_t::GB_MODEL_AGB;
     GB_model_t sgb_rev = GB_model_t::GB_MODEL_SGB_NTSC;
     GB_model_t sgb2_rev = GB_model_t::GB_MODEL_SGB2;
