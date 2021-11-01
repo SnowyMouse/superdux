@@ -754,7 +754,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     // Remove the ROM from the list (if present) so we can re-place it at the top of the list
     this->recent_roms.removeAll(rom_path);
     this->recent_roms.push_front(rom_path);
-    this->recent_roms = this->recent_roms.mid(0, 5);    
+    this->recent_roms = this->recent_roms.mid(0, 10);
     this->update_recent_roms_list();
     
     // Make path
