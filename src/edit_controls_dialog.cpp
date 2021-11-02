@@ -2,6 +2,11 @@
 #include "game_window.hpp"
 
 #include <QPushButton>
+#include <QLineEdit>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QComboBox>
 
 class EditControlsDialog::InputLineEdit : public QLineEdit {
 public:

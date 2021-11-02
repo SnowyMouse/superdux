@@ -1,6 +1,7 @@
-#include "game_debugger.hpp"
+#include "debugger.hpp"
+
 #include "game_window.hpp"
-#include "game_disassembler.hpp"
+#include "debugger_disassembler.hpp"
 
 #include <QLineEdit>
 #include <QHeaderView>
@@ -23,9 +24,9 @@
 #include "debugger_break_and_trace_results_dialog.hpp"
 #include "gb_proxy.h"
 
-class GameDebugger::GameDebuggerTable : public QTableWidget {
+class Debugger::BacktraceTable : public QTableWidget {
 public:
-    GameDebuggerTable(QWidget *parent, GameDebugger *window) : QTableWidget(parent), window(window) {}
+    BacktraceTable(QWidget *parent, Debugger *window) : QTableWidget(parent), window(window) {}
     
     // Double click = goto address in debugger
     void mouseDoubleClickEvent(QMouseEvent *event) override {
@@ -37,10 +38,10 @@ public:
     }
     
 private:
-    GameDebugger *window;
+    Debugger *window;
 };
 
-GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
+Debugger::Debugger(GameWindow *window) : game_window(window) {
     // Set the preferred font for the debugger
     this->table_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     this->table_font.setPixelSize(14);
@@ -51,33 +52,33 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     
     this->break_button = bar->addAction("Break");
     this->break_button->setEnabled(true);
-    connect(this->break_button, &QAction::triggered, this, &GameDebugger::action_break);
+    connect(this->break_button, &QAction::triggered, this, &Debugger::action_break);
     
     this->continue_button = bar->addAction("Continue");
     this->continue_button->setEnabled(false);
-    connect(this->continue_button, &QAction::triggered, this, &GameDebugger::action_continue);
+    connect(this->continue_button, &QAction::triggered, this, &Debugger::action_continue);
     
     this->step_button = bar->addAction("Step Into");
     this->step_button->setEnabled(false);
-    connect(this->step_button, &QAction::triggered, this, &GameDebugger::action_step);
+    connect(this->step_button, &QAction::triggered, this, &Debugger::action_step);
     
     this->step_over_button = bar->addAction("Step Over");
     this->step_over_button->setEnabled(false);
-    connect(this->step_over_button, &QAction::triggered, this, &GameDebugger::action_step_over);
+    connect(this->step_over_button, &QAction::triggered, this, &Debugger::action_step_over);
     
     this->finish_fn_button = bar->addAction("Finish Function");
     this->finish_fn_button->setEnabled(false);
-    connect(this->finish_fn_button, &QAction::triggered, this, &GameDebugger::action_finish);
+    connect(this->finish_fn_button, &QAction::triggered, this, &Debugger::action_finish);
     
     bar->addSeparator();
     
     this->clear_breakpoints_button = bar->addAction("Clear Breakpoints");
     this->clear_breakpoints_button->setEnabled(false);
-    connect(this->clear_breakpoints_button, &QAction::triggered, this, &GameDebugger::action_clear_breakpoints);
+    connect(this->clear_breakpoints_button, &QAction::triggered, this, &Debugger::action_clear_breakpoints);
     
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
-    layout->addWidget((this->disassembler = new GameDisassembler(this)));
+    layout->addWidget((this->disassembler = new DebuggerDisassembler(this)));
     
     this->setCentralWidget(central_widget);
     
@@ -104,8 +105,8 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
                                                              register_widget_layout->addWidget(new QLabel(nameB, register_widget), register_row, 2); \
                                                              this->fieldB = new QLineEdit(register_widget); \
                                                              register_widget_layout->addWidget(this->fieldB, register_row, 3); \
-                                                             connect(this->fieldA, &QLineEdit::textChanged, this, &GameDebugger::action_update_registers);\
-                                                             connect(this->fieldB, &QLineEdit::textChanged, this, &GameDebugger::action_update_registers);\
+                                                             connect(this->fieldA, &QLineEdit::textChanged, this, &Debugger::action_update_registers);\
+                                                             connect(this->fieldB, &QLineEdit::textChanged, this, &Debugger::action_update_registers);\
                                                              this->fieldA->setFont(this->table_font);\
                                                              this->fieldB->setFont(this->table_font);\
                                                              register_row++;
@@ -127,7 +128,7 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
                                            this->field->setText(text); \
                                            flag_layout->addWidget(this->field); \
                                            this->field->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed); \
-                                           connect(this->field, &QCheckBox::stateChanged, this, &GameDebugger::action_register_flag_state_changed);
+                                           connect(this->field, &QCheckBox::stateChanged, this, &Debugger::action_register_flag_state_changed);
 
     ADD_FLAG_CHECKBOX(flag_carry, "C");
     ADD_FLAG_CHECKBOX(flag_half_carry, "H");
@@ -145,7 +146,7 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     auto *backtrace_frame = new QGroupBox(this->right_view);
     backtrace_frame->setTitle("Backtrace");
     auto *backtrace_layout = new QVBoxLayout();
-    this->backtrace = new GameDebuggerTable(this->right_view, this);
+    this->backtrace = new BacktraceTable(this->right_view, this);
     this->format_table(this->backtrace);
     this->backtrace->setColumnCount(1);
     this->backtrace->setTextElideMode(Qt::ElideNone);
@@ -162,31 +163,31 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     this->setWindowTitle("Debugger");
 }
 
-void GameDebugger::action_break() {
+void Debugger::action_break() {
     this->get_instance().break_immediately();
 }
 
-void GameDebugger::action_continue() {
+void Debugger::action_continue() {
     this->get_instance().unbreak("continue");
     this->set_known_breakpoint(false);
 }
 
-void GameDebugger::action_step() {
+void Debugger::action_step() {
     this->get_instance().unbreak("step");
     this->set_known_breakpoint(false);
 }
 
-void GameDebugger::action_step_over() {
+void Debugger::action_step_over() {
     this->get_instance().unbreak("next");
     this->set_known_breakpoint(false);
 }
 
-void GameDebugger::action_finish() {
+void Debugger::action_finish() {
     this->get_instance().unbreak("finish");
     this->set_known_breakpoint(false);
 }
 
-void GameDebugger::set_known_breakpoint(bool known_breakpoint) {
+void Debugger::set_known_breakpoint(bool known_breakpoint) {
     if(this->known_breakpoint != known_breakpoint) {
         this->known_breakpoint = known_breakpoint;
         this->right_view->setEnabled(known_breakpoint);
@@ -202,7 +203,7 @@ void GameDebugger::set_known_breakpoint(bool known_breakpoint) {
     }
 }
 
-void GameDebugger::refresh_flags() {
+void Debugger::refresh_flags() {
     auto f = this->get_instance().get_register_value(sm83_register_t::SM83_REG_F);
 
     #define PROCESS_FLAG_FIELD(field, flag) {\
@@ -219,7 +220,7 @@ void GameDebugger::refresh_flags() {
     #undef PROCESS_FLAG_FIELD
 }
 
-void GameDebugger::refresh_registers() {
+void Debugger::refresh_registers() {
     auto &instance = this->get_instance();
 
     #define PROCESS_REGISTER_FIELD(name, field, fmt) {\
@@ -240,7 +241,7 @@ void GameDebugger::refresh_registers() {
     #undef PROCESS_REGISTER_FIELD
 }
 
-void GameDebugger::refresh_view() {
+void Debugger::refresh_view() {
     // If we aren't visible, go away
     if(!this->isVisible()) {
         return;
@@ -365,11 +366,11 @@ void GameDebugger::refresh_view() {
     this->set_known_breakpoint(bp_pause);
 }
 
-void GameDebugger::action_clear_breakpoints() noexcept {
+void Debugger::action_clear_breakpoints() noexcept {
     this->get_instance().remove_all_breakpoints();
 }
 
-void GameDebugger::action_update_registers() noexcept {
+void Debugger::action_update_registers() noexcept {
     auto &instance = this->get_instance();
     
     if(!instance.is_paused_from_breakpoint() || this->right_view->isHidden()) {
@@ -395,14 +396,14 @@ void GameDebugger::action_update_registers() noexcept {
     this->refresh_flags();
 }
 
-void GameDebugger::closeEvent(QCloseEvent *) {
+void Debugger::closeEvent(QCloseEvent *) {
     this->disassembler->clear();
     this->backtrace->clear();
 }
 
-GameDebugger::~GameDebugger() {}
+Debugger::~Debugger() {}
 
-void GameDebugger::format_table(QTableWidget *widget) {
+void Debugger::format_table(QTableWidget *widget) {
     widget->horizontalHeader()->setStretchLastSection(true);
     widget->horizontalHeader()->hide();
     widget->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
@@ -422,7 +423,7 @@ void GameDebugger::format_table(QTableWidget *widget) {
     widget->setAlternatingRowColors(true);
 }
 
-void GameDebugger::action_register_flag_state_changed(int) noexcept {
+void Debugger::action_register_flag_state_changed(int) noexcept {
     auto &instance = this->get_instance();
     std::uint8_t f = instance.get_register_value(sm83_register_t::SM83_REG_F);
     f = f & ~(GB_CARRY_FLAG | GB_HALF_CARRY_FLAG | GB_ZERO_FLAG | GB_SUBTRACT_FLAG);

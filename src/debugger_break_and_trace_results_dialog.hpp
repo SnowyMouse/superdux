@@ -3,19 +3,19 @@
 
 #include <QDialog>
 
-#include "game_debugger.hpp"
+#include "debugger.hpp"
 
 class QTreeWidgetItem;
 class QLabel;
 
-class GameDebugger::BreakAndTraceResultsDialog : public QDialog {
+class Debugger::BreakAndTraceResultsDialog : public QDialog {
 public:
-    BreakAndTraceResultsDialog(QWidget *parent, GameDebugger *window, ProcessedBNTResultNode::directory_t &&results);
+    BreakAndTraceResultsDialog(QWidget *parent, Debugger *window, ProcessedBNTResultNode::directory_t &&results);
 
 private:
     ProcessedBNTResultNode::directory_t results;
     QLabel *register_info;
-    GameDebugger *window;
+    Debugger *window;
 
     void double_clicked_item(QTreeWidgetItem *item, int column);
     void show_info_for_register(QTreeWidgetItem *current, QTreeWidgetItem *);

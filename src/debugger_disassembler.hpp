@@ -1,17 +1,16 @@
-#ifndef SB_QT_DISASSEMBLER
-#define SB_QT_DISASSEMBLER
+#ifndef DEBUGGER_DISASSEMBLER_HPP
+#define DEBUGGER_DISASSEMBLER_HPP
 
 #include <QTableWidget>
 #include <optional>
-#include <QFont>
 
-class GameDebugger;
+class Debugger;
 
-class GameDisassembler : public QTableWidget {
+class DebuggerDisassembler : public QTableWidget {
     Q_OBJECT
 public:
-    GameDisassembler(GameDebugger *parent);
-    ~GameDisassembler() override;
+    DebuggerDisassembler(Debugger *parent);
+    ~DebuggerDisassembler() override;
     
     // Used for navigation
     
@@ -64,7 +63,7 @@ public:
     QColor bg_highlight_color;
     
 private:
-    GameDebugger *debugger;
+    Debugger *debugger;
 };
 
 #endif

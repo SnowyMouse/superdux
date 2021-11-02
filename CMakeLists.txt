@@ -17,12 +17,12 @@ find_package(Qt6 COMPONENTS Widgets)
 include("sameboy.cmake")
 
 set(SDX_FILES
+    src/debugger.cpp
     src/debugger_break_and_trace_results_dialog.cpp
+    src/debugger_disassembler.cpp
     src/edit_advanced_game_boy_model_dialog.cpp
     src/edit_controls_dialog.cpp
     src/edit_speed_control_settings_dialog.cpp
-    src/game_debugger.cpp
-    src/game_disassembler.cpp
     src/game_window.cpp
     src/input_device.cpp
     src/main.cpp

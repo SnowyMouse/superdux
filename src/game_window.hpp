@@ -26,7 +26,7 @@ extern "C" {
 
 #include "game_instance.hpp"
 
-class GameDebugger;
+class Debugger;
 class EditAdvancedGameBoyModelDialog;
 class EditSpeedControlSettingsDialog;
 class VRAMViewer;
@@ -34,7 +34,7 @@ class VRAMViewer;
 class GameWindow : public QMainWindow {
     Q_OBJECT
     
-    friend GameDebugger;
+    friend Debugger;
     friend EditAdvancedGameBoyModelDialog;
     friend EditSpeedControlSettingsDialog;
     
@@ -177,7 +177,7 @@ private:
     
     // Debugging
     QAction *show_debugger;
-    GameDebugger *debugger_window;
+    Debugger *debugger_window;
 
     // VRAM viewing
     QAction *show_vram_viewer;

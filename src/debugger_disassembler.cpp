@@ -16,8 +16,8 @@
 #include <QLabel>
 
 #include "gb_proxy.h"
-#include "game_disassembler.hpp"
-#include "game_debugger.hpp"
+#include "debugger_disassembler.hpp"
+#include "debugger.hpp"
 
 static std::optional<std::uint16_t> evaluate_address_with_error_message(GameInstance &gb, const char *expression) {
     auto rval = gb.evaluate_expression(expression);
@@ -29,12 +29,12 @@ static std::optional<std::uint16_t> evaluate_address_with_error_message(GameInst
     return rval;
 }
 
-GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent), debugger(parent) {
+DebuggerDisassembler::DebuggerDisassembler(Debugger *parent) : QTableWidget(parent), debugger(parent) {
     this->setColumnCount(1);
     this->debugger->format_table(this);
     this->setSelectionMode(QAbstractItemView::NoSelection);
     this->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(this, &GameDisassembler::customContextMenuRequested, this, &GameDisassembler::show_context_menu);
+    connect(this, &DebuggerDisassembler::customContextMenuRequested, this, &DebuggerDisassembler::show_context_menu);
     history.reserve(256);
     
     auto palette = QApplication::palette();
@@ -49,16 +49,16 @@ GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent),
     this->setMinimumWidth(400);
 }
 
-GameDisassembler::~GameDisassembler() {}
+DebuggerDisassembler::~DebuggerDisassembler() {}
 
-void GameDisassembler::go_to(std::uint16_t where) {
+void DebuggerDisassembler::go_to(std::uint16_t where) {
     this->history.emplace_back(this->current_address);
     this->clearSelection();
     this->current_address = where;
     this->refresh_view();
 }
 
-void GameDisassembler::go_back() {
+void DebuggerDisassembler::go_back() {
     auto where = this->history.size() - 1;
     this->current_address = this->history[where];
     this->clearSelection();
@@ -66,22 +66,22 @@ void GameDisassembler::go_back() {
     this->refresh_view();
 }
 
-void GameDisassembler::follow_address() {
+void DebuggerDisassembler::follow_address() {
     auto where = evaluate_address_with_error_message(this->debugger->get_instance(), this->last_disassembly->follow_address.toUtf8().data());
     if(where.has_value()) {
         this->go_to(*where);
     }
 }
 
-void GameDisassembler::set_address_to_current_breakpoint() {
+void DebuggerDisassembler::set_address_to_current_breakpoint() {
     this->current_address = this->debugger->get_instance().get_register_value(sm83_register_t::SM83_REG_PC);
 }
 
-void GameDisassembler::add_breakpoint() {
+void DebuggerDisassembler::add_breakpoint() {
     this->debugger->get_instance().break_at(*this->last_disassembly->address);
 }
 
-void GameDisassembler::add_break_and_trace_breakpoint() {
+void DebuggerDisassembler::add_break_and_trace_breakpoint() {
     QDialog dialog;
     dialog.setWindowTitle("Break and Trace");
     dialog.setFixedWidth(500);
@@ -143,17 +143,17 @@ void GameDisassembler::add_break_and_trace_breakpoint() {
     }
 }
 
-void GameDisassembler::delete_breakpoint() {
+void DebuggerDisassembler::delete_breakpoint() {
     this->debugger->get_instance().remove_breakpoint(*this->last_disassembly->address);
 }
 
-void GameDisassembler::show_context_menu(const QPoint &point) {
+void DebuggerDisassembler::show_context_menu(const QPoint &point) {
     this->last_disassembly = std::nullopt;
     
     // Make a right-click menu
     QMenu menu;
     auto *jump_to_option = menu.addAction("Jump to address...");
-    connect(jump_to_option, &QAction::triggered, this, &GameDisassembler::jump_to_address_window);
+    connect(jump_to_option, &QAction::triggered, this, &DebuggerDisassembler::jump_to_address_window);
     
     // If we can go back/forward, add those options
     if(this->history.size()) {
@@ -161,7 +161,7 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
         std::uint16_t back = this->history[this->history.size() - 1];
         std::snprintf(text_format, sizeof(text_format), "Go back to $%04x", back);
         auto *go_back_option = menu.addAction(text_format);
-        connect(go_back_option, &QAction::triggered, this, &GameDisassembler::go_back);
+        connect(go_back_option, &QAction::triggered, this, &DebuggerDisassembler::go_back);
     }
     
     // Get the item at the point
@@ -175,7 +175,7 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
             auto &follow_address = this->last_disassembly->follow_address;
             if(follow_address.length() > 0) {
                 auto *jump_to_option = menu.addAction(QString("Follow to ") + follow_address);
-                connect(jump_to_option, &QAction::triggered, this, &GameDisassembler::follow_address);
+                connect(jump_to_option, &QAction::triggered, this, &DebuggerDisassembler::follow_address);
             }
             
             menu.addSeparator();
@@ -187,12 +187,12 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
                 
                 std::snprintf(breakpoint_text, sizeof(breakpoint_text), "%s breakpoint at $%04X", create ? "Set" : "Unset", *address);
                 auto *set_breakpoint = menu.addAction(breakpoint_text);
-                connect(set_breakpoint, &QAction::triggered, this, create ? &GameDisassembler::add_breakpoint : &GameDisassembler::delete_breakpoint);
+                connect(set_breakpoint, &QAction::triggered, this, create ? &DebuggerDisassembler::add_breakpoint : &DebuggerDisassembler::delete_breakpoint);
 
                 if(create) {
                     std::snprintf(breakpoint_text, sizeof(breakpoint_text), "Break-and-trace at $%04X", *address);
                     auto *set_bnt_breakpoint = menu.addAction(breakpoint_text);
-                    connect(set_bnt_breakpoint, &QAction::triggered, this, &GameDisassembler::add_break_and_trace_breakpoint);
+                    connect(set_bnt_breakpoint, &QAction::triggered, this, &DebuggerDisassembler::add_break_and_trace_breakpoint);
                 }
             }
         }
@@ -201,7 +201,7 @@ void GameDisassembler::show_context_menu(const QPoint &point) {
     menu.exec(this->mapToGlobal(point));
 }
 
-bool GameDisassembler::address_is_breakpoint(std::uint16_t address) {
+bool DebuggerDisassembler::address_is_breakpoint(std::uint16_t address) {
     for(auto &i : this->debugger->get_breakpoints()) {
         if(i == address) {
             return true;
@@ -211,7 +211,7 @@ bool GameDisassembler::address_is_breakpoint(std::uint16_t address) {
     return false;
 }
 
-void GameDisassembler::jump_to_address_window() {
+void DebuggerDisassembler::jump_to_address_window() {
     QInputDialog dialog;
     dialog.setLabelText("Enter an address or expression to go to...");
     dialog.setWindowTitle("Enter an expression");
@@ -237,7 +237,7 @@ void GameDisassembler::jump_to_address_window() {
     }
 }
 
-void GameDisassembler::wheelEvent(QWheelEvent *event) {
+void DebuggerDisassembler::wheelEvent(QWheelEvent *event) {
     int d = event->angleDelta().y();
     if(d > 0) {
         this->current_address -= std::min(static_cast<std::uint16_t>(1), this->current_address);
@@ -250,7 +250,7 @@ void GameDisassembler::wheelEvent(QWheelEvent *event) {
     event->ignore();
 }
 
-void GameDisassembler::keyPressEvent(QKeyEvent *event) {
+void DebuggerDisassembler::keyPressEvent(QKeyEvent *event) {
     switch(event->key()) {
         case Qt::Key::Key_PageDown:
             this->current_address = next_address_far;
@@ -276,7 +276,7 @@ void GameDisassembler::keyPressEvent(QKeyEvent *event) {
     event->ignore();
 }
 
-void GameDisassembler::refresh_view() {
+void DebuggerDisassembler::refresh_view() {
     // Clear the table if we changed addresses
     if(this->current_address != this->last_address) {
         this->last_address = this->current_address;
@@ -331,7 +331,7 @@ void GameDisassembler::refresh_view() {
     }
 }
 
-std::vector<GameDisassembler::Disassembly> GameDisassembler::disassemble_at_address(std::uint16_t address, std::uint8_t count) {
+std::vector<DebuggerDisassembler::Disassembly> DebuggerDisassembler::disassemble_at_address(std::uint16_t address, std::uint8_t count) {
     // Tell sameboy to disassemble at the address and capture its output.
     // Doing it this way is horrible. Let's do it anyway.
     QStringList lines;

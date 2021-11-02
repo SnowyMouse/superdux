@@ -1,5 +1,5 @@
 #include "game_window.hpp"
-#include "game_debugger.hpp"
+#include "debugger.hpp"
 #include "edit_controls_dialog.hpp"
 
 #include <QHBoxLayout>
@@ -666,10 +666,10 @@ GameWindow::GameWindow() {
     this->set_pixel_view_scaling(this->scaling);
     
     // Create the debugger now that everything else is set up
-    this->debugger_window = new GameDebugger(this);
+    this->debugger_window = new Debugger(this);
     this->show_debugger = view_menu->addAction("Show Debugger");
-    connect(this->show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::show);
-    connect(this->show_debugger, &QAction::triggered, this->debugger_window, &GameDebugger::activateWindow);
+    connect(this->show_debugger, &QAction::triggered, this->debugger_window, &Debugger::show);
+    connect(this->show_debugger, &QAction::triggered, this->debugger_window, &Debugger::activateWindow);
     this->show_debugger->setEnabled(false);
 
     // And the VRAM viewer

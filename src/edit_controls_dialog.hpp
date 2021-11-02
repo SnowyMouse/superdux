@@ -2,15 +2,12 @@
 #define EDIT_CONTROLS_DIALOG_HPP
 
 #include <QDialog>
-#include <QVBoxLayout>
-#include <QWidget>
-#include <QComboBox>
-#include <QLineEdit>
-#include <QLabel>
 
 #include "input_device.hpp"
 
 class GameWindow;
+class QComboBox;
+class QLayout;
 
 class EditControlsDialog : public QDialog {
     Q_OBJECT

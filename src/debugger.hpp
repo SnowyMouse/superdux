@@ -1,23 +1,24 @@
-#ifndef SB_QT_DEBUGGER_HPP
-#define SB_QT_DEBUGGER_HPP
+#ifndef DEBUGGER_HPP
+#define DEBUGGER_HPP
 
 extern "C" {
 #include <Core/gb.h>
 }
 
-#include <vector>
-#include <QTableWidget>
 #include <QMainWindow>
+
+#include <vector>
 #include <optional>
 
 #include "game_window.hpp"
 
-class GameDisassembler;
+class DebuggerDisassembler;
 class QLineEdit;
 class GameWindow;
+class QTableWidget;
 class QCheckBox;
 
-class GameDebugger : public QMainWindow {
+class Debugger : public QMainWindow {
     Q_OBJECT
     
 public:
@@ -34,8 +35,8 @@ public:
         directory_t children;
     };
 
-    GameDebugger(GameWindow *window);
-    ~GameDebugger() override;
+    Debugger(GameWindow *window);
+    ~Debugger() override;
     
     GameInstance &get_instance() noexcept {
         return this->game_window->get_instance();
@@ -57,9 +58,9 @@ public:
     /** Refresh the information in view */
     void refresh_view();
 private:
-    GameDisassembler *disassembler;
+    DebuggerDisassembler *disassembler;
     
-    class GameDebuggerTable;
+    class BacktraceTable;
     class BreakAndTraceResultsDialog;
     
     // Copy of breakpoints and backtrace
@@ -96,7 +97,7 @@ private:
     
     QLineEdit *register_af, *register_bc, *register_de, *register_hl, *register_sp, *register_pc;
     QCheckBox *flag_carry, *flag_half_carry, *flag_subtract, *flag_zero;
-    QTableWidget *backtrace;
+    BacktraceTable *backtrace;
     GameWindow *game_window;
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);

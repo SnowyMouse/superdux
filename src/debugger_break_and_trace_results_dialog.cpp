@@ -1,5 +1,5 @@
 #include "debugger_break_and_trace_results_dialog.hpp"
-#include "game_disassembler.hpp"
+#include "debugger_disassembler.hpp"
 
 #include <QVBoxLayout>
 #include <QLabel>
@@ -7,7 +7,7 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 
-GameDebugger::BreakAndTraceResultsDialog::BreakAndTraceResultsDialog(QWidget *parent, GameDebugger *window, ProcessedBNTResultNode::directory_t &&results) : QDialog(parent), window(window), results(results) {
+Debugger::BreakAndTraceResultsDialog::BreakAndTraceResultsDialog(QWidget *parent, Debugger *window, ProcessedBNTResultNode::directory_t &&results) : QDialog(parent), window(window), results(results) {
     this->setWindowTitle("Break and Trace Results");
 
     auto *layout = new QVBoxLayout(this);
@@ -68,17 +68,17 @@ GameDebugger::BreakAndTraceResultsDialog::BreakAndTraceResultsDialog(QWidget *pa
     this->setLayout(layout);
 }
 
-void GameDebugger::BreakAndTraceResultsDialog::double_clicked_item(QTreeWidgetItem *item, int column) {
+void Debugger::BreakAndTraceResultsDialog::double_clicked_item(QTreeWidgetItem *item, int column) {
     if(item) {
-        this->window->disassembler->go_to(reinterpret_cast<const GameDebugger::ProcessedBNTResultNode *>(item->data(0, Qt::UserRole).value<std::uintptr_t>())->result.pc);
+        this->window->disassembler->go_to(reinterpret_cast<const Debugger::ProcessedBNTResultNode *>(item->data(0, Qt::UserRole).value<std::uintptr_t>())->result.pc);
     }
 }
 
-void GameDebugger::BreakAndTraceResultsDialog::show_info_for_register(QTreeWidgetItem *current, QTreeWidgetItem *) {
+void Debugger::BreakAndTraceResultsDialog::show_info_for_register(QTreeWidgetItem *current, QTreeWidgetItem *) {
     std::uint16_t af = 0, hl = 0, bc = 0, sp = 0, de = 0, pc = 0;
 
     if(current) {
-        auto &data = reinterpret_cast<const GameDebugger::ProcessedBNTResultNode *>(current->data(0, Qt::UserRole).value<std::uintptr_t>())->result;
+        auto &data = reinterpret_cast<const Debugger::ProcessedBNTResultNode *>(current->data(0, Qt::UserRole).value<std::uintptr_t>())->result;
         af = data.a << 8 | data.f;
         hl = data.hl;
         bc = data.b << 8 | data.c;
