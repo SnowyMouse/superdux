@@ -406,8 +406,6 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     gb_oam_view_frame_inner->setLayout(gb_oam_view_frame_layout);
     this->gb_tab_view->addTab(this->gb_oam_view_frame, "Sprite Attributes");
 
-    this->setFixedSize(this->sizeHint());
-
     // Show the default text
     this->show_info_for_tile(std::nullopt, false);
 
@@ -449,6 +447,8 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->mouse_over_palette_label->setFont(table_font);
     this->gb_palette_view_frame->setLayout(gb_palette_view_frame_layout);
     this->gb_tab_view->addTab(this->gb_palette_view_frame, "Palettes");
+
+    this->setFixedWidth(this->sizeHint().width());
 }
 
 VRAMViewer::~VRAMViewer() {
