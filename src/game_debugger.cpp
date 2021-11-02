@@ -80,8 +80,6 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     layout->addWidget((this->disassembler = new GameDisassembler(this)));
     
     this->setCentralWidget(central_widget);
-    this->setMinimumHeight(600);
-    this->setMinimumWidth(800);
     
     this->right_view = new QWidget(this);
     auto *right_view_layout = new QVBoxLayout(this->right_view);

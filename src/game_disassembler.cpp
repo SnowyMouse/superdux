@@ -44,6 +44,9 @@ GameDisassembler::GameDisassembler(GameDebugger *parent) : QTableWidget(parent),
     
     this->text_highlight_color = palette.color(QPalette::ColorRole::HighlightedText);
     this->bg_highlight_color = palette.color(QPalette::ColorRole::Highlight);
+
+    this->setMinimumHeight(400);
+    this->setMinimumWidth(400);
 }
 
 GameDisassembler::~GameDisassembler() {}
