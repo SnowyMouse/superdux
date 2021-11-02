@@ -20,13 +20,14 @@
 #define SETTING_SHOW_GRID "vram_show_grid"
 #define SETTING_SHOW_VIEWPORT "vram_show_viewport"
 
-class ColorCodeLabel : public QLabel {
+class VRAMViewer::PaletteViewData::PaletteViewDataWidget : public QWidget {
 public:
-    ColorCodeLabel(const QString &str, QWidget *parent, VRAMViewer *window, GB_palette_type_t palette, std::size_t index) : QLabel(str, parent), window(window), palette(palette), index(index) {
+    PaletteViewDataWidget(QWidget *parent, VRAMViewer *window, GB_palette_type_t palette, std::size_t index) : QWidget(parent), window(window), palette(palette), index(index) {
         this->setMouseTracking(true);
+        this->setAutoFillBackground(true);
     }
 
-    ~ColorCodeLabel() {}
+    ~PaletteViewDataWidget() {}
 private:
     VRAMViewer *window;
     GB_palette_type_t palette;
@@ -40,20 +41,6 @@ private:
         this->window->show_info_for_palette(std::nullopt);
     }
 };
-
-void format_color_code(QLabel *color, const std::uint16_t *color_code) {
-    char str[256];
-    std::snprintf(str, sizeof(str), "$%04x $%04x $%04x $%04x", color_code[0], color_code[1], color_code[2], color_code[3]);
-    color->setText(str);
-}
-
-void format_color_code(QLabel *color, const std::uint8_t *color_code) {
-    char str[64];
-    std::snprintf(str, sizeof(str), "$%02x $%02x $%02x $%02x", color_code[0], color_code[1], color_code[2], color_code[3]);
-    color->setText(str);
-
-    color->setProperty("color component info", QVariant());
-}
 
 void format_label(QLabel *label, const GameInstance::ObjectAttributeInfoObject &object, std::size_t index) {
     char str[64];
@@ -104,7 +91,7 @@ private:
     VRAMViewer *window;
 };
 
-void VRAMViewer::update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index) {
+void VRAMViewer::update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index, const std::uint16_t *raw_colors) {
     auto *new_palette = this->window->get_instance().get_palette(type, index);
 
     if(std::memcmp(new_palette, palette.current_palette, sizeof(palette.current_palette)) != 0) {
@@ -122,6 +109,13 @@ void VRAMViewer::update_palette(PaletteViewData &palette, GB_palette_type_t type
 
         for(std::size_t p = 0; p < sizeof(palette.colors) / sizeof(palette.colors[p]); p++) {
             format_background_color_for_palette(palette.current_palette[p], palette.colors[p]);
+
+            // Format the labels if needed
+            if(raw_colors != nullptr) {
+                char text[8] = {};
+                std::snprintf(text, sizeof(text), "$%04x ", raw_colors[p]);
+                palette.color_text[p]->setText(text);
+            }
         }
     }
 }
@@ -279,25 +273,42 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
 
     // Palette
     int palette_hw = this->moused_over_tile_palette->sizeHint().height();
+    auto *viewer = this;
 
-    auto initialize_palette = [&palette_hw](PaletteViewData &palette, QWidget *parent) {
-        palette.widget = new QWidget(parent);
+    auto initialize_palette = [&palette_hw, &table_font, &viewer](PaletteViewData &palette, QWidget *parent, bool visible_palette_text, GB_palette_type_t palette_type = GB_palette_type_t::GB_PALETTE_NONE, std::size_t palette_index = 0) {
+        palette.widget = new VRAMViewer::PaletteViewData::PaletteViewDataWidget(parent, viewer, palette_type, palette_index);
         auto *palette_preview_layout = new QHBoxLayout(palette.widget);
         palette_preview_layout->setContentsMargins(0,0,0,0);
 
-        for(auto &c : palette.colors) {
-            c = new QWidget(palette.widget);
-            c->setFixedSize(palette_hw, palette_hw);
-            c->setStyleSheet("background-color: #000");
-            palette_preview_layout->addWidget(c);
+        static constexpr const std::size_t color_count = sizeof(palette.colors) / sizeof(palette.colors[0]);
+        for(std::size_t c = 0; c < color_count; c++) {
+            auto &box = palette.colors[c];
+
+            box = new QWidget(palette.widget);
+            box->setFixedSize(palette_hw, palette_hw);
+            box->setStyleSheet("background-color: #000");
+            palette_preview_layout->addWidget(box);
+            box->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+
+            auto &text = palette.color_text[c];
+            text = new QLabel("$0000 ", palette.widget);
+            text->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            palette_preview_layout->addWidget(text);
+            text->setFont(table_font);
+            text->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+
+            text->setVisible(visible_palette_text);
         }
+
         palette.widget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
         // Initialize the palette background
         std::memset(palette.current_palette, 0, sizeof(palette.current_palette));
+
+        return palette_preview_layout;
     };
 
-    initialize_palette(this->tileset_view_palette, tileset_mouse_over_widget);
+    initialize_palette(this->tileset_view_palette, tileset_mouse_over_widget, false);
     tileset_mouse_over_layout->addWidget(this->tileset_view_palette.widget, palette_row_index, 2);
 
     tileset_mouse_over_widget->setLayout(tileset_mouse_over_layout);
@@ -404,27 +415,20 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->gb_palette_view_frame = new QWidget(this->gb_tab_view);
     auto *gb_palette_view_frame = this->gb_palette_view_frame;
     auto *gb_palette_view_frame_layout = new QGridLayout(this->gb_palette_view_frame);
+    gb_palette_view_frame_layout->setSpacing(0);
 
     // Add the palette to the row
     int palette_row_count = 0;
     auto *vram_viewer = this;
-    auto add_palette_widget = [&gb_palette_view_frame, &gb_palette_view_frame_layout, &initialize_palette, &table_font, &palette_row_count, &vram_viewer](std::size_t i, GB_palette_type_t type, PaletteViewData &view_data, const char *title, QLabel *&color_code) {
+    auto add_palette_widget = [&gb_palette_view_frame, &gb_palette_view_frame_layout, &initialize_palette, &table_font, &palette_row_count, &vram_viewer](std::size_t i, GB_palette_type_t type, PaletteViewData &view_data, const char *title) {
         // Label
         char text[256];
         std::snprintf(text, sizeof(text), "%s %zu", title, i);
         auto *label = new QLabel(text, gb_palette_view_frame);
         gb_palette_view_frame_layout->addWidget(label, palette_row_count, 0);
 
-        // Color codes?
-        color_code = new ColorCodeLabel("", gb_palette_view_frame, vram_viewer, type, i);
-        color_code->setAlignment(Qt::AlignmentFlag::AlignRight);
-        static constexpr const std::uint16_t default_colors[4] = {};
-        format_color_code(color_code, default_colors);
-        color_code->setFont(table_font);
-        gb_palette_view_frame_layout->addWidget(color_code, palette_row_count, 1);
-
         // Set up the actual widgets
-        initialize_palette(view_data, gb_palette_view_frame);
+        initialize_palette(view_data, gb_palette_view_frame, true, type, i)->setContentsMargins(0, (i == 0 && type == GB_palette_type_t::GB_PALETTE_BACKGROUND) ? 0 : 5, 0, 5); // have 5 px spacing on bottom and top (0 px spacing on top if first BG palette)
         gb_palette_view_frame_layout->addWidget(view_data.widget, palette_row_count, 2);
 
         palette_row_count++;
@@ -432,10 +436,10 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
 
     // Initialize the palettes here
     for(std::size_t i = 0; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
-        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_BACKGROUND, this->gb_palette_background[i], "Background", this->gb_palette_background_color_codes[i]);
+        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_BACKGROUND, this->gb_palette_background[i], "Background");
     }
     for(std::size_t i = 0; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
-        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_OAM, this->gb_palette_oam[i], "OAM (Sprite)", this->gb_palette_oam_color_codes[i]);
+        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_OAM, this->gb_palette_oam[i], "OAM (Sprite)");
     }
 
     gb_palette_view_frame_layout->addWidget(this->mouse_over_palette_label = new QLabel("", gb_palette_view_frame), palette_row_count++, 0, 1, 3);
@@ -739,13 +743,11 @@ void VRAMViewer::redraw_palette() noexcept {
 
     for(std::size_t i = 0; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
         instance.get_raw_palette(GB_palette_type_t::GB_PALETTE_BACKGROUND, i, buffer);
-        this->update_palette(this->gb_palette_background[i], GB_palette_type_t::GB_PALETTE_BACKGROUND, i);
-        format_color_code(this->gb_palette_background_color_codes[i], buffer);
+        this->update_palette(this->gb_palette_background[i], GB_palette_type_t::GB_PALETTE_BACKGROUND, i, buffer);
     }
     for(std::size_t i = 0; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
         instance.get_raw_palette(GB_palette_type_t::GB_PALETTE_OAM, i, buffer);
-        this->update_palette(this->gb_palette_oam[i], GB_palette_type_t::GB_PALETTE_OAM, i);
-        format_color_code(this->gb_palette_oam_color_codes[i], buffer);
+        this->update_palette(this->gb_palette_oam[i], GB_palette_type_t::GB_PALETTE_OAM, i, buffer);
     }
 
     // if we're mousing over a palette, do this
@@ -766,7 +768,7 @@ void VRAMViewer::redraw_palette() noexcept {
 
     // otherwise, no
     else {
-        this->mouse_over_palette_label->setText("Mouse over a hex code for more information.");
+        this->mouse_over_palette_label->setText("Mouse over a color for more information.");
     }
 }
 

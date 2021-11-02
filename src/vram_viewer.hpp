@@ -31,11 +31,13 @@ public:
 private:
     GameWindow *window;
     struct PaletteViewData {
-        QWidget *widget;
+        class PaletteViewDataWidget;
+        PaletteViewDataWidget *widget;
         QWidget *colors[4];
+        QLabel *color_text[4];
         std::uint32_t current_palette[4];
     };
-    void update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index);
+    void update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index, const std::uint16_t *raw_colors = nullptr);
 
     QTabWidget *gb_tab_view;
     QWidget *gb_tilemap_view_frame, *gb_oam_view_frame, *gb_palette_view_frame;
@@ -91,8 +93,6 @@ private:
     // Palettes
     PaletteViewData gb_palette_background[8];
     PaletteViewData gb_palette_oam[8];
-    QLabel *gb_palette_background_color_codes[8];
-    QLabel *gb_palette_oam_color_codes[8];
     QLabel *mouse_over_palette_label;
 
     std::optional<GB_palette_type_t> moused_over_palette;
