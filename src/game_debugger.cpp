@@ -90,7 +90,7 @@ GameDebugger::GameDebugger(GameWindow *window) : game_window(window) {
     
     // Add registers
     auto *register_view = new QGroupBox(this->right_view);
-    reinterpret_cast<QGroupBox *>(register_view)->setTitle("Registers");
+    reinterpret_cast<QGroupBox *>(register_view)->setTitle("CPU Registers");
     auto *register_view_layout = new QVBoxLayout(register_view);
     register_view->setLayout(register_view_layout);
     
