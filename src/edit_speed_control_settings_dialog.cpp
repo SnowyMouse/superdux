@@ -149,6 +149,11 @@ void EditSpeedControlSettingsDialog::perform_accept() {
 
     window->instance->set_rewind_length(rewind_amount);
 
+    // Temporarily disable these if they're enabled
+    window->instance->set_speed_multiplier(1.0);
+    window->instance->set_turbo_mode(false);
+    window->instance->set_rewind(false);
+
     this->accept();
 }
 
