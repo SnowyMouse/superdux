@@ -321,6 +321,7 @@ GameWindow::GameWindow() {
     this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
+    this->instance->set_rewind_length(this->rewind_length);
     
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
