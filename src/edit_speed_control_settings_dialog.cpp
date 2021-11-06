@@ -139,7 +139,10 @@ void EditSpeedControlSettingsDialog::perform_accept() {
     COMPLAIN_IF_INVALID(!turbo_ok || slowmo_amount < 0, "Turbo Speed")
 
     // Change things
-    window->rewind_length = rewind_amount;
+    if(window->rewind_length != rewind_amount) { // perform this check since the rewind gets reset when set_rewind_length is called
+        window->rewind_length = rewind_amount;
+        window->instance->set_rewind_length(rewind_amount);
+    }
     window->max_slowmo = slowmo_amount;
     window->max_turbo = turbo_amount;
 
@@ -147,7 +150,6 @@ void EditSpeedControlSettingsDialog::perform_accept() {
     window->slowmo_enabled = this->enable_slowmo->isChecked();
     window->rewind_enabled = this->enable_rewind->isChecked();
 
-    window->instance->set_rewind_length(rewind_amount);
 
     // Temporarily disable these if they're enabled
     window->instance->set_speed_multiplier(1.0);
