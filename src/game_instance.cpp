@@ -47,7 +47,7 @@ void GameInstance::load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept 
     std::size_t boot_rom_size;
 
     switch(type) {
-        case GB_BOOT_ROM_DMG0:
+        case GB_BOOT_ROM_DMG_0:
         case GB_BOOT_ROM_DMG:
             boot_rom = built_in_dmg_boot_room(&boot_rom_size);
             break;
@@ -60,7 +60,7 @@ void GameInstance::load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept 
         case GB_BOOT_ROM_AGB:
             boot_rom = built_in_agb_boot_room(&boot_rom_size);
             break;
-        case GB_BOOT_ROM_CGB0:
+        case GB_BOOT_ROM_CGB_0:
         case GB_BOOT_ROM_CGB:
             if(fast_override) {
                 boot_rom = built_in_fast_cgb_boot_room(&boot_rom_size);
