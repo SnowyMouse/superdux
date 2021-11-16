@@ -1,7 +1,7 @@
 # Bug reports
 
 For reporting bugs, GitHub is the best way to do this as issues are easily
-tracked. You can do this at https://github.com/SnowyMouse/super-sameboy/issues
+tracked. You can do this at https://github.com/SnowyMouse/sameboy-dx/issues
 
 Here are a few guidelines for doing this:
 
@@ -24,7 +24,7 @@ SameBoy issues list instead at https://github.com/LIJI32/SameBoy/issues
 # Requests
 
 Like with reporting bugs, you can use the issue tracker on GitHub to request
-features for the frontend at https://github.com/SnowyMouse/super-sameboy/issues
+features for the frontend at https://github.com/SnowyMouse/sameboy-dx/issues
 Again, I ask that you make your request in English. Google Translate's accuracy
 is not very good.
 
