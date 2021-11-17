@@ -275,12 +275,17 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     this->tileset_mouse_over_tile_image_pixmap = this->tileset_mouse_over_tile_image_scene->addPixmap(QPixmap::fromImage(this->tileset_mouse_over_tile_image));
     this->tileset_mouse_over_tile_image_view->setScene(this->tileset_mouse_over_tile_image_scene);
 
-    this->tileset_mouse_over_tile_grid_scale = (table_font.pixelSize() * 3 + tileset_mouse_over_layout->spacing() * 3) / GameInstance::GB_TILESET_TILE_LENGTH;
+    this->tileset_mouse_over_tile_grid_scale = (table_font.pixelSize() + tileset_mouse_over_layout->spacing()) * 3 / GameInstance::GB_TILESET_TILE_LENGTH;
     this->tileset_mouse_over_tile_image_pixmap->setTransform(QTransform::fromScale(this->tileset_mouse_over_tile_grid_scale, this->tileset_mouse_over_tile_grid_scale));
     this->tileset_mouse_over_tile_image_view->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->tileset_mouse_over_tile_image_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->tileset_mouse_over_tile_image_view->setFrameShape(QFrame::Shape::NoFrame);
     this->tileset_mouse_over_tile_image_view->setFixedSize(GameInstance::GB_TILESET_TILE_LENGTH * this->tileset_mouse_over_tile_grid_scale, GameInstance::GB_TILESET_TILE_LENGTH * this->tileset_mouse_over_tile_grid_scale);
+
+    // Overlay a grid on top of the tile preview
+    this->tileset_mouse_over_tile_grid.resize(this->tileset_mouse_over_tile_grid_scale * this->tileset_mouse_over_tile_grid_scale * GameInstance::GB_TILESET_TILE_LENGTH * GameInstance::GB_TILESET_TILE_LENGTH, 0);
+    this->tileset_mouse_over_tile_grid_image = QImage(reinterpret_cast<const uchar *>(this->tileset_mouse_over_tile_grid.data()), this->tileset_mouse_over_tile_grid_scale * GameInstance::GB_TILESET_TILE_LENGTH, this->tileset_mouse_over_tile_grid_scale * GameInstance::GB_TILESET_TILE_LENGTH, QImage::Format::Format_ARGB32);
+    this->tileset_mouse_over_tile_image_pixmap_grid = this->tileset_mouse_over_tile_image_scene->addPixmap(QPixmap::fromImage(this->tileset_mouse_over_tile_grid_image));
 
     // Add the preview now
     tileset_mouse_over_layout->addWidget(this->tileset_mouse_over_tile_image_view, 1, 2, 3, 1, Qt::AlignmentFlag::AlignCenter);
@@ -676,6 +681,31 @@ void VRAMViewer::redraw_tileset() noexcept {
             std::copy(mouse_over_tile_preview_tileset_row, mouse_over_tile_preview_tileset_row + GameInstance::GB_TILESET_TILE_LENGTH, mouse_over_tile_preview_tile_row);
         }
 
+        // Draw the grid
+        if(this->gb_show_tileset_grid->isChecked()) {
+            for(std::size_t y = 0; y < GameInstance::GB_TILESET_TILE_LENGTH - 0; y++) {
+                for(std::size_t x = 0; x < GameInstance::GB_TILESET_TILE_LENGTH - 0; x++) {
+                    auto pixel_inverted = this->tileset_mouse_over_tile_image_data[x + y * GameInstance::GB_TILESET_TILE_LENGTH] ^ 0x00FFFFFF;
+
+                    std::size_t x_write = x * this->tileset_mouse_over_tile_grid_scale;
+                    std::size_t y_write = y * this->tileset_mouse_over_tile_grid_scale;
+
+                    for(unsigned int i = 0; i < this->tileset_mouse_over_tile_grid_scale; i++, x_write++, y_write++) {
+                        if(y != 0) {
+                            this->tileset_mouse_over_tile_grid[x_write + y * (this->tileset_mouse_over_tile_grid_scale * this->tileset_mouse_over_tile_grid_scale * GameInstance::GB_TILESET_TILE_LENGTH)] = pixel_inverted;
+                        }
+                        if(x != 0) {
+                            this->tileset_mouse_over_tile_grid[x * this->tileset_mouse_over_tile_grid_scale + y_write * (this->tileset_mouse_over_tile_grid_scale * GameInstance::GB_TILESET_TILE_LENGTH)] = pixel_inverted;
+                        }
+                    }
+                }
+            }
+            this->tileset_mouse_over_tile_image_pixmap_grid->setVisible(true);
+        }
+        else {
+            this->tileset_mouse_over_tile_image_pixmap_grid->setVisible(false);
+        }
+
         if(info.accessed_type) {
             char palette_text[256];
 
@@ -727,10 +757,12 @@ void VRAMViewer::redraw_tileset() noexcept {
         this->moused_over_tile_user->setText(" ");
 
         std::fill(this->tileset_mouse_over_tile_image_data, this->tileset_mouse_over_tile_image_data + sizeof(this->tileset_mouse_over_tile_image_data) / sizeof(this->tileset_mouse_over_tile_image_data[0]), 0);
+        std::fill(this->tileset_mouse_over_tile_grid.begin(), this->tileset_mouse_over_tile_grid.end(), 0);
     }
 
     // Update the previewed image
     this->tileset_mouse_over_tile_image_pixmap->setPixmap(QPixmap::fromImage(this->tileset_mouse_over_tile_image));
+    this->tileset_mouse_over_tile_image_pixmap_grid->setPixmap(QPixmap::fromImage(this->tileset_mouse_over_tile_grid_image));
 
     // Is the palette different?
     this->update_palette(this->tileset_view_palette, new_palette_type, new_palette_index);

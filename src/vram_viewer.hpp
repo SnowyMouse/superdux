@@ -64,12 +64,15 @@ private:
     std::optional<std::uint16_t> moused_over_tile_index;
     PaletteViewData tileset_view_palette;
 
+    std::vector<std::uint32_t> tileset_mouse_over_tile_grid;
+    QImage tileset_mouse_over_tile_grid_image;
     int tileset_mouse_over_tile_grid_scale;
     std::uint32_t tileset_mouse_over_tile_image_data[GameInstance::GB_TILESET_TILE_LENGTH * GameInstance::GB_TILESET_TILE_LENGTH] = {};
     QImage tileset_mouse_over_tile_image;
     QGraphicsScene *tileset_mouse_over_tile_image_scene;
     QGraphicsView *tileset_mouse_over_tile_image_view;
     QGraphicsPixmapItem *tileset_mouse_over_tile_image_pixmap;
+    QGraphicsPixmapItem *tileset_mouse_over_tile_image_pixmap_grid;
 
     void redraw_tileset_palette() noexcept;
 
