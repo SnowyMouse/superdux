@@ -757,7 +757,7 @@ void VRAMViewer::redraw_palette() noexcept {
 
         int k = 0;
         for(int i = 0; i < 4; i++) {
-            k += std::snprintf(str + k, sizeof(str) - k, "Color %i: (Red: $%02x, Green: $%02x, Blue: $%02x)", i, buffer[i] & 0x1F, (buffer[i] >> 5) & 0x1F, (buffer[i] >> 10) & 0x1F);
+            k += std::snprintf(str + k, sizeof(str) - k, "Color %i: $%04x (Red: $%02x, Green: $%02x, Blue: $%02x)", i, buffer[i], buffer[i] & 0x1F, (buffer[i] >> 5) & 0x1F, (buffer[i] >> 10) & 0x1F);
             if(i != 3) {
                 str[k++] = '\n';
                 str[k] = 0;
