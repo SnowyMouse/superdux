@@ -1006,7 +1006,7 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
     std::uint8_t x = i % (GB_TILESET_BLOCK_WIDTH); \
     std::uint8_t y = i / (GB_TILESET_BLOCK_WIDTH); \
     auto *block = destination + x * GB_TILESET_TILE_LENGTH + y * GB_TILESET_TILE_LENGTH * GB_TILESET_BLOCK_WIDTH * GB_TILESET_TILE_LENGTH; \
-    auto bank = y >= GB_TILESET_PAGE_BLOCK_WIDTH; \
+    auto bank = x >= GB_TILESET_PAGE_BLOCK_WIDTH; \
 
     // Get the tileset info
     TilesetInfo ti = this->get_tileset_info_without_mutex();
@@ -1014,12 +1014,19 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
     // In case we change types.
     static_assert(sizeof(ti.tiles) / sizeof(ti.tiles[0]) == tile_count);
 
-    // If we aren't using auto, overwrite the tileset information
+    // DMG only has one bank
+    bool ignore_second_tileset_bank = !GB_is_cgb(&this->gameboy);
+
+    // Do the thing
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
         for(auto i = 0; i < tile_count; i++) {
             // Get the block data
             const auto &info = ti.tiles[i];
             DEFINE_X_Y_BLOCK(i);
+
+            if(bank != 0 && ignore_second_tileset_bank) {
+                continue;
+            }
 
             // Go through each pixel in the tile and color it
             color_block(&this->gameboy, block, tileset_banks[info.tile_bank] + info.tile_index * 0x10, info.accessed_palette_type, info.accessed_tile_palette_index, GB_TILESET_WIDTH);
@@ -1030,6 +1037,10 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
             // Get the block data
             const auto &info = ti.tiles[i];
             DEFINE_X_Y_BLOCK(i);
+
+            if(bank != 0 && ignore_second_tileset_bank) {
+                continue;
+            }
 
             // Go through each pixel in the tile and color it
             color_block(&this->gameboy, block, tileset_banks[info.tile_bank] + info.tile_index * 0x10, palette_type, index, GB_TILESET_WIDTH);
