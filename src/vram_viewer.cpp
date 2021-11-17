@@ -151,6 +151,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     gb_tilemap_view_inner_widget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
     this->gb_tilemap_view = new QGraphicsView(this->gb_tilemap_view_frame);
+    this->gb_tilemap_view->setFrameShape(QFrame::Shape::NoFrame);
     this->gb_tilemap_view->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     this->gb_tilemap_scene = new QGraphicsScene(this->gb_tilemap_view);
     this->gb_tilemap_pixmap = this->gb_tilemap_scene->addPixmap(QPixmap::fromImage(this->gb_tilemap_image));
@@ -234,12 +235,12 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     gb_tileset_view_frame->setTitle("Tileset");
     auto *gb_tileset_view_frame_layout = new QVBoxLayout(gb_tileset_view_frame);
     gb_tileset_view_frame->setLayout(gb_tileset_view_frame_layout);
-    this->gb_tileset_view = new TilesetView(gb_tileset_view_frame, this);
-    this->gb_tileset_scene = new QGraphicsScene(this->gb_tileset_view);
 
+    this->gb_tileset_view = new TilesetView(gb_tileset_view_frame, this);
+    this->gb_tileset_view->setFrameShape(QFrame::Shape::NoFrame);
+    this->gb_tileset_scene = new QGraphicsScene(this->gb_tileset_view);
     this->gb_tileset_pixmap = this->gb_tileset_scene->addPixmap(QPixmap::fromImage(this->gb_tileset_image));
     this->gb_tileset_pixmap->setTransform(QTransform::fromScale(2, 2));
-
     this->gb_tileset_grid_pixelmap = this->gb_tileset_scene->addPixmap(QPixmap::fromImage(this->gb_tileset_grid_image));
 
 
@@ -629,13 +630,13 @@ void VRAMViewer::redraw_tileset() noexcept {
 
     // update the grid
     if(this->gb_show_tileset_grid->isChecked()) {
-        for(std::size_t y = GameInstance::GB_TILESET_TILE_LENGTH*2-1; y < GameInstance::GB_TILESET_HEIGHT * 2; y+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
+        for(std::size_t y = GameInstance::GB_TILESET_TILE_LENGTH*2-1; y < (GameInstance::GB_TILESET_HEIGHT - 1) * 2; y+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
             for(std::size_t x = 0; x < GameInstance::GB_TILESET_WIDTH * 2; x++) {
                 this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = (this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]) ^ 0xFFFFFF;
             }
         }
 
-        for(std::size_t x = GameInstance::GB_TILESET_TILE_LENGTH*2-1; x < GameInstance::GB_TILESET_WIDTH * 2; x+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
+        for(std::size_t x = GameInstance::GB_TILESET_TILE_LENGTH*2-1; x < (GameInstance::GB_TILESET_WIDTH - 1) * 2; x+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
             for(std::size_t y = 0; y < GameInstance::GB_TILESET_HEIGHT * 2; y++) {
                 this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = (this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]) ^ 0xFFFFFF;
             }
