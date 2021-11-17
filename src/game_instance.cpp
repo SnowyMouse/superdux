@@ -1008,15 +1008,14 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
     auto *block = destination + x * GB_TILESET_TILE_LENGTH + y * GB_TILESET_TILE_LENGTH * GB_TILESET_BLOCK_WIDTH * GB_TILESET_TILE_LENGTH; \
     auto bank = y >= GB_TILESET_PAGE_BLOCK_WIDTH; \
 
-    // Automatic palette detection
+    // Get the tileset info
+    TilesetInfo ti = this->get_tileset_info_without_mutex();
+
+    // In case we change types.
+    static_assert(sizeof(ti.tiles) / sizeof(ti.tiles[0]) == tile_count);
+
+    // If we aren't using auto, overwrite the tileset information
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
-        // Get the tileset info
-        TilesetInfo ti = this->get_tileset_info_without_mutex();
-
-        // In case we change types.
-        static_assert(sizeof(ti.tiles) / sizeof(ti.tiles[0]) == tile_count);
-
-        // Loop
         for(auto i = 0; i < tile_count; i++) {
             // Get the block data
             const auto &info = ti.tiles[i];
@@ -1026,13 +1025,14 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
             color_block(&this->gameboy, block, tileset_banks[info.tile_bank] + info.tile_index * 0x10, info.accessed_palette_type, info.accessed_tile_palette_index, GB_TILESET_WIDTH);
         }
     }
-
-    // Using a fixed palette
     else {
         for(auto i = 0; i < tile_count; i++) {
-            // Do it
+            // Get the block data
+            const auto &info = ti.tiles[i];
             DEFINE_X_Y_BLOCK(i);
-            color_block(&this->gameboy, block, tileset_banks[bank] + (x % GB_TILESET_PAGE_BLOCK_WIDTH + y * GB_TILESET_PAGE_BLOCK_WIDTH) * 0x10, palette_type, index, GB_TILESET_WIDTH);
+
+            // Go through each pixel in the tile and color it
+            color_block(&this->gameboy, block, tileset_banks[info.tile_bank] + info.tile_index * 0x10, palette_type, index, GB_TILESET_WIDTH);
         }
     }
 
