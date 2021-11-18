@@ -42,6 +42,24 @@ private:
     }
 };
 
+static inline constexpr std::uint32_t grid_pixel(std::uint32_t color) noexcept {
+    auto alpha = color & 0xFF000000;
+    auto color_inverted = (~color) & 0xFFFFFF;
+
+    constexpr const std::uint8_t RED_WEIGHT = 54;
+    constexpr const std::uint8_t GREEN_WEIGHT = 182;
+    constexpr const std::uint8_t BLUE_WEIGHT = 19;
+    static_assert(RED_WEIGHT + GREEN_WEIGHT + BLUE_WEIGHT == UINT8_MAX, "red + green + blue weights (grayscale) must equal 255");
+
+    auto b = (color_inverted & 0xFF) >> 0;
+    auto g = (color_inverted & 0xFF00) >> 8;
+    auto r = (color_inverted & 0xFF0000) >> 16;
+
+    std::uint32_t l = (r * RED_WEIGHT + g * GREEN_WEIGHT + b * BLUE_WEIGHT) / (RED_WEIGHT + GREEN_WEIGHT + BLUE_WEIGHT) * 3 / 4; // convert to luminosity with luma and reduce brightness for contrast
+
+    return alpha | l | (l << 8) | (l << 16);
+}
+
 void format_label(QLabel *label, const GameInstance::ObjectAttributeInfoObject &object, std::size_t index) {
     char str[64];
     std::snprintf(str, sizeof(str), "%02zu ($%02zx)\nXY: $%02x,%02x\nT#: $%02x:%02x\nFL: %s%s", index, index, object.x, object.y, object.tileset_bank, object.tile, object.flip_x ? "X" : "_", object.flip_y ? "Y" : "_");
@@ -595,7 +613,7 @@ void VRAMViewer::redraw_tilemap() noexcept {
                 return;
             }
 
-            color = color ^ 0xFFFFFF;
+            color = grid_pixel(color);
         };
 
         // Draw the sides
@@ -632,13 +650,13 @@ void VRAMViewer::redraw_tileset() noexcept {
     if(this->gb_show_tileset_grid->isChecked()) {
         for(std::size_t y = GameInstance::GB_TILESET_TILE_LENGTH*2-1; y < (GameInstance::GB_TILESET_HEIGHT - 1) * 2; y+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
             for(std::size_t x = 0; x < GameInstance::GB_TILESET_WIDTH * 2; x++) {
-                this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = (this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]) ^ 0xFFFFFF;
+                this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = grid_pixel(this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]);
             }
         }
 
         for(std::size_t x = GameInstance::GB_TILESET_TILE_LENGTH*2-1; x < (GameInstance::GB_TILESET_WIDTH - 1) * 2; x+=GameInstance::GB_TILESET_TILE_LENGTH*2) {
             for(std::size_t y = 0; y < GameInstance::GB_TILESET_HEIGHT * 2; y++) {
-                this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = (this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]) ^ 0xFFFFFF;
+                this->gb_tileset_grid_data[x + y * GameInstance::GB_TILESET_WIDTH*2] = grid_pixel(this->gb_tileset_image_data[x/2 + y/2 * GameInstance::GB_TILESET_WIDTH]);
             }
         }
         this->gb_tileset_grid_pixelmap->setPixmap(QPixmap::fromImage(this->gb_tileset_grid_image));
@@ -682,11 +700,11 @@ void VRAMViewer::redraw_tileset() noexcept {
             std::copy(mouse_over_tile_preview_tileset_row, mouse_over_tile_preview_tileset_row + GameInstance::GB_TILESET_TILE_LENGTH, mouse_over_tile_preview_tile_row);
         }
 
-        // Draw the grid
+        // Draw the pixel grid for the moused over tile
         if(this->gb_show_tileset_grid->isChecked()) {
             for(std::size_t y = 0; y < GameInstance::GB_TILESET_TILE_LENGTH - 0; y++) {
                 for(std::size_t x = 0; x < GameInstance::GB_TILESET_TILE_LENGTH - 0; x++) {
-                    auto pixel_inverted = this->tileset_mouse_over_tile_image_data[x + y * GameInstance::GB_TILESET_TILE_LENGTH] ^ 0x00FFFFFF;
+                    auto pixel_inverted = grid_pixel(this->tileset_mouse_over_tile_image_data[x + y * GameInstance::GB_TILESET_TILE_LENGTH]);
 
                     std::size_t x_write = x * this->tileset_mouse_over_tile_grid_scale;
                     std::size_t y_write = y * this->tileset_mouse_over_tile_grid_scale;
