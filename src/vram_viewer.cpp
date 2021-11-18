@@ -44,18 +44,26 @@ private:
 
 static inline constexpr std::uint32_t grid_pixel(std::uint32_t color) noexcept {
     auto alpha = color & 0xFF000000;
-    auto color_inverted = (~color) & 0xFFFFFF;
 
     constexpr const std::uint8_t RED_WEIGHT = 54;
     constexpr const std::uint8_t GREEN_WEIGHT = 182;
     constexpr const std::uint8_t BLUE_WEIGHT = 19;
     static_assert(RED_WEIGHT + GREEN_WEIGHT + BLUE_WEIGHT == UINT8_MAX, "red + green + blue weights (grayscale) must equal 255");
 
-    auto b = (color_inverted & 0xFF) >> 0;
-    auto g = (color_inverted & 0xFF00) >> 8;
-    auto r = (color_inverted & 0xFF0000) >> 16;
+    auto b = (color & 0xFF) >> 0;
+    auto g = (color & 0xFF00) >> 8;
+    auto r = (color & 0xFF0000) >> 16;
 
-    std::uint32_t l = (r * RED_WEIGHT + g * GREEN_WEIGHT + b * BLUE_WEIGHT) / (RED_WEIGHT + GREEN_WEIGHT + BLUE_WEIGHT) * 3 / 4; // convert to luminosity with luma and reduce brightness for contrast
+    std::uint32_t l = (r * RED_WEIGHT + g * GREEN_WEIGHT + b * BLUE_WEIGHT) / (RED_WEIGHT + GREEN_WEIGHT + BLUE_WEIGHT); // convert to luminosity with luma
+
+    // Increase contrast
+    if(l < 127) {
+        l += 64 * (127 - l) / 127;
+        l = l * 4 / 3;
+    }
+    else {
+        l = std::min(l * 3 / 5, static_cast<decltype(l)>(255));
+    }
 
     return alpha | l | (l << 8) | (l << 16);
 }
