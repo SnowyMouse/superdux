@@ -63,6 +63,7 @@ private:
     
     // Gameboy itself
     QAction *open_roms_action;
+    QAction *save_sram_now;
     QMenu *gameboy_model_menu;
     std::vector<QAction *> gb_model_actions;
     

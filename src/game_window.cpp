@@ -412,10 +412,11 @@ GameWindow::GameWindow() {
     auto *import = this->save_state_menu->addAction("Import...");
     connect(import, &QAction::triggered, this, &GameWindow::action_import_save_state);
 
-    auto *save = file_menu->addAction("Save SRAM to Disk");
-    save->setShortcut(QKeySequence::Save);
-    save->setIcon(GET_ICON("document-save"));
-    connect(save, &QAction::triggered, this, &GameWindow::action_save_sram);
+    this->save_sram_now = file_menu->addAction("Save SRAM to Disk");
+    this->save_sram_now->setEnabled(false);
+    this->save_sram_now->setShortcut(QKeySequence::Save);
+    this->save_sram_now->setIcon(GET_ICON("document-save"));
+    connect(this->save_sram_now, &QAction::triggered, this, &GameWindow::action_save_sram);
     
     file_menu->addSeparator();
     
@@ -785,6 +786,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         this->show_debugger->setEnabled(true);
         this->show_vram_viewer->setEnabled(true);
         this->save_state_menu->setEnabled(true);
+        this->save_sram_now->setEnabled(true);
 
         // Fire this once
         this->game_loop();
@@ -1184,14 +1186,9 @@ void GameWindow::action_save_sram() noexcept {
     // Initiate saving the SRAM
     auto filename = this->save_path.filename().string();
     if(!this->save_if_loaded()) {
-        if(this->instance->is_rom_loaded()) {
-            char message[256];
-            std::snprintf(message, sizeof(message), "Failed to save %s", filename.c_str());
-            this->show_status_text(message);
-        }
-        else {
-            this->show_status_text("Can't save - no ROM loaded");
-        }
+        char message[256];
+        std::snprintf(message, sizeof(message), "Failed to save %s", filename.c_str());
+        this->show_status_text(message);
     }
     else {
         this->show_status_text("SRAM saved");
