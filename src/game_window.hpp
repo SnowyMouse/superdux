@@ -206,6 +206,9 @@ private:
     void closeEvent(QCloseEvent *) override;
     
     void increment_volume(int amount);
+
+    // Can we make save states?
+    bool save_states_allowed() noexcept;
     
 private slots:
     void action_set_scaling() noexcept;

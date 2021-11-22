@@ -346,6 +346,7 @@ GameWindow::GameWindow() {
 
     // Save states
     this->save_state_menu = file_menu->addMenu("Save States");
+    this->save_state_menu->setEnabled(false);
     std::vector<QMenu *> save_state_menus(10);
 
     auto *revert_save_state = this->save_state_menu->addAction("Revert Load State");
@@ -763,7 +764,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     auto path = std::filesystem::path(rom_path);
     this->save_path = std::filesystem::path(path).replace_extension(".sav");
     
-    // Reset
+    // Success?
     int r;
 
     if(path.extension() == ".isx") {
@@ -773,17 +774,21 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
     }
 
-    // Allow these options
-    this->show_debugger->setEnabled(true);
-    this->show_vram_viewer->setEnabled(true);
-    
-    // Start thread
-    if(r == 0 && !instance_thread.joinable()) {
-        instance_thread = std::thread(GameInstance::start_game_loop, this->instance.get());
-    }
+    // Success!
+    if(r == 0) {
+        // Start the thread
+        if(!instance_thread.joinable()) {
+            instance_thread = std::thread(GameInstance::start_game_loop, this->instance.get());
+        }
 
-    // Fire this once
-    this->game_loop();
+        // Enable these options
+        this->show_debugger->setEnabled(true);
+        this->show_vram_viewer->setEnabled(true);
+        this->save_state_menu->setEnabled(true);
+
+        // Fire this once
+        this->game_loop();
+    }
 }
 
 
@@ -1428,6 +1433,11 @@ std::filesystem::path GameWindow::get_save_state_path(int index) const {
 }
 
 void GameWindow::action_create_save_state() {
+    // Nope!
+    if(!this->save_states_allowed()) {
+        return;
+    }
+
     auto save_state = qobject_cast<QAction *>(sender())->data().toInt();
     auto path = this->get_save_state_path(save_state);
 
@@ -1445,6 +1455,11 @@ void GameWindow::action_create_save_state() {
 }
 
 bool GameWindow::load_save_state(const std::filesystem::path &path) {
+    // Nope!
+    if(!this->save_states_allowed()) {
+        return false;
+    }
+
     // Back up the save state in case this was done by mistake
     auto backup = this->instance->create_save_state();
     if(this->instance->load_save_state(path)) {
@@ -1470,6 +1485,11 @@ bool GameWindow::load_save_state(const std::filesystem::path &path) {
 }
 
 void GameWindow::action_load_save_state() {
+    // Nope!
+    if(!this->save_states_allowed()) {
+        return;
+    }
+
     auto save_state = qobject_cast<QAction *>(sender())->data().toInt();
     auto path = this->get_save_state_path(save_state);
     if(!std::filesystem::is_regular_file(path)) {
@@ -1493,6 +1513,11 @@ void GameWindow::action_load_save_state() {
 }
 
 void GameWindow::action_import_save_state() {
+    // Nope!
+    if(!this->save_states_allowed()) {
+        return;
+    }
+
     QFileDialog qfd;
     qfd.setWindowTitle("Import a Save State");
 
@@ -1574,4 +1599,8 @@ void GameWindow::action_toggle_hide_status_text() noexcept {
         delete this->status_text;
         this->status_text = nullptr;
     }
+}
+
+bool GameWindow::save_states_allowed() noexcept {
+    return this->instance->is_rom_loaded();
 }
