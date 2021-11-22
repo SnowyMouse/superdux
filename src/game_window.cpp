@@ -657,6 +657,9 @@ GameWindow::GameWindow() {
     // Here's the layout
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
+    layout->setContentsMargins(0,0,0,0);
+    central_widget->setLayout(layout);
+    this->setCentralWidget(central_widget);
     
     // Set our pixel buffer parameters
     this->pixel_buffer_view = new GamePixelBufferView(central_widget, this);
@@ -664,7 +667,7 @@ GameWindow::GameWindow() {
     this->pixel_buffer_view->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-    this->set_pixel_view_scaling(this->scaling);
+    layout->addWidget(this->pixel_buffer_view);
     
     // Create the debugger now that everything else is set up
     this->debugger_window = new Debugger(this);
@@ -680,17 +683,15 @@ GameWindow::GameWindow() {
     connect(this->show_vram_viewer, &QAction::triggered, this->vram_viewer_window, &VRAMViewer::activateWindow);
     this->show_vram_viewer->setEnabled(false);
 
+    // Now, set this
+    this->set_pixel_view_scaling(this->scaling);
+
     // If showing FPS, trigger it
     if(this->show_fps) {
         this->show_fps = false;
         this->action_toggle_showing_fps();
         toggle_fps->setChecked(true);
     }
-    
-    layout->addWidget(this->pixel_buffer_view);
-    layout->setContentsMargins(0,0,0,0);
-    central_widget->setLayout(layout);
-    this->setCentralWidget(central_widget);
 
     // Audio
     bool result = this->instance->set_up_sdl_audio(this->sample_rate, this->sample_count);
@@ -704,7 +705,7 @@ GameWindow::GameWindow() {
 
     // Reload devices
     this->reload_devices();
-    
+
     // Fire game_loop repeatedly
     this->game_thread_timer.callOnTimeout(this, &GameWindow::game_loop);
     this->game_thread_timer.start();
@@ -915,19 +916,20 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     std::uint32_t width, height;
     this->instance->get_dimensions(width, height);
 
-    this->pixel_buffer_view->setMinimumSize(width * this->scaling, height * this->scaling);
-    this->pixel_buffer_view->setMaximumSize(width * this->scaling, height * this->scaling);
+    auto view_width = width * this->scaling;
+    auto view_height = height * this->scaling;
+    this->pixel_buffer_view->setFixedSize(view_width, view_height);
     this->pixel_buffer_view->setTransform(QTransform::fromScale(scaling, scaling));
     this->make_shadow(this->fps_text);
     this->make_shadow(this->status_text);
     this->redraw_pixel_buffer();
     
-    this->setFixedSize(this->pixel_buffer_view->maximumWidth(), this->pixel_buffer_view->maximumHeight() + this->menuBar()->height());
-    
     // Go through all scaling options. Uncheck/check whatever applies.
     for(auto *option : this->scaling_options) {
         option->setChecked(option->data().toInt() == scaling);
     }
+
+    this->setFixedSize(view_width, view_height + this->menuBar()->sizeHint().height());
 }
 
 void GameWindow::game_loop() {
