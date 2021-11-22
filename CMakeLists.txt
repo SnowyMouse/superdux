@@ -29,12 +29,14 @@ set(SDX_FILES
     src/vram_viewer.cpp
 )
 
-add_library(sameboy-dx-shared-br
+# These are shared regardless of Qt version
+add_library(sameboy-dx-shared-br STATIC
     src/built_in_boot_rom.c
     src/gb_proxy.c
     src/game_instance.cpp
     ${BOOT_ROMS_HEADER}
 )
+target_link_libraries(sameboy-dx-shared-br sameboy-core)
 
 target_include_directories(sameboy-dx-shared-br
     PRIVATE "${SAMEBOY_SOURCE_DIR}"
@@ -63,7 +65,7 @@ macro(make_sameboy_dx target_name qt_widgets)
         PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
     )
 
-    target_link_libraries(${target_name} sameboy-dx-shared-br sameboy-core ${SDL2_LIBRARIES} pthread ${qt_widgets})
+    target_link_libraries(${target_name} sameboy-dx-shared-br ${SDL2_LIBRARIES} pthread ${qt_widgets})
 endmacro()
 
 if(${BUILD_QT5_VERSION})
