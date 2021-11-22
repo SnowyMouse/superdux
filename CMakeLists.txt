@@ -73,6 +73,7 @@ if(${BUILD_QT5_VERSION})
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt5"
         OUTPUT_NAME "sameboy-dx"
     )
+    set(INSTALL_TARGET "sameboy-dx-qt5")
 endif()
 if(${BUILD_QT6_VERSION})
     make_sameboy_dx(sameboy-dx-qt6 Qt6::Widgets)
@@ -81,8 +82,15 @@ if(${BUILD_QT6_VERSION})
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt6"
         OUTPUT_NAME "sameboy-dx"
     )
+    set(INSTALL_TARGET "sameboy-dx-qt6")
 endif()
 
 if((NOT ${BUILD_QT5_VERSION}) AND (NOT ${BUILD_QT6_VERSION}))
     message(fatal_error "Must build either Qt5 or Qt6 version")
 endif()
+
+# Install the version built for the latest Qt version specified
+install(
+    TARGETS ${INSTALL_TARGET}
+    RUNTIME DESTINATION bin
+)
