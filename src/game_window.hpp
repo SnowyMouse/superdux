@@ -39,6 +39,11 @@ class GameWindow : public QMainWindow {
     friend EditSpeedControlSettingsDialog;
     
 public:
+    enum ScalingFilter {
+        SCALING_FILTER_NEAREST = 0,
+        SCALING_FILTER_BILINEAR
+    };
+
     GameWindow();
     
     void load_rom(const char *rom_path) noexcept;
@@ -100,6 +105,8 @@ private:
     int scaling = 2;
     std::vector<QAction *> scaling_options;
     std::vector<QAction *> pixel_buffer_options;
+    std::vector<QAction *> scaling_filter_options;
+    ScalingFilter scaling_filter = ScalingFilter::SCALING_FILTER_NEAREST;
     bool vblank = false;
     QPixmap pixel_buffer_pixmap;
     QGraphicsPixmapItem *pixel_buffer_pixmap_item = nullptr;
@@ -213,6 +220,7 @@ private:
     
 private slots:
     void action_set_scaling() noexcept;
+    void action_set_scale_filter() noexcept;
     void action_toggle_showing_fps() noexcept;
     void action_toggle_pause() noexcept;
     void action_open_rom() noexcept;

@@ -26,6 +26,7 @@
 
 #define SETTINGS_VOLUME "volume"
 #define SETTINGS_SCALE "scale"
+#define SETTINGS_SCALING_FILTER "scale_filter"
 #define SETTINGS_SHOW_FPS "show_fps"
 #define SETTINGS_MONO "mono"
 #define SETTINGS_MUTE "mute"
@@ -85,7 +86,7 @@
 #define print_debug_message(...) (void(0))
 #endif
 
-#define MAKE_MODE_SETTER_WITH_VARIABLE(instance_fn, variable, array) { \
+#define MAKE_INSTANCE_MODE_SETTER_WITH_VARIABLE(instance_fn, variable, array) { \
     auto *action = qobject_cast<QAction *>(sender()); \
     auto mode = static_cast<decltype(variable)>(action->data().toInt()); \
     this->instance->instance_fn(mode); \
@@ -96,10 +97,20 @@
     } \
 }
 
-void GameWindow::action_set_rtc_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_rtc_mode, this->rtc_mode, this->rtc_mode_options)
-void GameWindow::action_set_highpass_filter_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_highpass_filter_mode, this->highpass_filter_mode, this->highpass_filter_mode_options)
-void GameWindow::action_set_rumble_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_rumble_mode, this->rumble_mode, this->rumble_mode_options)
-void GameWindow::action_set_color_correction_mode() noexcept MAKE_MODE_SETTER_WITH_VARIABLE(set_color_correction_mode, this->color_correction_mode, this->color_correction_mode_options)
+#define MAKE_MODE_SETTER_WITH_VARIABLE(variable, array) { \
+    auto *action = qobject_cast<QAction *>(sender()); \
+    auto mode = static_cast<decltype(variable)>(action->data().toInt()); \
+    variable = mode; \
+    \
+    for(auto &i : array) { \
+        i->setChecked(i->data().toInt() == mode); \
+    } \
+}
+
+void GameWindow::action_set_rtc_mode() noexcept MAKE_INSTANCE_MODE_SETTER_WITH_VARIABLE(set_rtc_mode, this->rtc_mode, this->rtc_mode_options)
+void GameWindow::action_set_highpass_filter_mode() noexcept MAKE_INSTANCE_MODE_SETTER_WITH_VARIABLE(set_highpass_filter_mode, this->highpass_filter_mode, this->highpass_filter_mode_options)
+void GameWindow::action_set_rumble_mode() noexcept MAKE_INSTANCE_MODE_SETTER_WITH_VARIABLE(set_rumble_mode, this->rumble_mode, this->rumble_mode_options)
+void GameWindow::action_set_color_correction_mode() noexcept MAKE_INSTANCE_MODE_SETTER_WITH_VARIABLE(set_color_correction_mode, this->color_correction_mode, this->color_correction_mode_options)
 
 void GameWindow::action_set_channel_count() noexcept {
     // Uses the user data from the sender to get volume
@@ -282,6 +293,7 @@ GameWindow::GameWindow() {
     LOAD_INT_SETTING_VALUE(this->rumble_mode, SETTINGS_RUMBLE_MODE);
     LOAD_INT_SETTING_VALUE(this->highpass_filter_mode, SETTINGS_HIGHPASS_FILTER_MODE);
     LOAD_INT_SETTING_VALUE(this->color_correction_mode, SETTINGS_COLOR_CORRECTION_MODE);
+    LOAD_INT_SETTING_VALUE(this->scaling_filter, SETTINGS_SCALING_FILTER);
 
     LOAD_UINT_SETTING_VALUE(this->temporary_save_state_buffer_length, SETTINGS_TEMPORARY_SAVE_BUFFER_LENGTH);
     LOAD_UINT_SETTING_VALUE(this->sample_rate, SETTINGS_SAMPLE_RATE);
@@ -572,6 +584,21 @@ GameWindow::GameWindow() {
         action->setCheckable(true);
         action->setChecked(i == this->scaling);
         this->scaling_options.emplace_back(action);
+    }
+
+    scaling->addSeparator();
+    auto *scaling_filters = scaling->addMenu("Scaling Filter");
+    std::pair<const char *, ScalingFilter> scaling_filters_all[] = {
+        {"Nearest Neighbor", ScalingFilter::SCALING_FILTER_NEAREST},
+        {"Bilinear", ScalingFilter::SCALING_FILTER_BILINEAR}
+    };
+    for(auto &i : scaling_filters_all) {
+        auto *action = scaling_filters->addAction(i.first);
+        action->setData(i.second);
+        connect(action, &QAction::triggered, this, &GameWindow::action_set_scale_filter);
+        action->setCheckable(true);
+        action->setChecked(i.second == this->scaling_filter);
+        this->scaling_filter_options.emplace_back(action);
     }
 
     // Color correction options
@@ -927,6 +954,18 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     auto view_height = height * this->scaling;
     this->pixel_buffer_view->setFixedSize(view_width, view_height);
     this->pixel_buffer_view->setTransform(QTransform::fromScale(scaling, scaling));
+
+    switch(this->scaling_filter) {
+        case ScalingFilter::SCALING_FILTER_NEAREST:
+            this->pixel_buffer_pixmap_item->resetTransform();
+            this->pixel_buffer_pixmap_item->setTransformationMode(Qt::TransformationMode::FastTransformation);
+            break;
+        case ScalingFilter::SCALING_FILTER_BILINEAR:
+            this->pixel_buffer_pixmap_item->resetTransform();
+            this->pixel_buffer_pixmap_item->setTransformationMode(Qt::TransformationMode::SmoothTransformation);
+            break;
+    }
+
     this->make_shadow(this->fps_text);
     this->make_shadow(this->status_text);
     this->redraw_pixel_buffer();
@@ -1046,6 +1085,10 @@ void GameWindow::action_set_scaling() noexcept {
     this->set_pixel_view_scaling(action->data().toInt());
 }
 
+void GameWindow::action_set_scale_filter() noexcept {
+    MAKE_MODE_SETTER_WITH_VARIABLE(this->scaling_filter, this->scaling_filter_options);
+    this->set_pixel_view_scaling(this->scaling);
+}
 
 void GameWindow::make_shadow(QGraphicsTextItem *object) {
     if(object == nullptr) {
@@ -1263,6 +1306,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_REWIND_ENABLED, this->rewind_enabled);
     settings.setValue(SETTINGS_SLOWMO_ENABLED, this->slowmo_enabled);
     settings.setValue(SETTINGS_TURBO_ENABLED, this->turbo_enabled);
+    settings.setValue(SETTINGS_SCALING_FILTER, this->scaling_filter);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
