@@ -421,9 +421,9 @@ public: // all public functions assume the mutex is not locked
     void break_at(std::uint16_t address) noexcept;
 
     struct BreakAndTraceResult {
-        std::uint8_t a,b,c,d,e,f;
+        std::uint8_t a,b,c,d,e,f,h,l;
         bool step_over;
-        std::uint16_t hl, sp, pc;
+        std::uint16_t sp, pc;
         bool carry, half_carry, subtract, zero; // C, H, N, Z
         std::string disassembly;
     };

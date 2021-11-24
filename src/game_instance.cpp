@@ -186,7 +186,8 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
         b.d = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_D);
         b.e = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_E);
         b.f = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_F);
-        b.hl = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_HL);
+        b.h = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_H);
+        b.l = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_L);
         b.sp = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_SP);
         b.pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
         b.carry = b.f & GB_CARRY_FLAG;
