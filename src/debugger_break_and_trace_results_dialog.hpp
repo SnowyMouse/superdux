@@ -19,6 +19,7 @@ private:
 
     void double_clicked_item(QTreeWidgetItem *item, int column);
     void show_info_for_register(QTreeWidgetItem *current, QTreeWidgetItem *);
+    void export_results();
 };
 
 #endif
