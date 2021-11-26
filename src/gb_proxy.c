@@ -129,10 +129,6 @@ uint16_t get_gb_breakpoint_address(const struct GB_gameboy_s *gb, uint32_t bt) {
     return gb->breakpoints[bt].addr;
 }
 
-bool get_gb_get_cgb_mode(const struct GB_gameboy_s *gb) {
-    return gb->cgb_mode;
-}
-
 static const uint32_t PALETTE_NONE[4] = { 0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000 };
 static const uint32_t PALETTE_FLIPPED[4] = { 0xFF000000, 0xFF555555, 0xFFAAAAAA, 0xFFFFFFFF };
 

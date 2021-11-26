@@ -1066,7 +1066,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
     GameInstance::TilesetInfo tileset_info;
 
     // Are we in GBC mode?
-    bool cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
+    bool cgb_mode = GB_is_cgb_in_cgb_mode(&this->gameboy);
 
     // Get the OAM data
     auto lcdc = GB_read_memory(&this->gameboy, 0xFF40);
@@ -1208,7 +1208,7 @@ GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info() noex
 
 GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_without_mutex() noexcept {
     std::uint8_t lcdc = GB_read_memory(&this->gameboy, 0xFF40);
-    auto cgb_mode = get_gb_get_cgb_mode(&this->gameboy);
+    auto cgb_mode = GB_is_cgb_in_cgb_mode(&this->gameboy);
     std::uint8_t sprite_height = (lcdc & 0b100) != 0 ? 16 : 8;
     bool sprites_enabled = (lcdc & 0b10);
     const auto *oam_data = reinterpret_cast<const std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_DIRECT_ACCESS_OAM, NULL, NULL));
