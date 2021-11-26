@@ -1,0 +1,27 @@
+#define DESCRIPTION "Frontend for SameBoy, a free Game Boy emulator"
+#define VERSION "0.1.0.0"
+
+1 VERSIONINFO
+FILEVERSION      0,1,0,0
+PRODUCTVERSION   0,1,0,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "Comments",         DESCRIPTION
+            VALUE "CompanyName",      "Snowy Mouse"
+            VALUE "FileDescription",  DESCRIPTION
+            VALUE "FileVersion",      VERSION
+            VALUE "InternalName",     "Kamonegi"
+            VALUE "OriginalFilename", "kamonegi.exe"
+            VALUE "ProductName",      "Kamonegi"
+            VALUE "ProductVersion",   VERSION
+            VALUE "LegalCopyright",   "2021 Snowy Mouse"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

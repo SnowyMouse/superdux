@@ -2,6 +2,7 @@
 #include <filesystem>
 #include "game_window.hpp"
 #include <SDL2/SDL.h>
+#include <QIcon>
 
 int main(int argc, char **argv) {
     if(argc > 2) {
@@ -19,6 +20,8 @@ int main(int argc, char **argv) {
     QCoreApplication::setOrganizationName("kamonegi");
     QCoreApplication::setOrganizationDomain("kamonegi");
     QCoreApplication::setApplicationName("kamonegi");
+
+    app.setWindowIcon(QIcon(":icon/kamonegi.ico"));
 
     int r;
 

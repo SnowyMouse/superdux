@@ -17,6 +17,8 @@ find_package(Qt6 COMPONENTS Widgets)
 include("sameboy.cmake")
 
 set(KAMONEGI_FILES
+    src/kamonegi.qrc
+    src/kamonegi.rc
     src/debugger.cpp
     src/debugger_break_and_trace_results_dialog.cpp
     src/debugger_disassembler.cpp
