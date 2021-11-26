@@ -1,7 +1,7 @@
-# SameBoy DX
+# Kamonegi
 
-SameBoy DX is a Qt-based interface of [SameBoy], a free Game Boy and Game Boy
-Color emulator.
+Kamonegi is a Qt-based interface of [SameBoy], a free and accurate Game Boy and
+Game Boy Color emulator.
 
 ## Features
 * Supports most of [SameBoy's core features]
@@ -25,6 +25,7 @@ Color emulator.
       * Disassembles into RGBDS-compatible assembly
       * Display and manipulate CPU registers
       * Supports creating breakpoints
+      * Supports tracing breakpoints and recording traces into a CSV file
       * Backtrace
    * VRAM (video RAM) viewer
       * Tileset preview (using automatic palettes or specific palettes)
@@ -59,9 +60,9 @@ Build requirements:
    
    `$ cmake <arguments> -DSAMEBOY_SOURCE_DIR=/path/to/sameboy/source`
    
-   To clone sameboy-dx with the SameBoy repo, run this command:
+   To clone kamonegi with the SameBoy repo, run this command:
    
-   `$ git clone https://github.com/SnowyMouse/sameboy-dx.git --recursive`
+   `$ git clone https://github.com/SnowyMouse/kamonegi.git --recursive`
 
    You can update the existing submodule manually with this:
    

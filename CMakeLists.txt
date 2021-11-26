@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project("sameboy-dx"
+project("kamonegi"
     VERSION 0.1.0
     LANGUAGES C CXX
 )
@@ -16,7 +16,7 @@ find_package(Qt6 COMPONENTS Widgets)
 
 include("sameboy.cmake")
 
-set(SDX_FILES
+set(KAMONEGI_FILES
     src/debugger.cpp
     src/debugger_break_and_trace_results_dialog.cpp
     src/debugger_disassembler.cpp
@@ -30,15 +30,15 @@ set(SDX_FILES
 )
 
 # These are shared regardless of Qt version
-add_library(sameboy-dx-shared-br STATIC
+add_library(kamonegi-shared-br STATIC
     src/built_in_boot_rom.c
     src/gb_proxy.c
     src/game_instance.cpp
     ${BOOT_ROMS_HEADER}
 )
-target_link_libraries(sameboy-dx-shared-br sameboy-core)
+target_link_libraries(kamonegi-shared-br sameboy-core)
 
-target_include_directories(sameboy-dx-shared-br
+target_include_directories(kamonegi-shared-br
     PRIVATE "${SAMEBOY_SOURCE_DIR}"
     PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
@@ -51,9 +51,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # And lastly our executable
-macro(make_sameboy_dx target_name qt_widgets)
+macro(make_kamonegi target_name qt_widgets)
     add_executable(${target_name}
-        ${SDX_FILES}
+        ${KAMONEGI_FILES}
     )
 
     target_include_directories(${target_name}
@@ -65,26 +65,26 @@ macro(make_sameboy_dx target_name qt_widgets)
         PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
     )
 
-    target_link_libraries(${target_name} sameboy-dx-shared-br ${SDL2_LIBRARIES} pthread ${qt_widgets})
+    target_link_libraries(${target_name} kamonegi-shared-br ${SDL2_LIBRARIES} pthread ${qt_widgets})
 endmacro()
 
 if(${BUILD_QT5_VERSION})
-    make_sameboy_dx(sameboy-dx-qt5 Qt5::Widgets)
-    set_target_properties(sameboy-dx-qt5
+    make_kamonegi(kamonegi-qt5 Qt5::Widgets)
+    set_target_properties(kamonegi-qt5
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt5"
-        OUTPUT_NAME "sameboy-dx"
+        OUTPUT_NAME "kamonegi"
     )
-    set(INSTALL_TARGET "sameboy-dx-qt5")
+    set(INSTALL_TARGET "kamonegi-qt5")
 endif()
 if(${BUILD_QT6_VERSION})
-    make_sameboy_dx(sameboy-dx-qt6 Qt6::Widgets)
-    set_target_properties(sameboy-dx-qt6
+    make_kamonegi(kamonegi-qt6 Qt6::Widgets)
+    set_target_properties(kamonegi-qt6
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt6"
-        OUTPUT_NAME "sameboy-dx"
+        OUTPUT_NAME "kamonegi"
     )
-    set(INSTALL_TARGET "sameboy-dx-qt6")
+    set(INSTALL_TARGET "kamonegi-qt6")
 endif()
 
 if((NOT ${BUILD_QT5_VERSION}) AND (NOT ${BUILD_QT6_VERSION}))

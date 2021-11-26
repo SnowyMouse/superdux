@@ -1,7 +1,7 @@
-SameBoy DX (c) Snowy Mouse
+Kamonegi (c) Snowy Mouse
 
-SameBoy DX is licensed under version 3.0 of the GNU GPL as published by the
-Free Software Foundation.
+Kamonegi is licensed under version 3.0 of the GNU GPL as published by the Free
+Software Foundation.
 
 See COPYING for more info.
 

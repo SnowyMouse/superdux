@@ -16,9 +16,9 @@ int main(int argc, char **argv) {
     SDL_Init(SDL_INIT_AUDIO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK);
     
     QApplication app(argc, argv);
-    QCoreApplication::setOrganizationName("sameboy-dx");
-    QCoreApplication::setOrganizationDomain("sameboy-dx");
-    QCoreApplication::setApplicationName("sameboy-dx");
+    QCoreApplication::setOrganizationName("kamonegi");
+    QCoreApplication::setOrganizationDomain("kamonegi");
+    QCoreApplication::setApplicationName("kamonegi");
 
     int r;
 

@@ -1,7 +1,7 @@
 # Bug reports
 
 For reporting bugs, GitHub is the best way to do this as issues are easily
-tracked. You can do this at https://github.com/SnowyMouse/sameboy-dx/issues
+tracked. You can do this at https://github.com/SnowyMouse/kamonegi/issues
 
 Here are a few guidelines for doing this:
 
@@ -24,7 +24,7 @@ SameBoy issues list instead at https://github.com/LIJI32/SameBoy/issues
 # Requests
 
 Like with reporting bugs, you can use the issue tracker on GitHub to request
-features for the frontend at https://github.com/SnowyMouse/sameboy-dx/issues
+features for the frontend at https://github.com/SnowyMouse/kamonegi/issues
 Again, I ask that you make your request in English. Google Translate's accuracy
 is not very good.
 
@@ -32,4 +32,4 @@ Please note that, depending on the feature you want, it may be better suited to
 be added to SameBoy's core functionality rather than the frontend. If so, you
 should request it at https://github.com/LIJI32/SameBoy/issues instead. If the
 feature exists in SameBoy's core, you can then request it to be used in
-SameBoy DX.
+Kamonegi.
