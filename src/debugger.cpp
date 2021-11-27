@@ -277,89 +277,88 @@ void Debugger::refresh_view() {
         if(bp_pause) {
             this->show();
             this->activateWindow();
+        }
 
-            auto bnt = instance.get_break_and_trace_results();
-            if(!bnt.empty()) {
-                instance.clear_break_and_trace_results();
+        if(instance.break_and_trace_results_ready()) {
+            auto bnt = instance.pop_break_and_trace_results().value();
+            std::vector<ProcessedBNTResult> results;
 
-                std::vector<ProcessedBNTResult> results;
+            // Strip address pointer, newlines, and comment from instruction
+            for(auto &b : bnt) {
+                auto &r = results.emplace_back();
+                static_cast<GameInstance::BreakAndTraceResult &>(r) = b;
 
-                // Strip address pointer, newlines, and comment from instruction
-                for(auto &b : bnt) {
-                    auto &r = results.emplace_back();
-                    static_cast<GameInstance::BreakAndTraceResult &>(r) = b;
+                auto d = QString(b.disassembly.c_str()).split("\n");
+                auto d_second_to_last = d.at(d.size() - 2);
+                d_second_to_last.replace("->", "");
+                d_second_to_last = d_second_to_last.mid(d_second_to_last.indexOf(":") + 1);
+                d_second_to_last = d_second_to_last.mid(0, d_second_to_last.indexOf(" ;")).trimmed();
+                r.instruction = d_second_to_last.toStdString();
 
-                    auto d = QString(b.disassembly.c_str()).split("\n");
-                    auto d_second_to_last = d.at(d.size() - 2);
-                    d_second_to_last.replace("->", "");
-                    d_second_to_last = d_second_to_last.mid(d_second_to_last.indexOf(":") + 1);
-                    d_second_to_last = d_second_to_last.mid(0, d_second_to_last.indexOf(" ;")).trimmed();
-                    r.instruction = d_second_to_last.toStdString();
+                auto comma_index = d_second_to_last.indexOf(",");
 
-                    auto comma_index = d_second_to_last.indexOf(",");
+                bool is_call = !r.step_over && d_second_to_last.startsWith("CALL "); // ignore calls if stepping over
+                bool is_call_conditional = is_call && comma_index > 0;
 
-                    bool is_call = !r.step_over && d_second_to_last.startsWith("CALL "); // ignore calls if stepping over
-                    bool is_call_conditional = is_call && comma_index > 0;
+                bool is_ret = d_second_to_last.startsWith("RET"); // never ignore returning
+                bool is_ret_conditional = is_ret && d_second_to_last.startsWith("RET ");
 
-                    bool is_ret = d_second_to_last.startsWith("RET"); // never ignore returning
-                    bool is_ret_conditional = is_ret && d_second_to_last.startsWith("RET ");
-
-                    if(is_call || is_ret) {
-                        if(is_call_conditional || is_ret_conditional) {
-                            QString condition;
-                            if(is_call) {
-                                condition = d_second_to_last.mid(0, comma_index).replace("CALL ", "").toLower();
-                            }
-                            else if(is_ret) {
-                                condition = d_second_to_last.replace("RET ", "").toLower();
-                            }
-
-                            auto condition_met = (condition == "z" && r.zero) &&
-                                                 (condition == "nz" && !r.zero) &&
-                                                 (condition == "c" && r.carry) &&
-                                                 (condition == "nc" && !r.carry);
-                            if(!condition_met) {
-                                is_call = false;
-                                is_ret = false;
-                            }
-                        }
-
+                if(is_call || is_ret) {
+                    if(is_call_conditional || is_ret_conditional) {
+                        QString condition;
                         if(is_call) {
-                            r.direction = 1;
+                            condition = d_second_to_last.mid(0, comma_index).replace("CALL ", "").toLower();
                         }
                         else if(is_ret) {
-                            r.direction = -1;
+                            condition = d_second_to_last.replace("RET ", "").toLower();
+                        }
+
+                        auto condition_met = (condition == "z" && r.zero) &&
+                                             (condition == "nz" && !r.zero) &&
+                                             (condition == "c" && r.carry) &&
+                                             (condition == "nc" && !r.carry);
+                        if(!condition_met) {
+                            is_call = false;
+                            is_ret = false;
                         }
                     }
-                }
 
-                // Turn it into a 2D thing
-                ProcessedBNTResultNode::directory_t top_directory;
-                std::vector<ProcessedBNTResultNode::directory_t *> trace = { &top_directory };
-
-                for(auto &r : results) {
-                    auto *current_directory = trace[trace.size() - 1];
-                    auto &d = current_directory->emplace_back();
-                    d.result = r;
-
-                    if(r.direction == 1) {
-                        trace.emplace_back(&d.children);
+                    if(is_call) {
+                        r.direction = 1;
                     }
-                    else if(r.direction == -1) {
-                        trace.erase(trace.begin() + (trace.size() - 1));
-
-                        // Make a new top directory if we returned to a higher level than we breakpoint
-                        if(trace.size() == 0) {
-                            top_directory = { top_directory };
-                            trace = { &top_directory };
-                        }
+                    else if(is_ret) {
+                        r.direction = -1;
                     }
                 }
-
-                auto *dialog = new BreakAndTraceResultsDialog(this, this, std::move(top_directory));
-                dialog->show();
-                std::printf("done\n");
             }
+
+            // Turn it into a 2D thing
+            ProcessedBNTResultNode::directory_t top_directory;
+            std::vector<ProcessedBNTResultNode::directory_t *> trace = { &top_directory };
+
+            for(auto &r : results) {
+                auto *current_directory = trace[trace.size() - 1];
+                auto &d = current_directory->emplace_back();
+                d.result = r;
+
+                if(r.direction == 1) {
+                    trace.emplace_back(&d.children);
+                }
+                else if(r.direction == -1) {
+                    trace.erase(trace.begin() + (trace.size() - 1));
+
+                    // Make a new top directory if we returned to a higher level than we breakpoint
+                    if(trace.size() == 0) {
+                        top_directory = { top_directory };
+                        trace = { &top_directory };
+                    }
+                }
+            }
+
+            auto *dialog = new BreakAndTraceResultsDialog(this, this, std::move(top_directory));
+            dialog->show();
+
+            instance.clear_all_button_states();
         }
     }
     

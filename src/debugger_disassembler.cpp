@@ -114,6 +114,11 @@ void DebuggerDisassembler::add_break_and_trace_breakpoint() {
     step_over->setMinimumHeight(amt->sizeHint().height());
     input_grid->addWidget(step_over, 2, 1);
 
+    input_grid->addWidget(new QLabel("Break When Done:", input_grid_w), 3, 0);
+    auto *break_when_done = new QCheckBox(input_grid_w);
+    break_when_done->setMinimumHeight(amt->sizeHint().height());
+    input_grid->addWidget(break_when_done, 3, 1);
+
     layout->addWidget(input_grid_w);
 
     auto *ok_button_row = new QWidget(&dialog);
@@ -124,8 +129,15 @@ void DebuggerDisassembler::add_break_and_trace_breakpoint() {
     ok_button_row_l->addStretch(1);
 
     auto *ok_button = new QPushButton("OK", ok_button_row);
-    connect(ok_button, &QPushButton::clicked, &dialog, &QDialog::accept);
     ok_button_row_l->addWidget(ok_button);
+
+    // Select all the text in address before we begin
+    address->selectAll();
+
+    // Pressing enter on any the controls will accept the dialog
+    connect(ok_button, &QPushButton::clicked, &dialog, &QDialog::accept);
+    connect(address, &QLineEdit::returnPressed, &dialog, &QDialog::accept);
+    connect(amt, &QLineEdit::returnPressed, &dialog, &QDialog::accept);
 
     // Now... let's get down to business. Keep asking for something until the user enters something valid or gives up.
     while(true) {
@@ -137,7 +149,7 @@ void DebuggerDisassembler::add_break_and_trace_breakpoint() {
                 continue;
             }
 
-            this->debugger->get_instance().break_and_trace_at(*address_maybe, *count_maybe, step_over->isChecked());
+            this->debugger->get_instance().break_and_trace_at(*address_maybe, *count_maybe, step_over->isChecked(), break_when_done->isChecked());
         }
         break;
     }

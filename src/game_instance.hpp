@@ -232,6 +232,11 @@ public: // all public functions assume the mutex is not locked
     void set_button_state(GB_key_t button, bool pressed);
 
     /**
+     * Clear all button states
+     */
+    void clear_all_button_states();
+
+    /**
      * Set the rapid fire button state of the Game Boy instance
      *
      * @param button  button to set
@@ -407,11 +412,12 @@ public: // all public functions assume the mutex is not locked
     /**
      * Add a break-and-trace breakpoint at address
      *
-     * @param address address to breakpoint
-     * @param n       number of times to step
-     * @param over    step over
+     * @param address         address to breakpoint
+     * @param n               number of times to step
+     * @param step_over       step over
+     * @param break_when_done stop execution on completion
      */
-    void break_and_trace_at(std::uint16_t address, std::size_t n, bool over);
+    void break_and_trace_at(std::uint16_t address, std::size_t n, bool step_over, bool break_when_done);
 
     /**
      * Add a breakpoint at address
@@ -429,16 +435,18 @@ public: // all public functions assume the mutex is not locked
     };
 
     /**
+     * Get whether or not we can use our tracing results
+     *
+     * @return true if ready, false if not
+     */
+    bool break_and_trace_results_ready();
+
+    /**
      * Get the break and trace results
      *
      * @return results
      */
-    std::vector<BreakAndTraceResult> get_break_and_trace_results();
-
-    /**
-     * Clear the break and trace results
-     */
-    void clear_break_and_trace_results() noexcept;
+    std::optional<std::vector<BreakAndTraceResult>> pop_break_and_trace_results();
 
     /**
      * Set the color correction mode
@@ -690,10 +698,12 @@ private: // all private functions assume the mutex is locked by the caller
     std::vector<std::uint32_t> pixel_buffer[3];
 
     // Break and trace addresses
-    std::vector<std::tuple<std::uint16_t, std::size_t, bool>> break_and_trace_breakpoints;
-    std::vector<BreakAndTraceResult> break_and_trace_result;
+    std::vector<std::tuple<std::uint16_t, std::size_t, bool, bool>> break_and_trace_breakpoints;
+    std::vector<std::vector<BreakAndTraceResult>> break_and_trace_result;
     std::size_t current_break_and_trace_remaining = 0;
     bool current_break_and_trace_step_over = false;
+    bool current_break_and_trace_break_when_done = false;
+    bool break_and_trace_results_ready_no_mutex() const noexcept;
 
     // SDL audio device
     std::optional<SDL_AudioDeviceID> sdl_audio_device;

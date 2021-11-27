@@ -142,14 +142,25 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     bool bnt = false;
     if(instance->current_break_and_trace_remaining > 0) {
         bnt = (--instance->current_break_and_trace_remaining) > 0;
-        if(bnt) {
-            auto pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
-            for(auto i : instance->get_breakpoints_without_mutex()) {
-                if(i == pc) {
-                    bnt = false; // if we hit a breakpoint in the middle of breaking and tracing, end prematurely
-                    break;
-                }
+
+        bool hit_breakpoint = false;
+        auto pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
+        for(auto i : instance->get_breakpoints_without_mutex()) {
+            if(i == pc) {
+                hit_breakpoint = true;
+                break;
             }
+        }
+
+        // If we hit a breakpoint in the middle of breaking and tracing, end prematurely
+        if(hit_breakpoint) {
+            bnt = false;
+            instance->current_break_and_trace_remaining = 0;
+        }
+
+        // If we've hit the end, do we continue or stop now?
+        else if(!bnt && !instance->current_break_and_trace_break_when_done) {
+            return malloc_string("continue");
         }
     }
 
@@ -158,12 +169,12 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
         for(auto b = instance->break_and_trace_breakpoints.begin(); b != instance->break_and_trace_breakpoints.end(); b++) {
             auto pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
 
-            auto &[bp_address, break_count, stepped_over] = *b;
+            auto &[bp_address, break_count, step_over, break_when_done] = *b;
             if(pc == bp_address) {
                 instance->current_break_and_trace_remaining = break_count;
-                instance->current_break_and_trace_step_over = stepped_over;
-                instance->break_and_trace_result.clear();
-                instance->break_and_trace_result.reserve(instance->current_break_and_trace_remaining + 1);
+                instance->current_break_and_trace_step_over = step_over;
+                instance->current_break_and_trace_break_when_done = break_when_done;
+                instance->break_and_trace_result.emplace_back().reserve(instance->current_break_and_trace_remaining + 1);
                 bnt = true;
 
                 // Remove the breakpoint
@@ -179,7 +190,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
 
     // If we are, continue after we record the current state
     if(bnt) {
-        auto &b = instance->break_and_trace_result.emplace_back();
+        auto &b = instance->break_and_trace_result[instance->break_and_trace_result.size() - 1].emplace_back();
         b.a = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_A);
         b.b = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_B);
         b.c = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_C);
@@ -443,6 +454,19 @@ void GameInstance::end_game_loop() noexcept {
 }
 
 void GameInstance::set_button_state(GB_key_t button, bool pressed) MAKE_SETTER(GB_set_key_state(&this->gameboy, button, pressed))
+
+void GameInstance::clear_all_button_states() {
+    this->mutex.lock();
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_A, false);
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_B, false);
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, false);
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, false);
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, false);
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, false);
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_START, false);
+    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_SELECT, false);
+    this->mutex.unlock();
+}
 
 void GameInstance::get_dimensions(std::uint32_t &width, std::uint32_t &height) noexcept {
     this->mutex.lock();
@@ -838,13 +862,13 @@ void GameInstance::set_turbo_mode(bool turbo, float ratio) noexcept {
 void GameInstance::set_boot_rom_path(const std::optional<std::filesystem::path> &boot_rom_path) MAKE_SETTER(this->boot_rom_path = boot_rom_path)
 void GameInstance::set_use_fast_boot_rom(bool fast_boot_rom) noexcept MAKE_SETTER(this->fast_boot_rom = fast_boot_rom)
 
-void GameInstance::break_and_trace_at(std::uint16_t address, std::size_t n, bool over) {
+void GameInstance::break_and_trace_at(std::uint16_t address, std::size_t n, bool step_over, bool break_when_done) {
     // Remove the breakpoint
     this->remove_breakpoint(address);
 
     // Re-add it now
     this->mutex.lock();
-    this->break_and_trace_breakpoints.emplace_back(address, n, over);
+    this->break_and_trace_breakpoints.emplace_back(address, n, step_over, break_when_done);
 
     char command[512];
     std::snprintf(command, sizeof(command), "breakpoint $%04x", address);
@@ -863,8 +887,17 @@ void GameInstance::break_at(std::uint16_t address) noexcept {
     this->mutex.unlock();
 }
 
-std::vector<GameInstance::BreakAndTraceResult> GameInstance::get_break_and_trace_results() MAKE_GETTER(this->break_and_trace_result)
-void GameInstance::clear_break_and_trace_results() noexcept MAKE_SETTER(this->break_and_trace_result.clear())
+std::optional<std::vector<GameInstance::BreakAndTraceResult>> GameInstance::pop_break_and_trace_results() {
+    this->mutex.lock();
+    if(this->break_and_trace_results_ready_no_mutex()) {
+        auto top = this->break_and_trace_result[0];
+        this->break_and_trace_result.erase(this->break_and_trace_result.begin());
+        this->mutex.unlock();
+        return top;
+    }
+    this->mutex.unlock();
+    return std::nullopt;
+}
 
 void GameInstance::remove_breakpoint(std::uint16_t breakpoint) noexcept {
     this->mutex.lock();
@@ -1323,4 +1356,10 @@ void GameInstance::reset_to_original_model() noexcept {
     else {
         GB_reset(&this->gameboy);
     }
+}
+
+bool GameInstance::break_and_trace_results_ready() MAKE_GETTER(this->break_and_trace_results_ready_no_mutex())
+
+bool GameInstance::break_and_trace_results_ready_no_mutex() const noexcept {
+    return (this->break_and_trace_result.size() > 1) || (this->break_and_trace_result.size() == 1 && this->current_break_and_trace_remaining == 0);
 }
