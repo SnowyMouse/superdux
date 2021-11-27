@@ -33,9 +33,10 @@ private:
     struct PaletteViewData {
         class PaletteViewDataWidget;
         PaletteViewDataWidget *widget;
-        QLabel *name_label = nullptr;
+        QLabel *name_label = nullptr; // label if on VRAM viewer palette tab
         QWidget *colors[4];
         QLabel *color_text[4];
+        bool cgb = true; // used to determine if we last updated this for a CGB color or not (so we know if we showed 4 numbers or 1 and if it might need updated)
         std::uint32_t current_palette[4];
         std::uint16_t raw_colors[4];
     };

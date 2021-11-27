@@ -120,9 +120,9 @@ private:
 void VRAMViewer::update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index, const std::uint16_t *raw_colors) {
     auto *new_palette = this->window->get_instance().get_palette(type, index);
 
-    if(std::memcmp(new_palette, palette.current_palette, sizeof(palette.current_palette)) != 0 || (raw_colors != nullptr && std::memcmp(raw_colors, palette.raw_colors, sizeof(palette.raw_colors)) != 0) || this->was_cgb_colors != this->cgb_colors) {
+    if(std::memcmp(new_palette, palette.current_palette, sizeof(palette.current_palette)) != 0 || (raw_colors != nullptr && std::memcmp(raw_colors, palette.raw_colors, sizeof(palette.raw_colors)) != 0) || palette.cgb != this->cgb_colors || this->was_cgb_colors != this->cgb_colors) {
         std::memcpy(palette.current_palette, new_palette, sizeof(palette.current_palette));
-
+        palette.cgb = this->cgb_colors;
         if(raw_colors != nullptr) {
             std::memcpy(palette.raw_colors, raw_colors, sizeof(palette.raw_colors));
         }
