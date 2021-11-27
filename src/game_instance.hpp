@@ -683,6 +683,20 @@ public: // all public functions assume the mutex is not locked
      */
     void get_raw_palette(GB_palette_type_t type, std::size_t palette, std::uint16_t *output) noexcept;
 
+    /**
+     * Get whether or not the instance is a Game Boy Color
+     *
+     * @return true if CGB in CGB mode
+     */
+    bool is_game_boy_color() noexcept;
+
+    /**
+     * Get whether or not the instance is a Game Boy Color in CGB mode
+     *
+     * @return true if CGB in CGB mode
+     */
+    bool is_game_boy_color_in_cgb_mode() noexcept;
+
     
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols

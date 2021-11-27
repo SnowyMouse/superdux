@@ -130,9 +130,18 @@ uint16_t get_gb_breakpoint_address(const struct GB_gameboy_s *gb, uint32_t bt) {
 }
 
 static const uint32_t PALETTE_NONE[4] = { 0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000 };
-static const uint32_t PALETTE_FLIPPED[4] = { 0xFF000000, 0xFF555555, 0xFFAAAAAA, 0xFFFFFFFF };
+static const uint32_t PALETTE_ZERO[4] = {0,0,0,0};
 
-const uint32_t *get_gb_palette(const struct GB_gameboy_s *gb, GB_palette_type_t palette_type, unsigned char palette_index) {
+const uint32_t *get_gb_palette(struct GB_gameboy_s *gb, GB_palette_type_t palette_type, unsigned char palette_index) {
+    if(!GB_is_cgb(gb)) {
+        if(palette_type == GB_PALETTE_BACKGROUND && palette_index > 0) {
+            return PALETTE_ZERO;
+        }
+        else if(palette_type == GB_PALETTE_OAM && palette_index > 1) {
+            return PALETTE_ZERO;
+        }
+    }
+
     const uint32_t *palette;
 
     switch(palette_type) {

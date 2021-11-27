@@ -120,8 +120,12 @@ private:
 void VRAMViewer::update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index, const std::uint16_t *raw_colors) {
     auto *new_palette = this->window->get_instance().get_palette(type, index);
 
-    if(std::memcmp(new_palette, palette.current_palette, sizeof(palette.current_palette)) != 0) {
+    if(std::memcmp(new_palette, palette.current_palette, sizeof(palette.current_palette)) != 0 || (raw_colors != nullptr && std::memcmp(raw_colors, palette.raw_colors, sizeof(palette.raw_colors)) != 0) || this->was_cgb_colors != this->cgb_colors) {
         std::memcpy(palette.current_palette, new_palette, sizeof(palette.current_palette));
+
+        if(raw_colors != nullptr) {
+            std::memcpy(palette.raw_colors, raw_colors, sizeof(palette.raw_colors));
+        }
 
         auto format_background_color_for_palette = [](const std::uint32_t &p, QWidget *w) {
             std::uint8_t b = (p & 0xFF);
@@ -139,7 +143,12 @@ void VRAMViewer::update_palette(PaletteViewData &palette, GB_palette_type_t type
             // Format the labels if needed
             if(raw_colors != nullptr) {
                 char text[8] = {};
-                std::snprintf(text, sizeof(text), "$%04x ", raw_colors[p]);
+                if(this->cgb_colors) {
+                    std::snprintf(text, sizeof(text), "$%04x ", raw_colors[p]);
+                }
+                else {
+                    std::snprintf(text, sizeof(text), "$%01x    ", raw_colors[p]);
+                }
                 palette.color_text[p]->setText(text);
             }
         }
@@ -474,8 +483,8 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
         // Label
         char text[256];
         std::snprintf(text, sizeof(text), "%s %zu", title, i);
-        auto *label = new QLabel(text, gb_palette_view_frame);
-        gb_palette_view_frame_layout->addWidget(label, palette_row_count, 0);
+        view_data.name_label = new QLabel(text, gb_palette_view_frame);
+        gb_palette_view_frame_layout->addWidget(view_data.name_label, palette_row_count, 0);
 
         // Set up the actual widgets
         initialize_palette(view_data, gb_palette_view_frame, true, type, i)->setContentsMargins(0, (i == 0 && type == GB_palette_type_t::GB_PALETTE_BACKGROUND) ? 0 : 5, 0, 5); // have 5 px spacing on bottom and top (0 px spacing on top if first BG palette)
@@ -833,7 +842,9 @@ void VRAMViewer::redraw_palette() noexcept {
     }
 
     std::uint16_t buffer[4];
+
     auto &instance = this->window->get_instance();
+    this->cgb_colors = instance.is_game_boy_color();
 
     for(std::size_t i = 0; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
         instance.get_raw_palette(GB_palette_type_t::GB_PALETTE_BACKGROUND, i, buffer);
@@ -844,6 +855,18 @@ void VRAMViewer::redraw_palette() noexcept {
         this->update_palette(this->gb_palette_oam[i], GB_palette_type_t::GB_PALETTE_OAM, i, buffer);
     }
 
+    // Do we "disable" the CGB-only colors?
+    if(this->cgb_colors != this->was_cgb_colors) {
+        for(std::size_t i = 1; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
+            this->gb_palette_background[i].widget->setEnabled(this->cgb_colors);
+            this->gb_palette_background[i].name_label->setEnabled(this->cgb_colors);
+        }
+        for(std::size_t i = 2; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
+            this->gb_palette_oam[i].widget->setEnabled(this->cgb_colors);
+            this->gb_palette_oam[i].name_label->setEnabled(this->cgb_colors);
+        }
+    }
+
     // if we're mousing over a palette, do this
     if(this->moused_over_palette.has_value()) {
         char str[256];
@@ -851,7 +874,12 @@ void VRAMViewer::redraw_palette() noexcept {
 
         int k = 0;
         for(int i = 0; i < 4; i++) {
-            k += std::snprintf(str + k, sizeof(str) - k, "Color %i: $%04x (Red: $%02x, Green: $%02x, Blue: $%02x)", i, buffer[i], buffer[i] & 0x1F, (buffer[i] >> 5) & 0x1F, (buffer[i] >> 10) & 0x1F);
+            if(this->cgb_colors) {
+                k += std::snprintf(str + k, sizeof(str) - k, "Color %i: $%04x (Red: $%02x, Green: $%02x, Blue: $%02x)", i, buffer[i], buffer[i] & 0x1F, (buffer[i] >> 5) & 0x1F, (buffer[i] >> 10) & 0x1F);
+            }
+            else {
+                k += std::snprintf(str + k, sizeof(str) - k, "Shade %i: $%01x", i, buffer[i]);
+            }
             if(i != 3) {
                 str[k++] = '\n';
                 str[k] = 0;
@@ -864,6 +892,8 @@ void VRAMViewer::redraw_palette() noexcept {
     else {
         this->mouse_over_palette_label->setText("Mouse over a color for more information.");
     }
+
+    this->was_cgb_colors = this->cgb_colors;
 }
 
 void VRAMViewer::show_info_for_palette(std::optional<GB_palette_type_t> palette, std::size_t index) {

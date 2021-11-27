@@ -1330,16 +1330,30 @@ void GameInstance::get_raw_palette(GB_palette_type_t type, std::size_t palette, 
 
     // No.
     assert(type == GB_palette_type_t::GB_PALETTE_BACKGROUND || type == GB_palette_type_t::GB_PALETTE_OAM);
-    assert(palette <= 8);
+    assert(palette < 8);
 
-    // Get the color data
-    std::size_t size;
-    auto *direct_access = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, type == GB_palette_type_t::GB_PALETTE_BACKGROUND ? GB_direct_access_t::GB_DIRECT_ACCESS_BGP : GB_direct_access_t::GB_DIRECT_ACCESS_OBP, &size, nullptr));
-    assert(size >= sizeof(*output) * 4 * 8);
-    direct_access += sizeof(*output) * 4 * palette;
+    if(GB_is_cgb(&this->gameboy)) {
+        // Get the color data
+        std::size_t size;
+        auto *direct_access = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, type == GB_palette_type_t::GB_PALETTE_BACKGROUND ? GB_direct_access_t::GB_DIRECT_ACCESS_BGP : GB_direct_access_t::GB_DIRECT_ACCESS_OBP, &size, nullptr));
+        assert(size >= sizeof(*output) * 4 * 8);
+        direct_access += sizeof(*output) * 4 * palette;
 
-    for(std::size_t i = 0; i < 4; i++) {
-        output[i] = reinterpret_cast<std::uint16_t *>(direct_access)[i]; // todo: figure out if this is little endian or native endian. if it's little endian, convert to native endian
+        for(std::size_t i = 0; i < 4; i++) {
+            output[i] = reinterpret_cast<std::uint16_t *>(direct_access)[i];
+        }
+    }
+    else {
+        std::uint8_t p = 0;
+        if(type == GB_palette_type_t::GB_PALETTE_BACKGROUND && palette == 0) {
+            p = GB_read_memory(&this->gameboy, 0xFF47);
+        }
+        else if(type == GB_palette_type_t::GB_PALETTE_OAM && palette < 2) {
+            p = GB_read_memory(&this->gameboy, 0xFF48 + palette);
+        }
+        for(unsigned int i = 0; i < 4; i++) {
+            output[i] = (p >> (2 * i)) & 0b11;
+        }
     }
 
     this->mutex.unlock();
@@ -1363,3 +1377,6 @@ bool GameInstance::break_and_trace_results_ready() MAKE_GETTER(this->break_and_t
 bool GameInstance::break_and_trace_results_ready_no_mutex() const noexcept {
     return (this->break_and_trace_result.size() > 1) || (this->break_and_trace_result.size() == 1 && this->current_break_and_trace_remaining == 0);
 }
+
+bool GameInstance::is_game_boy_color() noexcept MAKE_GETTER(GB_is_cgb(&this->gameboy))
+bool GameInstance::is_game_boy_color_in_cgb_mode() noexcept MAKE_GETTER(GB_is_cgb_in_cgb_mode(&this->gameboy))

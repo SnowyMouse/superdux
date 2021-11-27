@@ -33,9 +33,11 @@ private:
     struct PaletteViewData {
         class PaletteViewDataWidget;
         PaletteViewDataWidget *widget;
+        QLabel *name_label = nullptr;
         QWidget *colors[4];
         QLabel *color_text[4];
         std::uint32_t current_palette[4];
+        std::uint16_t raw_colors[4];
     };
     void update_palette(PaletteViewData &palette, GB_palette_type_t type, std::size_t index, const std::uint16_t *raw_colors = nullptr);
 
@@ -109,6 +111,9 @@ private:
     std::size_t moused_over_palette_index;
 
     void redraw_palette() noexcept;
+
+    bool cgb_colors = false;
+    bool was_cgb_colors = true;
 };
 
 #endif
