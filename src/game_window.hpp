@@ -146,7 +146,7 @@ private:
         GameBoySGB2,
         GameBoy_END
     };
-    GameBoyType gb_type = GameBoyType::GameBoyGB;
+    GameBoyType gb_type = GameBoyType::GameBoyGBC;
 
     GB_model_t gb_rev = GB_model_t::GB_MODEL_DMG_B;
     GB_model_t gbc_rev = GB_model_t::GB_MODEL_CGB_E;
