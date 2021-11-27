@@ -523,7 +523,9 @@ void VRAMViewer::refresh_view() {
         return;
     }
 
+    this->cgb_colors = this->window->get_instance().is_game_boy_color();
     this->redraw_tileset_palette();
+    this->was_cgb_colors = this->cgb_colors;
 }
 
 void VRAMViewer::redraw_tileset_palette() noexcept {
@@ -656,6 +658,10 @@ void VRAMViewer::redraw_tilemap() noexcept {
 }
 
 void VRAMViewer::redraw_tileset() noexcept {
+    if(this->cgb_colors != this->was_cgb_colors && !this->cgb_colors) {
+        std::memset(this->gb_tileset_image_data, 0, sizeof(this->gb_tileset_image_data)); // initialize this region so we don't see uninitialized/unused data such as if we switch between CGB and DMG
+    }
+
     auto type = static_cast<GB_palette_type_t>(this->tileset_palette_type->currentData().toInt());
 
     auto &instance = this->window->get_instance();
@@ -844,7 +850,6 @@ void VRAMViewer::redraw_palette() noexcept {
     std::uint16_t buffer[4];
 
     auto &instance = this->window->get_instance();
-    this->cgb_colors = instance.is_game_boy_color();
 
     for(std::size_t i = 0; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
         instance.get_raw_palette(GB_palette_type_t::GB_PALETTE_BACKGROUND, i, buffer);
@@ -892,8 +897,6 @@ void VRAMViewer::redraw_palette() noexcept {
     else {
         this->mouse_over_palette_label->setText("Mouse over a color for more information.");
     }
-
-    this->was_cgb_colors = this->cgb_colors;
 }
 
 void VRAMViewer::show_info_for_palette(std::optional<GB_palette_type_t> palette, std::size_t index) {
