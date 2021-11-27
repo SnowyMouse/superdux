@@ -1,5 +1,7 @@
 # Kamonegi
 
+![duck with onion](icon/kamonegi_shadow.png)
+
 Kamonegi is a Qt-based interface of [SameBoy], a free and accurate Game Boy and
 Game Boy Color emulator.
 
