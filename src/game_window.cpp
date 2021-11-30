@@ -954,7 +954,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
                     }
                 }
                 else {
-                    message += "This will NOT load on real hardware with the given configuration, and it will likely crash the emulator core.";
+                    message += "This will NOT load on real hardware with the given configuration, and it will likely crash if it's not a Game Boy ROM.";
                 }
 
                 // Want to load anyway?
