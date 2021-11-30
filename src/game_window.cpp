@@ -958,7 +958,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
                 }
 
                 // Want to load anyway?
-                message += "\n\nWould you like to try to load this ROM anyway?\n";
+                message += "\n\nWould you like to try to load this ROM anyway?";
 
                 QMessageBox warning(QMessageBox::Icon::Warning, title, message, static_cast<QMessageBox::StandardButtons>(QMessageBox::StandardButton::Cancel) | QMessageBox::StandardButton::Ok);
 
