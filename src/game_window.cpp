@@ -961,21 +961,9 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
                 message += "\n\nWould you like to try to load this ROM anyway?\n";
 
                 QMessageBox warning(QMessageBox::Icon::Warning, title, message, static_cast<QMessageBox::StandardButtons>(QMessageBox::StandardButton::Cancel) | QMessageBox::StandardButton::Ok);
-                QCheckBox *cb = new QCheckBox("Don't show this again", &warning);
-
-                warning.setCheckBox(cb);
 
                 if(warning.exec() != QMessageBox::StandardButton::Ok) {
                     return;
-                }
-
-                if(cb->isChecked()) {
-                    if(corrupt) {
-                        integrity_check_corrupt = false;
-                    }
-                    if(incompatible) {
-                        integrity_check_compatible = false;
-                    }
                 }
             }
         }
