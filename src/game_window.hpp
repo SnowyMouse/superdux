@@ -71,6 +71,9 @@ private:
     QAction *save_sram_now;
     QMenu *gameboy_model_menu;
     std::vector<QAction *> gb_model_actions;
+
+    bool integrity_check_corrupt = true;
+    bool integrity_check_compatible = true;
     
     // Audio settings
     unsigned int sample_count = 1024; // using 1024 as the default instead of 0 is deliberate - SDL sometimes defaults to 4096 which has terrible audio delay

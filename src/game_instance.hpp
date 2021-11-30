@@ -74,16 +74,26 @@ public: // all public functions assume the mutex is not locked
      * @return audio is enabled
      */
     bool is_audio_enabled() noexcept;
-    
+
     /**
      * Load the ROM at the given path
-     * 
+     *
      * @param  rom_path    ROM path to load
      * @param  sram_path   optional SRAM path to load
      * @param  symbol_path optional symbol path to load
      * @return             0 on success, non-zero on failure
      */
     int load_rom(const std::filesystem::path &rom_path, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept;
+
+    /**
+     * Load the ROM with the given buffer
+     *
+     * @param  rom_data    ROM data to load
+     * @param  rom_size    ROM size
+     * @param  sram_path   optional SRAM path to load
+     * @param  symbol_path optional symbol path to load
+     */
+    void load_rom(const std::byte *rom_data, const std::size_t rom_size, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept;
     
     /**
      * Load the ISX at the given path
@@ -866,6 +876,12 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Switch back to the original model if we need to. Otherwise, do a simple reset.
     void reset_to_original_model() noexcept;
+
+    // Begin loading ROM (lock mutex, reset values)
+    void begin_loading_rom() noexcept;
+
+    // Clear all the button states
+    void clear_all_button_states_no_mutex() noexcept;
 };
 
 

@@ -455,8 +455,9 @@ void GameInstance::end_game_loop() noexcept {
 
 void GameInstance::set_button_state(GB_key_t button, bool pressed) MAKE_SETTER(GB_set_key_state(&this->gameboy, button, pressed))
 
-void GameInstance::clear_all_button_states() {
-    this->mutex.lock();
+void GameInstance::clear_all_button_states() MAKE_SETTER(this->clear_all_button_states_no_mutex());
+
+void GameInstance::clear_all_button_states_no_mutex() noexcept {
     GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_A, false);
     GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_B, false);
     GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, false);
@@ -465,7 +466,6 @@ void GameInstance::clear_all_button_states() {
     GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, false);
     GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_START, false);
     GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_SELECT, false);
-    this->mutex.unlock();
 }
 
 void GameInstance::get_dimensions(std::uint32_t &width, std::uint32_t &height) noexcept {
@@ -662,21 +662,7 @@ void GameInstance::assign_work_buffer() noexcept {
 }
 
 int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept {
-    this->mutex.lock();
-
-    // Reset this
-    this->rumble = 0.0;
-    this->rewinding = false;
-
-    // Pause SDL audio
-    this->reset_audio();
-    
-    // Reset the gameboy
-    this->reset_to_original_model();
-    
-    // Reset frame times
-    this->frame_time_index = 0;
-    this->last_frame_time = clock::now();
+    this->begin_loading_rom();
     
     // Load the ROM
     int result = GB_load_rom(&this->gameboy, rom_path.string().c_str());
@@ -690,14 +676,43 @@ int GameInstance::load_rom(const std::filesystem::path &rom_path, const std::opt
     return result;
 }
 
-int GameInstance::load_isx(const std::filesystem::path &isx_path, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept {
+void GameInstance::begin_loading_rom() noexcept {
+    // Lock this guy
     this->mutex.lock();
 
-    // Pause the audio
+    // Reset this
+    this->rumble = 0.0;
+    this->rewinding = false;
+    this->clear_all_button_states_no_mutex();
+
+    // Reset break and trace
+    this->current_break_and_trace_remaining = 0;
+    this->break_and_trace_result.clear();
+    this->break_and_trace_breakpoints.clear();
+
+    // Pause SDL audio
     this->reset_audio();
-    
+
     // Reset the gameboy
     this->reset_to_original_model();
+
+    // Reset frame times
+    this->frame_time_index = 0;
+    this->last_frame_time = clock::now();
+}
+
+void GameInstance::load_rom(const std::byte *rom_data, const std::size_t rom_size, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept {
+    this->begin_loading_rom();
+
+    // Load the ROM
+    GB_load_rom_from_buffer(&this->gameboy, reinterpret_cast<const std::uint8_t *>(rom_data), rom_size);
+    this->load_save_and_symbols(sram_path, symbol_path);
+
+    this->mutex.unlock();
+}
+
+int GameInstance::load_isx(const std::filesystem::path &isx_path, const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path) noexcept {
+    this->begin_loading_rom();
     
     // Load the ISX
     int result = GB_load_isx(&this->gameboy, isx_path.string().c_str());

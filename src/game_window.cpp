@@ -15,6 +15,8 @@
 #include <QGraphicsDropShadowEffect>
 #include <chrono>
 #include <QMessageBox>
+#include <QCheckBox>
+#include <bit>
 #include <QMimeData>
 #include "edit_advanced_game_boy_model_dialog.hpp"
 #include "edit_speed_control_settings_dialog.hpp"
@@ -44,6 +46,9 @@
 #define SETTINGS_REWIND_LENGTH "rewind_length"
 #define SETTINGS_MAX_TURBO "max_turbo"
 #define SETTINGS_MAX_SLOWMO "max_slowmo"
+
+#define SETTINGS_INTEGRITY_CHECK_CORRUPT "integrity_check_corrupt"
+#define SETTINGS_INTEGRITY_CHECK_COMPATIBLE "integrity_check_compatible"
 
 #define SETTINGS_TURBO_ENABLED "turbo_enabled"
 #define SETTINGS_SLOWMO_ENABLED "slowmo_enabled"
@@ -309,6 +314,9 @@ GameWindow::GameWindow() {
     LOAD_BOOL_SETTING_VALUE(this->gba_allow_custom_boot_rom, SETTINGS_GBA_ALLOW_CUSTOM_BOOT_ROM);
     LOAD_BOOL_SETTING_VALUE(this->sgb_allow_custom_boot_rom, SETTINGS_SGB_ALLOW_CUSTOM_BOOT_ROM);
     LOAD_BOOL_SETTING_VALUE(this->sgb2_allow_custom_boot_rom, SETTINGS_SGB2_ALLOW_CUSTOM_BOOT_ROM);
+
+    LOAD_BOOL_SETTING_VALUE(this->integrity_check_corrupt, SETTINGS_INTEGRITY_CHECK_CORRUPT);
+    LOAD_BOOL_SETTING_VALUE(this->integrity_check_compatible, SETTINGS_INTEGRITY_CHECK_COMPATIBLE);
 
     LOAD_BOOL_SETTING_VALUE(this->sgb_border, SETTINGS_SGB_BORDER);
     LOAD_BOOL_SETTING_VALUE(this->sgb2_border, SETTINGS_SGB2_BORDER);
@@ -791,15 +799,188 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     // Make path
     auto path = std::filesystem::path(rom_path);
     this->save_path = std::filesystem::path(path).replace_extension(".sav");
+    auto sym_path = std::filesystem::path(path).replace_extension(".sym");
     
     // Success?
-    int r;
+    int r = 0;
 
     if(path.extension() == ".isx") {
-        r = this->instance->load_isx(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
+        r = this->instance->load_isx(path, save_path, sym_path);
     }
     else {
-        r = this->instance->load_rom(path, save_path, std::filesystem::path(path).replace_extension(".sym"));
+        FILE *f = std::fopen(rom_path, "rb");
+
+        if(!f) {
+            this->show_status_text("Error: Failed to open ROM");
+            print_debug_message("fopen(): Could not open %s\n", rom_path);
+            return;
+        }
+
+        std::vector<std::uint8_t> rom_data;
+        std::fseek(f, 0, SEEK_END);
+        auto l = std::ftell(f);
+
+        // Allocate space for the ROM
+        try {
+            rom_data.resize(l);
+        }
+        catch(std::exception &e) {
+            this->show_status_text("Error: Failed to read ROM");
+            print_debug_message("std::vector::resize(): Could not resize for %li bytes: %s\n", rom_path, l, e.what());
+            std::fclose(f);
+            return;
+        }
+
+        std::fseek(f, 0, SEEK_SET);
+
+        // Read it
+        if(std::fread(rom_data.data(), rom_data.size(), 1, f) != 1) {
+            this->show_status_text("Error: Failed to read ROM");
+            print_debug_message("fread(): Could not read %s\n", rom_path);
+            std::fclose(f);
+            return;
+        }
+
+        std::fclose(f);
+
+        // Is it even valid?
+        if(rom_data.size() < 0x150) {
+            this->show_status_text("Error: Invalid ROM");
+            print_debug_message("ROM %s is too small (%zu < %zu)\n", rom_path, rom_data.size(), static_cast<std::size_t>(0x150));
+            std::fclose(f);
+            return;
+        }
+
+        // Validate some things - https://gbdev.io/pandocs/The_Cartridge_Header.html
+        if(integrity_check_corrupt || integrity_check_compatible) {
+            bool valid_header_checksum;
+            bool valid_nintendo_logo;
+            bool valid_nintendo_logo_cgb;
+            bool valid_cartridge_checksum;
+            bool allowed_cgb_only;
+            bool would_load_on_actual_hardware;
+
+            bool corrupt;
+            bool incompatible;
+
+            // Figure out the header checksum
+            std::uint8_t x = 0;
+            for(std::size_t i = 0x134; i < 0x14D; i++) {
+                x = x - rom_data[i] - 1;
+            }
+            valid_header_checksum = x == rom_data[0x14D];
+
+            // Now check the Nintendo logo
+            static constexpr const std::uint8_t logo_bytes[] = { 0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E };
+            valid_nintendo_logo = std::memcmp(&rom_data[0x104], logo_bytes, sizeof(logo_bytes)) == 0;
+            valid_nintendo_logo_cgb = std::memcmp(&rom_data[0x104], logo_bytes, sizeof(logo_bytes) / 2) == 0;
+
+            // Now check the global checksum
+            std::uint16_t global_checksum = 0;
+            for(std::size_t i = 0; i < 0x14E; i++) {
+                global_checksum += rom_data[i];
+            }
+            for(std::size_t i = 0x150; i < rom_data.size(); i++) {
+                global_checksum += rom_data[i];
+            }
+
+            // Needs to be big or little endian to do this check
+            std::uint16_t expected_global_checksum = *reinterpret_cast<const std::uint16_t *>(&rom_data[0x14E]);
+            static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big);
+
+            // The checksum is stored in big endian so it needs swapped
+            if(std::endian::native == std::endian::little) {
+                expected_global_checksum = ((expected_global_checksum & 0xFF) << 8) | ((expected_global_checksum & 0xFF00) >> 8);
+            }
+            valid_cartridge_checksum = expected_global_checksum == global_checksum;
+            allowed_cgb_only = this->instance->is_game_boy_color() || !(rom_data[0x143] & 0xC0);
+
+            // Would this load on real hardware? Or is it also corrupt?
+            would_load_on_actual_hardware = valid_header_checksum && (this->gb_type == GameBoyType::GameBoyGBC ? valid_nintendo_logo_cgb : valid_nintendo_logo);
+            corrupt = !(valid_nintendo_logo && valid_cartridge_checksum && valid_header_checksum);
+            incompatible = !(allowed_cgb_only && would_load_on_actual_hardware);
+
+            // Do we fail?
+            bool fails = false;
+            if(integrity_check_corrupt) {
+                fails = fails || corrupt;
+            }
+            if(integrity_check_compatible) {
+                fails = fails || incompatible;
+            }
+
+            // If we failed, let's figure out why and show a message to the user
+            if(fails) {
+                // First build our message
+                QString message;
+                if(!allowed_cgb_only) {
+                    message += "- The ROM explicitly does not support non-Game Boy Color models\n";
+                }
+                if(!valid_header_checksum) {
+                    message += "- The header checksum is wrong\n";
+                }
+                if(!valid_nintendo_logo) {
+                    if(valid_nintendo_logo_cgb) {
+                        message += "- The second half of the header logo is wrong\n";
+                    }
+                    else {
+                        message += "- The entire header logo is wrong\n";
+                    }
+                }
+                if(!valid_cartridge_checksum) {
+                    message += "- The cartridge checksum is wrong\n";
+                }
+
+                // We shouldn't say the ROM is corrupt if it (probably) isn't
+                QString title;
+                message = " These issues were found:\n\n" + message;
+                if(corrupt) {
+                    message = "The ROM appears to be corrupt." + message;
+                    title = "ROM Appears Corrupt";
+                }
+                else {
+                    message = "The ROM appears to be invalid." + message;
+                    title = "ROM Appears Invalid";
+                }
+
+                // Warn what may happen if it is loaded
+                message += "\n";
+                if(would_load_on_actual_hardware) {
+                    if(!corrupt) {
+                        message += "This will technically load on actual hardware with the given configuration, but it may have issues or not work fully.";
+                    }
+                    else {
+                        message += "This will technically load on actual hardware with the given configuration, but it may have issues or not work correctly.";
+                    }
+                }
+                else {
+                    message += "This will NOT load on real hardware with the given configuration, and it will likely crash the emulator core.";
+                }
+
+                // Want to load anyway?
+                message += "\n\nWould you like to try to load this ROM anyway?\n";
+
+                QMessageBox warning(QMessageBox::Icon::Warning, title, message, static_cast<QMessageBox::StandardButtons>(QMessageBox::StandardButton::Cancel) | QMessageBox::StandardButton::Ok);
+                QCheckBox *cb = new QCheckBox("Don't show this again", &warning);
+
+                warning.setCheckBox(cb);
+
+                if(warning.exec() != QMessageBox::StandardButton::Ok) {
+                    return;
+                }
+
+                if(cb->isChecked()) {
+                    if(corrupt) {
+                        integrity_check_corrupt = false;
+                    }
+                    if(incompatible) {
+                        integrity_check_compatible = false;
+                    }
+                }
+            }
+        }
+
+        this->instance->load_rom(reinterpret_cast<const std::byte *>(rom_data.data()), rom_data.size(), save_path, sym_path);
     }
 
     // Success!
@@ -1307,6 +1488,8 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SLOWMO_ENABLED, this->slowmo_enabled);
     settings.setValue(SETTINGS_TURBO_ENABLED, this->turbo_enabled);
     settings.setValue(SETTINGS_SCALING_FILTER, this->scaling_filter);
+    settings.setValue(SETTINGS_INTEGRITY_CHECK_CORRUPT, this->integrity_check_corrupt);
+    settings.setValue(SETTINGS_INTEGRITY_CHECK_COMPATIBLE, this->integrity_check_compatible);
 
     settings.setValue(SETTINGS_GB_BOOT_ROM, this->gb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_GBC_BOOT_ROM, this->gbc_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
