@@ -458,14 +458,7 @@ void GameInstance::set_button_state(GB_key_t button, bool pressed) MAKE_SETTER(G
 void GameInstance::clear_all_button_states() MAKE_SETTER(this->clear_all_button_states_no_mutex());
 
 void GameInstance::clear_all_button_states_no_mutex() noexcept {
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_A, false);
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_B, false);
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_UP, false);
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_RIGHT, false);
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_DOWN, false);
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_LEFT, false);
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_START, false);
-    GB_set_key_state(&this->gameboy, GB_key_t::GB_KEY_SELECT, false);
+    GB_set_key_mask(&this->gameboy, static_cast<GB_key_mask_t>(0));
 }
 
 void GameInstance::get_dimensions(std::uint32_t &width, std::uint32_t &height) noexcept {
@@ -1103,7 +1096,7 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
 
 void GameInstance::draw_tilemap(std::uint32_t *destination, GB_map_type_t map_type, GB_tileset_type_t tileset_type) noexcept MAKE_SETTER(GB_draw_tilemap(&this->gameboy, destination, GB_palette_type_t::GB_PALETTE_AUTO, 0, map_type, tileset_type))
 
-std::uint8_t GameInstance::read_memory(std::uint16_t address) noexcept MAKE_GETTER(GB_read_memory(&this->gameboy, address))
+std::uint8_t GameInstance::read_memory(std::uint16_t address) noexcept MAKE_GETTER(GB_safe_read_memory(&this->gameboy, address))
 
 const uint32_t *GameInstance::get_palette(GB_palette_type_t palette_type, unsigned char palette_index) noexcept MAKE_GETTER(get_gb_palette(&this->gameboy, palette_type, palette_index))
 
@@ -1117,7 +1110,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
     bool cgb_mode = GB_is_cgb_in_cgb_mode(&this->gameboy);
 
     // Get the OAM data
-    auto lcdc = GB_read_memory(&this->gameboy, 0xFF40);
+    auto lcdc = GB_safe_read_memory(&this->gameboy, 0xFF40);
     bool double_sprite_height = (lcdc & 0b100) != 0;
     auto oam = this->get_object_attribute_info_without_mutex();
 
@@ -1130,7 +1123,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
     bool sprites_enabled = (lcdc & 0b10);
     bool bg_window_enabled = cgb_mode || (lcdc & 0b1);
     bool window_enabled = (lcdc & 0b100000) && bg_window_enabled;
-    auto window_x = GB_read_memory(&this->gameboy, 0xFF4B), window_y = GB_read_memory(&this->gameboy, 0xFF4A);
+    auto window_x = GB_safe_read_memory(&this->gameboy, 0xFF4B), window_y = GB_safe_read_memory(&this->gameboy, 0xFF4A);
 
     const auto *background = (lcdc & 0b1000) ? tile_9C00 : tile_9800;
     const auto *background_attributes = background + 0x2000;
@@ -1255,7 +1248,7 @@ GameInstance::TilesetInfo GameInstance::get_tileset_info_without_mutex() noexcep
 GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info() noexcept MAKE_GETTER(this->get_object_attribute_info_without_mutex())
 
 GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_without_mutex() noexcept {
-    std::uint8_t lcdc = GB_read_memory(&this->gameboy, 0xFF40);
+    std::uint8_t lcdc = GB_safe_read_memory(&this->gameboy, 0xFF40);
     auto cgb_mode = GB_is_cgb_in_cgb_mode(&this->gameboy);
     std::uint8_t sprite_height = (lcdc & 0b100) != 0 ? 16 : 8;
     bool sprites_enabled = (lcdc & 0b10);
@@ -1361,10 +1354,10 @@ void GameInstance::get_raw_palette(GB_palette_type_t type, std::size_t palette, 
     else {
         std::uint8_t p = 0;
         if(type == GB_palette_type_t::GB_PALETTE_BACKGROUND && palette == 0) {
-            p = GB_read_memory(&this->gameboy, 0xFF47);
+            p = GB_safe_read_memory(&this->gameboy, 0xFF47);
         }
         else if(type == GB_palette_type_t::GB_PALETTE_OAM && palette < 2) {
-            p = GB_read_memory(&this->gameboy, 0xFF48 + palette);
+            p = GB_safe_read_memory(&this->gameboy, 0xFF48 + palette);
         }
         for(unsigned int i = 0; i < 4; i++) {
             output[i] = (p >> (2 * i)) & 0b11;
