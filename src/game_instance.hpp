@@ -796,7 +796,7 @@ private: // all private functions assume the mutex is locked by the caller
     std::vector<std::int16_t> sample_buffer;
     std::atomic<std::uint32_t> current_sample_rate = 0;
     bool force_mono = false;
-    int volume = 100;
+    int volume = 50;
     double volume_scale = 1.0;
     
     // Set whether or not to retain logs into a buffer instead of printing to the console
