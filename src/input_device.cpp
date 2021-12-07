@@ -193,8 +193,8 @@ void InputDeviceGamepad::handle_input(SDL_GameControllerAxis type, double value)
 }
 
 void InputDeviceKeyboard::load_sane_defaults() {
-    this->settings[Input_A] = {Qt::Key_X};
-    this->settings[Input_B] = {Qt::Key_Z};
+    this->settings[Input_A] = {Qt::Key_X, Qt::Key_S}; // based on VBA/SameBoy SDL and BGB, respectively
+    this->settings[Input_B] = {Qt::Key_Z, Qt::Key_A}; // based on VBA/SameBoy SDL and BGB, respectively
     this->settings[Input_Start] = {Qt::Key_Return};
     this->settings[Input_Select] = {Qt::Key_Shift};
     this->settings[Input_Left] = {Qt::Key_Left};
