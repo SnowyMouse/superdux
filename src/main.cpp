@@ -4,6 +4,12 @@
 #include <SDL2/SDL.h>
 #include <QIcon>
 
+#ifdef _WIN32
+#include <QtPlugin>
+Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
+Q_IMPORT_PLUGIN(QWindowsVistaStylePlugin)
+#endif
+
 int main(int argc, char **argv) {
     if(argc > 2) {
         std::printf("Usage: %s [path-to-rom]\n", argv[0]);

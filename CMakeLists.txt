@@ -11,7 +11,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(SDL2 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
-find_package(Qt5 COMPONENTS Widgets)
+# We only support Qt5 if not on Windows as it's unnecessary for Windows to have Qt 5 (todo: remove Qt5 support when KDE drops it)
+if(NOT WIN32)
+    find_package(Qt5 COMPONENTS Widgets)
+endif()
+
+if(WIN32)
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lsetupapi -lssp")
+    set(CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES} -lsetupapi -lssp")
+    set(GETLINE_IF_NEEDED "src/getline.cpp")
+endif()
+
 find_package(Qt6 COMPONENTS Widgets)
 
 include("sameboy.cmake")
@@ -29,6 +39,8 @@ set(KAMONEGI_FILES
     src/input_device.cpp
     src/main.cpp
     src/vram_viewer.cpp
+
+    ${GETLINE_IF_NEEDED}
 )
 
 # These are shared regardless of Qt version
@@ -71,6 +83,10 @@ macro(make_kamonegi target_name qt_widgets)
 endmacro()
 
 if(${BUILD_QT5_VERSION})
+    if(WIN32)
+        message(FATAL_ERROR "Qt 5 on Windows is not supported for this project")
+    endif()
+
     make_kamonegi(kamonegi-qt5 Qt5::Widgets)
     set_target_properties(kamonegi-qt5
         PROPERTIES
