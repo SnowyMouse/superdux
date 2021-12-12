@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <string>
+#include <cstring>
 
 extern "C" ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
     *n = 0;
@@ -20,8 +21,8 @@ extern "C" ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
     }
 
     free(*lineptr);
-    *lineptr = reinterpret_cast<char *>(calloc(str.size() + 1, 1));
-    memcpy(*lineptr, str.c_str(), str.size());
+    *lineptr = reinterpret_cast<char *>(std::calloc(str.size() + 1, 1));
+    std::memcpy(*lineptr, str.c_str(), str.size());
 
     return *n;
 }
