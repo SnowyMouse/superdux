@@ -154,7 +154,7 @@ public:
         if(d->hasUrls()) {
             auto urls = d->urls();
             if(urls.length() == 1) {
-                auto path = std::filesystem::path(urls[0].path().toStdString());
+                auto path = std::filesystem::path(urls[0].toLocalFile().toStdString());
                 if(path.extension() == ".gb" || path.extension() == ".gbc" || path.extension() == ".isx") {
                     return path;
                 }
