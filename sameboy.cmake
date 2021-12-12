@@ -51,15 +51,20 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12"
     DEPENDS pb12 "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp"
 )
 
-option(USE_CUSTOM_BOOT_ROMS "Use custom boot ROMs in the current directory instead of SameBoy's included boot ROMs" NO)
+option(USE_CUSTOM_BOOT_ROMS "Use custom boot ROMs in the CUSTOM_BOOT_ROMS_DIR directory instead of SameBoy's included boot ROMs" NO)
+set(CUSTOM_BOOT_ROMS_DIR "${CMAKE_CURRENT_BINARY_DIR}/custom-boot-roms" CACHE FILEPATH "Custom boot ROMs to include if USE_CUSTOM_BOOT_ROMS is set to true")
 
 set(BOOT_ROMS_BIN)
 set(BOOT_ROMS_HEADER)
 
 foreach(ROM ${BOOT_ROMS})
-    set(ROM_BIN "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.bin")
+    if(USE_CUSTOM_BOOT_ROMS)
+        set(ROM_BIN "${CUSTOM_BOOT_ROMS_DIR}/${ROM}.bin")
+    else()
+        set(ROM_BIN "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.bin")
+        set(ROM_ASM_DEP "${SAMEBOY_SOURCE_DIR}/BootROMs/${ROM}.asm")
+    endif()
     set(ROM_H "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.h")
-    set(ROM_ASM_DEP "${SAMEBOY_SOURCE_DIR}/BootROMs/${ROM}.asm")
 
     if(USE_CUSTOM_BOOT_ROMS)
         # Check to see if the bin exists
