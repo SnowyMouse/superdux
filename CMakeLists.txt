@@ -11,6 +11,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(SDL2 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
+# Add capitalization for Windows builds
+if(WIN32)
+    set(SUPERDUX_EXE_NAME "SuperDUX")
+
+# Linux should not have capitalization as capital letters are a massive pain to type in bash
+else()
+    set(SUPERDUX_EXE_NAME "superdux")
+endif()
+
 # We only support Qt5 if not on Windows as it's unnecessary for Windows to have Qt 5 (todo: remove Qt5 support when KDE drops it)
 if(NOT WIN32)
     find_package(Qt5 COMPONENTS Widgets)
@@ -92,7 +101,7 @@ if(${BUILD_QT5_VERSION})
     set_target_properties(superdux-qt5
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt5"
-        OUTPUT_NAME "superdux"
+        OUTPUT_NAME "${SUPERDUX_EXE_NAME}"
     )
     set(INSTALL_TARGET "superdux-qt5")
 endif()
