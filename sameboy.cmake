@@ -51,6 +51,8 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12"
     DEPENDS pb12 "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.2bpp"
 )
 
+option(USE_CUSTOM_BOOT_ROMS "Use custom boot ROMs in the current directory instead of SameBoy's included boot ROMs" NO)
+
 set(BOOT_ROMS_BIN)
 set(BOOT_ROMS_HEADER)
 
@@ -58,39 +60,57 @@ foreach(ROM ${BOOT_ROMS})
     set(ROM_BIN "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.bin")
     set(ROM_H "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.h")
     set(ROM_ASM_DEP "${SAMEBOY_SOURCE_DIR}/BootROMs/${ROM}.asm")
-    
-    # ROMs that depend on other sources
-    if(("${ROM}" EQUAL "agb_boot") OR ("${ROM}" EQUAL "cgb_boot_fast"))
-        set(ROM_ASM_DEP
-            ${ROM_ASM_DEP}
-            "${SAMEBOY_SOURCE_DIR}/BootROMs/cgb_boot.asm"
-        )
-    endif()
-    if("${ROM}" EQUAL "sgb2_boot")
-        set(ROM_ASM_DEP
-            ${ROM_ASM_DEP}
-            "${SAMEBOY_SOURCE_DIR}/BootROMs/sgb_boot.asm"
-        )
+
+    if(USE_CUSTOM_BOOT_ROMS)
+        # Check to see if the bin exists
+        if(NOT EXISTS "${ROM_BIN}")
+            message(SEND_ERROR "Can't find '${ROM_BIN}'")
+        endif()
+    else()
+        # ROMs that depend on other sources
+        if(("${ROM}" EQUAL "agb_boot") OR ("${ROM}" EQUAL "cgb_boot_fast"))
+            set(ROM_ASM_DEP
+                ${ROM_ASM_DEP}
+                "${SAMEBOY_SOURCE_DIR}/BootROMs/cgb_boot.asm"
+            )
+        endif()
+        if("${ROM}" EQUAL "sgb2_boot")
+            set(ROM_ASM_DEP
+                ${ROM_ASM_DEP}
+                "${SAMEBOY_SOURCE_DIR}/BootROMs/sgb_boot.asm"
+            )
+        endif()
     endif()
     
     list(APPEND BOOT_ROMS_BIN "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.bin")
     list(APPEND BOOT_ROMS_HEADER "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.h")
     
-    # Resize to this size if needed
-    if(("${ROM}" MATCHES "agb.*") OR ("${ROM}" MATCHES "cgb.*"))
-        set(ROM_SIZE 2304)
+    if(USE_CUSTOM_BOOT_ROMS)
+        # Just convert to a header
+        if(EXISTS "${ROM_BIN}")
+            add_custom_command(OUTPUT "${ROM_H}"
+                COMMAND "Python3::Interpreter" "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${ROM}" "${ROM_BIN}" "${ROM_H}"
+                DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${ROM_BIN}"
+            )
+        endif()
     else()
-        set(ROM_SIZE 256)
+        # Resize to this size if needed
+        if(("${ROM}" MATCHES "agb.*") OR ("${ROM}" MATCHES "cgb.*"))
+            set(ROM_SIZE 2304)
+        else()
+            set(ROM_SIZE 256)
+        endif()
+
+        # Compile, resize, and convert
+        add_custom_command(OUTPUT "${ROM_H}"
+            COMMAND rgbasm -i "${SAMEBOY_SOURCE_DIR}/BootROMs/" -o "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${SAMEBOY_SOURCE_DIR}/BootROMs/${ROM}.asm"
+            COMMAND rgblink -x -o "${ROM_BIN}" "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o"
+
+            COMMAND "Python3::Interpreter" "${CMAKE_CURRENT_SOURCE_DIR}/append.py" "${ROM}" "${ROM_BIN}" "${ROM_SIZE}"
+            COMMAND "Python3::Interpreter" "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${ROM}" "${ROM_BIN}" "${ROM_H}"
+
+            DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12" "${ROM_ASM_DEP}" "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${CMAKE_CURRENT_SOURCE_DIR}/append.py"
+            BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${ROM_BIN}"
+        )
     endif()
-    
-    add_custom_command(OUTPUT "${ROM_H}"
-        COMMAND rgbasm -i "${SAMEBOY_SOURCE_DIR}/BootROMs/" -o "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${SAMEBOY_SOURCE_DIR}/BootROMs/${ROM}.asm"
-        COMMAND rgblink -x -o "${ROM_BIN}" "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o"
-        
-        COMMAND "Python3::Interpreter" "${CMAKE_CURRENT_SOURCE_DIR}/append.py" "${ROM}" "${ROM_BIN}" "${ROM_SIZE}"
-        COMMAND "Python3::Interpreter" "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${ROM}" "${ROM_BIN}" "${ROM_H}"
-        
-        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/SameBoyLogo.pb12" "${ROM_ASM_DEP}" "${CMAKE_CURRENT_SOURCE_DIR}/bin_to_c_header.py" "${CMAKE_CURRENT_SOURCE_DIR}/append.py"
-        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/${ROM}.o" "${ROM_BIN}"
-    )
 endforeach()
