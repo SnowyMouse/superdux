@@ -17,6 +17,10 @@ add_library(sameboy-core STATIC
     ${CORE_FILES}
 )
 
+if((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    target_compile_options(sameboy-core PRIVATE -Wno-multichar -Wno-attributes)
+endif()
+
 # Parse the version
 file(READ "${SAMEBOY_SOURCE_DIR}/version.mk" GB_VERSION_TEXT)
 string(REGEX MATCH "([0-9]+\.)+[0-9]+" GB_VERSION "${GB_VERSION_TEXT}")
