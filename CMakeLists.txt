@@ -110,7 +110,7 @@ if(${BUILD_QT6_VERSION})
     set_target_properties(superdux-qt6
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt6"
-        OUTPUT_NAME "superdux"
+        OUTPUT_NAME "${SUPERDUX_EXE_NAME}"
     )
     set(INSTALL_TARGET "superdux-qt6")
 endif()
