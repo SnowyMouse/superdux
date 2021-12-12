@@ -1034,11 +1034,20 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
     // automatic palette detection (GB_PALETTE_AUTO does the same thing as GB_PALETTE_NONE).
 
     this->mutex.lock();
+    auto is_cgb = GB_is_cgb(&this->gameboy);
 
     // Get the tileset info here
     std::size_t size;
     const auto *tileset = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_direct_access_t::GB_DIRECT_ACCESS_VRAM, &size, nullptr));
-    assert(size > 0x2000);
+
+    // Make sure the sizes are correct
+    if(is_cgb) {
+        assert(size > 0x2000);
+    }
+    else {
+        assert(size >= 0x2000);
+    }
+
     const std::uint8_t *tileset_banks[2] = {tileset, tileset + 0x2000};
 
     // Get the tilset info if we are doing auto
@@ -1057,7 +1066,7 @@ void GameInstance::draw_tileset(std::uint32_t *destination, GB_palette_type_t pa
     static_assert(sizeof(ti.tiles) / sizeof(ti.tiles[0]) == tile_count);
 
     // DMG only has one bank
-    bool ignore_second_tileset_bank = !GB_is_cgb(&this->gameboy);
+    bool ignore_second_tileset_bank = !is_cgb;
 
     // Do the thing
     if(palette_type == GB_palette_type_t::GB_PALETTE_AUTO) {
