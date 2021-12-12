@@ -39,6 +39,7 @@ set(SUPERDUX_FILES
     src/input_device.cpp
     src/main.cpp
     src/vram_viewer.cpp
+    src/settings.cpp
 
     ${GETLINE_IF_NEEDED}
 )

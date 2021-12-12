@@ -12,9 +12,9 @@
 #include <QMouseEvent>
 #include <QFontDatabase>
 #include <QScrollBar>
-#include <QSettings>
 #include <QScrollArea>
 
+#include "settings.hpp"
 #include "game_window.hpp"
 
 #define SETTING_SHOW_GRID "vram_show_grid"
@@ -160,7 +160,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     gb_tileset_image(reinterpret_cast<uchar *>(this->gb_tileset_image_data), GameInstance::GB_TILESET_WIDTH, GameInstance::GB_TILESET_HEIGHT, QImage::Format::Format_ARGB32),
     gb_tileset_grid_image(reinterpret_cast<uchar *>(this->gb_tileset_grid_data), GameInstance::GB_TILESET_WIDTH*2, GameInstance::GB_TILESET_HEIGHT*2, QImage::Format::Format_ARGB32) {
 
-    QSettings settings;
+    auto settings = get_superdux_settings();
 
     auto table_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     table_font.setPixelSize(14);
@@ -513,7 +513,7 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
 }
 
 VRAMViewer::~VRAMViewer() {
-    QSettings settings;
+    auto settings = get_superdux_settings();
     settings.setValue(SETTING_SHOW_VIEWPORT, this->gb_tilemap_show_viewport_box->isChecked());
     settings.setValue(SETTING_SHOW_GRID, this->gb_show_tileset_grid->isChecked());
 }

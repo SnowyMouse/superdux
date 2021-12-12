@@ -1,5 +1,4 @@
-#include <QSettings>
-
+#include "settings.hpp"
 #include "input_device.hpp"
 
 InputDevice::~InputDevice() {}
@@ -7,7 +6,7 @@ InputDevice::~InputDevice() {}
 #define SETTINGS_NAME(name) QString("device_" + name + "_controls")
 
 void InputDevice::save_settings() {
-    QSettings application_settings;
+    auto application_settings = get_superdux_settings();
     
     // Build a map of settings to a list of possible values.
     // This will allow people to bind multiple inputs to multiple results.
@@ -31,7 +30,7 @@ void InputDevice::save_settings() {
 }
 
 void InputDevice::load_settings() {
-    QSettings application_settings;
+    auto application_settings = get_superdux_settings();
     
     auto controls = application_settings.value(SETTINGS_NAME(this->name()), QMap<QString, QVariant> {}).toMap();
     auto controls_keys = controls.keys();

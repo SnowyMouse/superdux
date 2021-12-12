@@ -17,7 +17,6 @@ extern "C" {
 #include <string>
 #include <optional>
 #include <QStringList>
-#include <QSettings>
 #include <QTimer>
 
 #include <thread>
@@ -47,8 +46,7 @@ public:
     GameWindow();
     
     void load_rom(const char *rom_path) noexcept;
-    
-    const QSettings &settings();
+
     std::vector<std::shared_ptr<InputDevice>> get_all_devices();
     
     ~GameWindow();

@@ -1,6 +1,7 @@
 #include "game_window.hpp"
 #include "debugger.hpp"
 #include "edit_controls_dialog.hpp"
+#include "settings.hpp"
 
 #include <QHBoxLayout>
 #include <QTimer>
@@ -257,7 +258,7 @@ bool GameWindow::use_border_for_type(GameBoyType type) const noexcept {
 
 GameWindow::GameWindow() {
     // Load settings
-    QSettings settings;
+    auto settings = get_superdux_settings();
     this->scaling = settings.value(SETTINGS_SCALE, this->scaling).toInt();
     this->show_fps = settings.value(SETTINGS_SHOW_FPS, this->show_fps).toBool();
     auto gb_type_maybe = static_cast<decltype(this->gb_type)>(settings.value(SETTINGS_GB_MODEL, static_cast<int>(this->gb_type)).toInt());
@@ -1452,7 +1453,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
         this->save_if_loaded();
     }
     
-    QSettings settings;
+    auto settings = get_superdux_settings();
     settings.setValue(SETTINGS_VOLUME, this->instance->get_volume());
     settings.setValue(SETTINGS_SCALE, this->scaling);
     settings.setValue(SETTINGS_SHOW_FPS, this->show_fps);
