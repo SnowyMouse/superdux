@@ -858,7 +858,6 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
             bool valid_nintendo_logo;
             bool valid_nintendo_logo_cgb;
             bool valid_cartridge_checksum;
-            bool allowed_cgb_only;
             bool would_load_on_actual_hardware;
 
             bool corrupt;
@@ -894,12 +893,11 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
                 expected_global_checksum = ((expected_global_checksum & 0xFF) << 8) | ((expected_global_checksum & 0xFF00) >> 8);
             }
             valid_cartridge_checksum = expected_global_checksum == global_checksum;
-            allowed_cgb_only = this->instance->is_game_boy_color() || !(rom_data[0x143] & 0xC0);
 
             // Would this load on real hardware? Or is it also corrupt?
             would_load_on_actual_hardware = valid_header_checksum && (this->gb_type == GameBoyType::GameBoyGBC ? valid_nintendo_logo_cgb : valid_nintendo_logo);
             corrupt = !(valid_nintendo_logo && valid_cartridge_checksum && valid_header_checksum);
-            incompatible = !(allowed_cgb_only && would_load_on_actual_hardware);
+            incompatible = !would_load_on_actual_hardware;
 
             // Do we fail?
             bool fails = false;
@@ -914,9 +912,6 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
             if(fails) {
                 // First build our message
                 QString message;
-                if(!allowed_cgb_only) {
-                    message += "- The ROM explicitly does not support non-Game Boy Color models\n";
-                }
                 if(!valid_header_checksum) {
                     message += "- The header checksum is wrong\n";
                 }
