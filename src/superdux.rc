@@ -13,9 +13,9 @@ BEGIN
             VALUE "CompanyName",      "Snowy Mouse"
             VALUE "FileDescription",  DESCRIPTION
             VALUE "FileVersion",      VERSION
-            VALUE "InternalName",     "Kamonegi"
-            VALUE "OriginalFilename", "kamonegi.exe"
-            VALUE "ProductName",      "Kamonegi"
+            VALUE "InternalName",     "superdux"
+            VALUE "OriginalFilename", "superdux.exe"
+            VALUE "ProductName",      "superdux"
             VALUE "ProductVersion",   VERSION
             VALUE "LegalCopyright",   "2021 Snowy Mouse"
         END

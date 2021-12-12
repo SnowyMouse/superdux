@@ -23,11 +23,11 @@ int main(int argc, char **argv) {
     SDL_Init(SDL_INIT_AUDIO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK);
     
     QApplication app(argc, argv);
-    QCoreApplication::setOrganizationName("kamonegi");
-    QCoreApplication::setOrganizationDomain("kamonegi");
-    QCoreApplication::setApplicationName("kamonegi");
+    QCoreApplication::setOrganizationName("superdux");
+    QCoreApplication::setOrganizationDomain("superdux");
+    QCoreApplication::setApplicationName("superdux");
 
-    app.setWindowIcon(QIcon(":icon/kamonegi.ico"));
+    app.setWindowIcon(QIcon(":icon/superdux.ico"));
 
     int r;
 

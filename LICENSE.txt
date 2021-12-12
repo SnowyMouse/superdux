@@ -1,6 +1,6 @@
-Kamonegi (c) Snowy Mouse
+SuperDUX (c) Snowy Mouse
 
-Kamonegi is licensed under version 3.0 of the GNU GPL as published by the Free
+SuperDUX is licensed under version 3.0 of the GNU GPL as published by the Free
 Software Foundation.
 
 See COPYING for more info.

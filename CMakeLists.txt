@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project("kamonegi"
+project("superdux"
     VERSION 0.1.0
     LANGUAGES C CXX
 )
@@ -26,9 +26,9 @@ find_package(Qt6 COMPONENTS Widgets)
 
 include("sameboy.cmake")
 
-set(KAMONEGI_FILES
-    src/kamonegi.qrc
-    src/kamonegi.rc
+set(SUPERDUX_FILES
+    src/superdux.qrc
+    src/superdux.rc
     src/debugger.cpp
     src/debugger_break_and_trace_results_dialog.cpp
     src/debugger_disassembler.cpp
@@ -44,15 +44,15 @@ set(KAMONEGI_FILES
 )
 
 # These are shared regardless of Qt version
-add_library(kamonegi-shared-br STATIC
+add_library(superdux-shared-br STATIC
     src/built_in_boot_rom.c
     src/gb_proxy.c
     src/game_instance.cpp
     ${BOOT_ROMS_HEADER}
 )
-target_link_libraries(kamonegi-shared-br sameboy-core)
+target_link_libraries(superdux-shared-br sameboy-core)
 
-target_include_directories(kamonegi-shared-br
+target_include_directories(superdux-shared-br
     PRIVATE "${SAMEBOY_SOURCE_DIR}"
     PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
@@ -65,9 +65,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # And lastly our executable
-macro(make_kamonegi target_name qt_widgets)
+macro(make_superdux target_name qt_widgets)
     add_executable(${target_name}
-        ${KAMONEGI_FILES}
+        ${SUPERDUX_FILES}
     )
 
     target_include_directories(${target_name}
@@ -79,7 +79,7 @@ macro(make_kamonegi target_name qt_widgets)
         PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
     )
 
-    target_link_libraries(${target_name} kamonegi-shared-br ${SDL2_LIBRARIES} pthread ${qt_widgets})
+    target_link_libraries(${target_name} superdux-shared-br ${SDL2_LIBRARIES} pthread ${qt_widgets})
 endmacro()
 
 if(${BUILD_QT5_VERSION})
@@ -87,22 +87,22 @@ if(${BUILD_QT5_VERSION})
         message(FATAL_ERROR "Qt 5 on Windows is not supported for this project")
     endif()
 
-    make_kamonegi(kamonegi-qt5 Qt5::Widgets)
-    set_target_properties(kamonegi-qt5
+    make_superdux(superdux-qt5 Qt5::Widgets)
+    set_target_properties(superdux-qt5
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt5"
-        OUTPUT_NAME "kamonegi"
+        OUTPUT_NAME "superdux"
     )
-    set(INSTALL_TARGET "kamonegi-qt5")
+    set(INSTALL_TARGET "superdux-qt5")
 endif()
 if(${BUILD_QT6_VERSION})
-    make_kamonegi(kamonegi-qt6 Qt6::Widgets)
-    set_target_properties(kamonegi-qt6
+    make_superdux(superdux-qt6 Qt6::Widgets)
+    set_target_properties(superdux-qt6
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt6"
-        OUTPUT_NAME "kamonegi"
+        OUTPUT_NAME "superdux"
     )
-    set(INSTALL_TARGET "kamonegi-qt6")
+    set(INSTALL_TARGET "superdux-qt6")
 endif()
 
 if((NOT ${BUILD_QT5_VERSION}) AND (NOT ${BUILD_QT6_VERSION}))

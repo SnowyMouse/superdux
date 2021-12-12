@@ -1,8 +1,8 @@
-# Kamonegi
+# SuperDUX
 
-![duck with onion](icon/kamonegi_shadow.png)
+![duck with onion](icon/superdux_shadow.png)
 
-Kamonegi is a Qt-based interface of [SameBoy], a free and accurate Game Boy and
+SuperDUX is a Qt-based interface of [SameBoy], a free and accurate Game Boy and
 Game Boy Color emulator.
 
 ## Features
@@ -62,9 +62,9 @@ Build requirements:
    
    `$ cmake <arguments> -DSAMEBOY_SOURCE_DIR=/path/to/sameboy/source`
    
-   To clone kamonegi with the SameBoy repo, run this command:
+   To clone SuperDUX with the SameBoy repo, run this command:
    
-   `$ git clone https://github.com/SnowyMouse/kamonegi.git --recursive`
+   `$ git clone https://github.com/SnowyMouse/superdux.git --recursive`
 
    You can update the existing submodule manually with this:
    
