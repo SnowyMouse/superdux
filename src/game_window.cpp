@@ -19,6 +19,7 @@
 #include <QCheckBox>
 #include <bit>
 #include <QMimeData>
+#include "printer.hpp"
 #include "edit_advanced_game_boy_model_dialog.hpp"
 #include "edit_speed_control_settings_dialog.hpp"
 
@@ -706,6 +707,13 @@ GameWindow::GameWindow() {
     this->pixel_buffer_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
     layout->addWidget(this->pixel_buffer_view);
+
+    // Create the printer
+    this->printer_window = new Printer(this);
+    this->show_printer = view_menu->addAction("Show Printer");
+    this->show_printer->setShortcut(QKeySequence::Print);
+    connect(this->show_printer, &QAction::triggered, this->printer_window, &Printer::show);
+    this->show_printer->setEnabled(false);
     
     // Create the debugger now that everything else is set up
     this->debugger_window = new Debugger(this);
@@ -979,6 +987,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         this->show_vram_viewer->setEnabled(true);
         this->save_state_menu->setEnabled(true);
         this->save_sram_now->setEnabled(true);
+        this->show_printer->setEnabled(true);
 
         // Fire this once
         this->game_loop();
@@ -1147,6 +1156,7 @@ void GameWindow::game_loop() {
     this->redraw_pixel_buffer();
     this->debugger_window->refresh_view();
     this->vram_viewer_window->refresh_view();
+    this->printer_window->refresh_view();
 
     SDL_Event event;
     while(SDL_PollEvent(&event)) {

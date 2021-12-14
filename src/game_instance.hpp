@@ -537,7 +537,8 @@ public: // all public functions assume the mutex is not locked
                                        GB_TILESET_TILE_LENGTH = 8,
                                        GB_TILESET_BLOCK_WIDTH = GB_TILESET_WIDTH / GB_TILESET_TILE_LENGTH,
                                        GB_TILESET_PAGE_BLOCK_WIDTH = GB_TILESET_PAGE_WIDTH / GB_TILESET_TILE_LENGTH,
-                                       GB_TILESET_BLOCK_HEIGHT = GB_TILESET_HEIGHT / GB_TILESET_TILE_LENGTH;
+                                       GB_TILESET_BLOCK_HEIGHT = GB_TILESET_HEIGHT / GB_TILESET_TILE_LENGTH,
+                                       GB_PRINTER_WIDTH = 160;
 
     /**
      * Draw the tileset to the given pointer. The pointer must be big enough to hold GB_TILESET_WIDTH*GB_TILESET_HEIGHT 32-bit pixels.
@@ -706,6 +707,19 @@ public: // all public functions assume the mutex is not locked
      * @return true if CGB in CGB mode
      */
     bool is_game_boy_color_in_cgb_mode() noexcept;
+
+    /**
+     * Enable the printer. This uses the serial port connection.
+     */
+    void connect_printer() noexcept;
+
+    /**
+     * Get the last printer result and clear it. This will always be 160 pixels in width.
+     *
+     * @param height height of the page in pixels
+     * @return last printer result if any
+     */
+    std::optional<std::vector<std::uint32_t>> pop_printed_image(std::size_t &height);
 
     
 private: // all private functions assume the mutex is locked by the caller
@@ -882,6 +896,10 @@ private: // all private functions assume the mutex is locked by the caller
 
     // Clear all the button states
     void clear_all_button_states_no_mutex() noexcept;
+
+    // Print
+    static void print_image(GB_gameboy_t *gb, std::uint32_t *image, std::uint8_t height, std::uint8_t top_margin, std::uint8_t bottom_margin, std::uint8_t exposure);
+    std::vector<std::pair<std::vector<std::uint32_t>, std::size_t>> printer_data;
 };
 
 

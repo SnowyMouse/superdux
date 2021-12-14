@@ -47,6 +47,7 @@ set(SUPERDUX_FILES
     src/game_window.cpp
     src/input_device.cpp
     src/main.cpp
+    src/printer.cpp
     src/vram_viewer.cpp
     src/settings.cpp
 

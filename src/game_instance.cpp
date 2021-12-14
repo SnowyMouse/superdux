@@ -1397,3 +1397,32 @@ bool GameInstance::break_and_trace_results_ready_no_mutex() const noexcept {
 
 bool GameInstance::is_game_boy_color() noexcept MAKE_GETTER(GB_is_cgb(&this->gameboy))
 bool GameInstance::is_game_boy_color_in_cgb_mode() noexcept MAKE_GETTER(GB_is_cgb_in_cgb_mode(&this->gameboy))
+
+void GameInstance::connect_printer() noexcept MAKE_SETTER(GB_connect_printer(&this->gameboy, this->print_image))
+
+void GameInstance::print_image(GB_gameboy_t *gb, std::uint32_t *image, std::uint8_t height, std::uint8_t top_margin, std::uint8_t bottom_margin, std::uint8_t exposure) {
+    std::size_t print_width = 160;
+    std::size_t print_height = height + top_margin + bottom_margin;
+    auto *instance = reinterpret_cast<GameInstance *>(GB_get_user_data(gb));
+
+    // Add the printed data
+    std::vector<std::uint32_t> printer_data(print_width * print_height, 0xFFFFFFFF);
+    std::memcpy(printer_data.data() + print_width * top_margin, image, GameInstance::GB_PRINTER_WIDTH * height * sizeof(*image));
+    instance->printer_data.emplace_back(std::move(printer_data), print_height);
+}
+
+std::optional<std::vector<std::uint32_t>> GameInstance::pop_printed_image(std::size_t &height) {
+    this->mutex.lock();
+
+    if(this->printer_data.empty()) {
+        this->mutex.unlock();
+        return std::nullopt;
+    }
+    else {
+        auto [p_data, p_height] = std::move(*this->printer_data.begin());
+        this->printer_data.erase(this->printer_data.begin());
+        this->mutex.unlock();
+        height = p_height;
+        return p_data;
+    }
+}

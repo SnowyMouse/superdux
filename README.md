@@ -6,17 +6,19 @@ SuperDUX is a Qt-based interface of [SameBoy], a free and accurate Game Boy and
 Game Boy Color emulator.
 
 ## Features
-* Supports most of [SameBoy's core features]
+* Supports many of [SameBoy's core features]
    * Highly accurate Game Boy and Game Boy Color emulation
        * High-level Super Game Boy emulation for games that support it
    * Save states, including BESS save states which can be used interchangeably
-     with other emulators
+     with other emulators such as BGB
    * High pass audio filters
    * Color correction
    * SRAM support
    * RTC support
    * Rumble support
    * Rewind support
+   * Game Boy Printer support for games that support it
+       * Can save printer feeds as a PNG image
    * Built-in boot ROMs, supportting palette switching for both DMG and CGB
 * Controller support
    * Per-controller configuration (based on name)

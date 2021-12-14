@@ -25,6 +25,7 @@ extern "C" {
 
 #include "game_instance.hpp"
 
+class Printer;
 class Debugger;
 class EditAdvancedGameBoyModelDialog;
 class EditSpeedControlSettingsDialog;
@@ -79,6 +80,10 @@ private:
     std::vector<QAction *> channel_count_options;
     GB_highpass_mode_t highpass_filter_mode = GB_highpass_mode_t::GB_HIGHPASS_ACCURATE;
     std::vector<QAction *> highpass_filter_mode_options;
+
+    // Printer
+    QAction *show_printer;
+    Printer *printer_window;
     
     // Emulation
     QAction *pause_action;
