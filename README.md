@@ -17,9 +17,9 @@ Game Boy Color emulator.
    * RTC support
    * Rumble support
    * Rewind support
-   * Game Boy Printer support for games that support it
-       * Can save printer feeds as a PNG image
-   * Built-in boot ROMs, supportting palette switching for both DMG and CGB
+   * Game Boy Printer support
+       * Can save printer feeds as a PNG image or copy to clipboard
+   * Built-in boot ROMs, supporting palette switching for both DMG and CGB
 * Controller support
    * Per-controller configuration (based on name)
    * Multiple buttons/axes per control
