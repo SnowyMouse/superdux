@@ -33,13 +33,15 @@ private:
     QGraphicsPixmapItem *printed_pixmap;
     bool connected = false;
 
-    QPushButton *connect_button, *save_button, *clear_button;
+    QPushButton *connect_button, *clipboard_button, *save_button, *clear_button;
 
     GameWindow *game_window;
 
     void connect_printer();
     void save();
+    void clipboard();
     void clear();
+
     void reset_connect_button(bool connected);
 };
 

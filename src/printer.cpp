@@ -4,6 +4,8 @@
 #include <QScrollBar>
 #include <QFileDialog>
 #include <QPushButton>
+#include <QClipboard>
+#include <QGuiApplication>
 #include "printer.hpp"
 #include "game_window.hpp"
 
@@ -32,6 +34,10 @@ Printer::Printer(GameWindow *window) : QMainWindow(window), game_window(window) 
     this->reset_connect_button(false);
     blayout->addWidget(this->connect_button);
     connect(this->connect_button, &QPushButton::clicked, this, &Printer::connect_printer);
+
+    this->clipboard_button = new QPushButton("Copy to Clipboard", button_widget);
+    blayout->addWidget(this->clipboard_button);
+    connect(this->clipboard_button, &QPushButton::clicked, this, &Printer::clipboard);
 
     this->save_button = new QPushButton("Save as PNG...", button_widget);
     blayout->addWidget(this->save_button);
@@ -90,12 +96,17 @@ void Printer::refresh_view() {
 
     this->printed_pixmap->setPixmap(QPixmap::fromImage(QImage(reinterpret_cast<uchar *>(this->printed_data.data()), GameInstance::GB_PRINTER_WIDTH, this->printed_height, QImage::Format::Format_ARGB32)));
     this->save_button->setEnabled(true);
+    this->clipboard_button->setEnabled(true);
     this->clear_button->setEnabled(true);
 }
 
 void Printer::force_disconnect_printer() {
     this->connected = false;
     this->reset_connect_button(false);
+}
+
+void Printer::clipboard() {
+    QGuiApplication::clipboard()->setImage(QImage(reinterpret_cast<uchar *>(this->printed_data.data()), GameInstance::GB_PRINTER_WIDTH, this->printed_height, QImage::Format::Format_ARGB32));
 }
 
 void Printer::save() {
@@ -139,6 +150,7 @@ void Printer::clear() {
 
     // Save and clear is no longer relevant
     this->save_button->setEnabled(false);
+    this->clipboard_button->setEnabled(false);
     this->clear_button->setEnabled(false);
 }
 
