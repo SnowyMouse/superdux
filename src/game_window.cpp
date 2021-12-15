@@ -680,18 +680,27 @@ GameWindow::GameWindow() {
     connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
     this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
     this->reset_rom_action->setEnabled(false);
+    emulation_menu->addSeparator();
+
+    // Create the printer
+    this->printer_window = new Printer(this);
+    this->show_printer = emulation_menu->addAction("Show Printer");
+    this->show_printer->setShortcut(QKeySequence::Print);
+    connect(this->show_printer, &QAction::triggered, this->printer_window, &Printer::show);
+    connect(this->show_printer, &QAction::triggered, this->printer_window, &Printer::activateWindow);
+    this->show_printer->setEnabled(false);
 
     emulation_menu->addSeparator();
     
-    // Video menu
-    auto *view_menu = bar->addMenu("View");
-    connect(view_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
-    connect(view_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
+    // Debug menu
+    auto *debug_menu = bar->addMenu("Debug");
+    connect(debug_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
+    connect(debug_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
-    auto *toggle_fps = view_menu->addAction("Show FPS");
+    auto *toggle_fps = debug_menu->addAction("Show FPS");
     connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
     toggle_fps->setCheckable(true);
-    toggle_fps->setShortcut(static_cast<int>(Qt::Key_F3));
+    debug_menu->addSeparator();
     
     // Here's the layout
     auto *central_widget = new QWidget(this);
@@ -707,24 +716,17 @@ GameWindow::GameWindow() {
     this->pixel_buffer_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
     layout->addWidget(this->pixel_buffer_view);
-
-    // Create the printer
-    this->printer_window = new Printer(this);
-    this->show_printer = view_menu->addAction("Show Printer");
-    this->show_printer->setShortcut(QKeySequence::Print);
-    connect(this->show_printer, &QAction::triggered, this->printer_window, &Printer::show);
-    this->show_printer->setEnabled(false);
     
     // Create the debugger now that everything else is set up
     this->debugger_window = new Debugger(this);
-    this->show_debugger = view_menu->addAction("Show Debugger");
+    this->show_debugger = debug_menu->addAction("Show Debugger");
     connect(this->show_debugger, &QAction::triggered, this->debugger_window, &Debugger::show);
     connect(this->show_debugger, &QAction::triggered, this->debugger_window, &Debugger::activateWindow);
     this->show_debugger->setEnabled(false);
 
     // And the VRAM viewer
     this->vram_viewer_window = new VRAMViewer(this);
-    this->show_vram_viewer = view_menu->addAction("Show VRAM Viewer");
+    this->show_vram_viewer = debug_menu->addAction("Show VRAM Viewer");
     connect(this->show_vram_viewer, &QAction::triggered, this->vram_viewer_window, &VRAMViewer::show);
     connect(this->show_vram_viewer, &QAction::triggered, this->vram_viewer_window, &VRAMViewer::activateWindow);
     this->show_vram_viewer->setEnabled(false);
