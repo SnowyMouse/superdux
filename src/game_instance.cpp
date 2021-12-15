@@ -1399,6 +1399,7 @@ bool GameInstance::is_game_boy_color() noexcept MAKE_GETTER(GB_is_cgb(&this->gam
 bool GameInstance::is_game_boy_color_in_cgb_mode() noexcept MAKE_GETTER(GB_is_cgb_in_cgb_mode(&this->gameboy))
 
 void GameInstance::connect_printer() noexcept MAKE_SETTER(GB_connect_printer(&this->gameboy, this->print_image))
+void GameInstance::disconnect_serial() noexcept MAKE_SETTER(GB_disconnect_serial(&this->gameboy));
 
 void GameInstance::print_image(GB_gameboy_t *gb, std::uint32_t *image, std::uint8_t height, std::uint8_t top_margin, std::uint8_t bottom_margin, std::uint8_t exposure) {
     std::size_t print_width = 160;

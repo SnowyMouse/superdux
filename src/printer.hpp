@@ -40,6 +40,7 @@ private:
     void connect_printer();
     void save();
     void clear();
+    void reset_connect_button(bool connected);
 };
 
 #endif

@@ -714,6 +714,11 @@ public: // all public functions assume the mutex is not locked
     void connect_printer() noexcept;
 
     /**
+     * Disconnect the serial. This disables any features that require link cable support, including the printer.
+     */
+    void disconnect_serial() noexcept;
+
+    /**
      * Get the last printer result and clear it. This will always be 160 pixels in width.
      *
      * @param height height of the page in pixels

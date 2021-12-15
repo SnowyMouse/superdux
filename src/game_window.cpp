@@ -1312,6 +1312,11 @@ void GameWindow::action_open_rom() noexcept {
     }
 }
 
+void GameWindow::disconnect_serial() {
+    this->instance->disconnect_serial();
+    this->printer_window->force_disconnect_printer();
+}
+
 void GameWindow::action_reset() noexcept {
     this->instance->reset();
 }

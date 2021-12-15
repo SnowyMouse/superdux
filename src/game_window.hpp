@@ -49,6 +49,8 @@ public:
     void load_rom(const char *rom_path) noexcept;
 
     std::vector<std::shared_ptr<InputDevice>> get_all_devices();
+
+    void disconnect_serial();
     
     ~GameWindow();
     

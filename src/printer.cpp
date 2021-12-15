@@ -28,7 +28,8 @@ Printer::Printer(GameWindow *window) : QMainWindow(window), game_window(window) 
     blayout->setContentsMargins(0,0,0,0);
     button_widget->setLayout(blayout);
 
-    this->connect_button = new QPushButton("Connect Printer", button_widget);
+    this->connect_button = new QPushButton(button_widget);
+    this->reset_connect_button(false);
     blayout->addWidget(this->connect_button);
     connect(this->connect_button, &QPushButton::clicked, this, &Printer::connect_printer);
 
@@ -51,9 +52,24 @@ Printer::Printer(GameWindow *window) : QMainWindow(window), game_window(window) 
 Printer::~Printer() {}
 
 void Printer::connect_printer() {
+    bool dropping_connection = this->connected;
+
+    // Disconnect the serial connection
+    this->game_window->disconnect_serial();
+
+    // If we were connected before, run this function and then disconnect
+    if(dropping_connection) {
+        this->force_disconnect_printer();
+        return;
+    }
+
     this->game_window->get_instance().connect_printer();
     this->connected = true;
-    this->connect_button->setEnabled(false);
+    this->reset_connect_button(true);
+}
+
+void Printer::reset_connect_button(bool connected) {
+    this->connect_button->setText(connected ? "Disconnect Printer" : "Connect Printer");
 }
 
 void Printer::refresh_view() {
@@ -79,7 +95,7 @@ void Printer::refresh_view() {
 
 void Printer::force_disconnect_printer() {
     this->connected = false;
-    this->connect_button->setEnabled(true);
+    this->reset_connect_button(false);
 }
 
 void Printer::save() {
