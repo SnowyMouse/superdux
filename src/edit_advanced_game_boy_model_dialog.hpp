@@ -20,7 +20,7 @@ private:
 
     QLineEdit *gb_boot_rom_le, *gbc_boot_rom_le, *gba_boot_rom_le, *sgb_boot_rom_le, *sgb2_boot_rom_le;
     QComboBox *gb_rev, *gbc_rev, *gba_rev, *sgb_rev, *sgb2_rev;
-    QCheckBox *gbc_fast_cb;
+    QCheckBox *gbc_fast_cb, *sgb_fast_cb, *sgb2_fast_cb;
     QCheckBox *gb_border_cb, *gbc_border_cb, *gba_border_cb, *sgb_border_cb, *sgb2_border_cb;
     QCheckBox *gb_allow_custom_boot_rom, *gbc_allow_custom_boot_rom, *gba_allow_custom_boot_rom, *sgb_allow_custom_boot_rom, *sgb2_allow_custom_boot_rom;
 

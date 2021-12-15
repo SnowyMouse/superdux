@@ -80,7 +80,9 @@
 #define SETTINGS_SGB_BORDER "sgb_border"
 #define SETTINGS_SGB2_BORDER "sgb2_border"
 
-#define SETTINGS_GBC_FAST_BOOT "gbc_fast_boot_rom"
+#define SETTINGS_GBC_FAST_BOOT "gbc_skip_intro"
+#define SETTINGS_SGB_SKIP_INTRO "sgb_skip_intro"
+#define SETTINGS_SGB2_SKIP_INTRO "sgb2_skip_intro"
 
 #define SGB_WIDTH 256
 #define SGB_HEIGHT 224
@@ -230,9 +232,9 @@ bool GameWindow::use_fast_boot_rom_for_type(GameBoyType type) const noexcept {
         case GameBoyType::GameBoyGBA:
             return false;
         case GameBoyType::GameBoySGB:
-            return false;
+            return this->sgb_skip_intro;
         case GameBoyType::GameBoySGB2:
-            return false;
+            return this->sgb2_skip_intro;
         default:
             std::terminate();
     }
@@ -307,6 +309,8 @@ GameWindow::GameWindow() {
     LOAD_UINT_SETTING_VALUE(this->sample_count, SETTINGS_SAMPLE_BUFFER_SIZE);
 
     LOAD_BOOL_SETTING_VALUE(this->gbc_fast_boot_rom, SETTINGS_GBC_FAST_BOOT);
+    LOAD_BOOL_SETTING_VALUE(this->sgb_skip_intro, SETTINGS_SGB_SKIP_INTRO);
+    LOAD_BOOL_SETTING_VALUE(this->sgb2_skip_intro, SETTINGS_SGB2_SKIP_INTRO);
     LOAD_BOOL_SETTING_VALUE(this->status_text_hidden, SETTINGS_STATUS_TEXT_HIDDEN);
     LOAD_BOOL_SETTING_VALUE(this->turbo_enabled, SETTINGS_TURBO_ENABLED);
     LOAD_BOOL_SETTING_VALUE(this->slowmo_enabled, SETTINGS_SLOWMO_ENABLED);
@@ -1517,6 +1521,8 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_GBA_BORDER, this->gba_border);
 
     settings.setValue(SETTINGS_GBC_FAST_BOOT, this->gbc_fast_boot_rom);
+    settings.setValue(SETTINGS_SGB_SKIP_INTRO, this->sgb_skip_intro);
+    settings.setValue(SETTINGS_SGB2_SKIP_INTRO, this->sgb2_skip_intro);
 
     QApplication::quit();
 }

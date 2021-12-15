@@ -159,3 +159,7 @@ const uint32_t *get_gb_palette(struct GB_gameboy_s *gb, GB_palette_type_t palett
 
     return palette + 4 * (palette_index % 8);
 }
+
+void skip_sgb_intro_animation(struct GB_gameboy_s *gb) {
+    gb->sgb->intro_animation = 1000;
+}

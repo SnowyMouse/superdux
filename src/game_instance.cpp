@@ -304,6 +304,10 @@ void GameInstance::start_game_loop(GameInstance *instance) noexcept {
                 instance->should_rewind = false;
             }
 
+            // Skip intro if needed
+            instance->skip_sgb_intro_if_needed();
+
+            // Do stuff now
             GB_run(&instance->gameboy);
             
             // Wait until the end of GB_run to calculate frame rate
@@ -1425,5 +1429,12 @@ std::optional<std::vector<std::uint32_t>> GameInstance::pop_printed_image(std::s
         this->mutex.unlock();
         height = p_height;
         return p_data;
+    }
+}
+
+void GameInstance::skip_sgb_intro_if_needed() noexcept {
+    // Skip intro animation?
+    if(GB_is_sgb(&this->gameboy) && this->fast_boot_rom) {
+        skip_sgb_intro_animation(&this->gameboy);
     }
 }

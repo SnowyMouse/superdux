@@ -905,6 +905,9 @@ private: // all private functions assume the mutex is locked by the caller
     // Print
     static void print_image(GB_gameboy_t *gb, std::uint32_t *image, std::uint8_t height, std::uint8_t top_margin, std::uint8_t bottom_margin, std::uint8_t exposure);
     std::vector<std::pair<std::vector<std::uint32_t>, std::size_t>> printer_data;
+
+    // Skip intro?
+    void skip_sgb_intro_if_needed() noexcept;
 };
 
 

@@ -157,7 +157,7 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
                 {"CGB-D", GB_model_t::GB_MODEL_CGB_D},
                 {"CGB-E", GB_model_t::GB_MODEL_CGB_E}
             }, this->window->gbc_rev, &EditAdvancedGameBoyModelDialog::find_gbc_boot_rom, &this->gbc_allow_custom_boot_rom, window->gbc_allow_custom_boot_rom, &this->gbc_border_cb, window->gbc_border, {
-                { "Skip intro:", {this->gbc_fast_cb = new QCheckBox(), new QLabel("(overrides boot ROM)")} }
+                { "Skip intro sequence:", {this->gbc_fast_cb = new QCheckBox(), new QLabel("(overrides boot ROM)")} }
             });
     this->gbc_fast_cb->setChecked(window->gbc_fast_boot_rom);
 
@@ -168,10 +168,17 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
     add_tab("Super Game Boy", &this->sgb_boot_rom_le, this->window->sgb_boot_rom_path, &this->sgb_rev, {
                 {"NTSC", GB_model_t::GB_MODEL_SGB_NTSC},
                 {"PAL", GB_model_t::GB_MODEL_SGB_PAL}
-            }, this->window->sgb_rev, &EditAdvancedGameBoyModelDialog::find_sgb_boot_rom, &this->sgb_allow_custom_boot_rom, window->sgb_allow_custom_boot_rom, &this->sgb_border_cb, window->sgb_border);
+            }, this->window->sgb_rev, &EditAdvancedGameBoyModelDialog::find_sgb_boot_rom, &this->sgb_allow_custom_boot_rom, window->sgb_allow_custom_boot_rom, &this->sgb_border_cb, window->sgb_border, {
+                { "Skip intro sequence:", {this->sgb_fast_cb = new QCheckBox()} }
+            });
     add_tab("Super Game Boy 2", &this->sgb2_boot_rom_le, this->window->sgb2_boot_rom_path, &this->sgb2_rev, {
                 {"SGB2", GB_model_t::GB_MODEL_SGB2}
-            }, this->window->sgb2_rev, &EditAdvancedGameBoyModelDialog::find_sgb2_boot_rom, &this->sgb2_allow_custom_boot_rom, window->sgb2_allow_custom_boot_rom, &this->sgb2_border_cb, window->sgb2_border);
+            }, this->window->sgb2_rev, &EditAdvancedGameBoyModelDialog::find_sgb2_boot_rom, &this->sgb2_allow_custom_boot_rom, window->sgb2_allow_custom_boot_rom, &this->sgb2_border_cb, window->sgb2_border, {
+                { "Skip intro sequence:", {this->sgb2_fast_cb = new QCheckBox()} }
+            });
+
+    this->sgb_fast_cb->setChecked(window->sgb_skip_intro);
+    this->sgb2_fast_cb->setChecked(window->sgb2_skip_intro);
 
     tab_widget->setCurrentIndex(this->window->gb_type);
 
@@ -239,6 +246,8 @@ void EditAdvancedGameBoyModelDialog::perform_accept() {
     this->window->sgb_rev = static_cast<GB_model_t>(this->sgb_rev->currentData().toInt());
     this->window->sgb2_rev = static_cast<GB_model_t>(this->sgb2_rev->currentData().toInt());
     this->window->gbc_fast_boot_rom = this->gbc_fast_cb->isChecked();
+    this->window->sgb_skip_intro = this->sgb_fast_cb->isChecked();
+    this->window->sgb2_skip_intro = this->sgb2_fast_cb->isChecked();
     this->window->gb_border = this->gb_border_cb->isChecked();
     this->window->gbc_border = this->gbc_border_cb->isChecked();
     this->window->gba_border = this->gba_border_cb->isChecked();
