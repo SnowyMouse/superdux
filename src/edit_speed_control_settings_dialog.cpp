@@ -205,7 +205,7 @@ void EditSpeedControlSettingsDialog::update_sliders() {
     this->slowmo_slider->setValue(this->slowmo_amount->text().toInt() / SLOWMO_SLIDER_GRANULARITY);
     this->rewind_slider->setValue(this->rewind_amount->text().toInt() / REWIND_SLIDER_GRANULARITY);
     this->rewind_speed_slider->setValue(this->rewind_speed_amount->text().toInt() / REWIND_SPEED_SLIDER_GRANULARITY);
-    this->base_speed_slider->setValue(this->rewind_speed_amount->text().toInt() / BASE_SPEED_SLIDER_GRANULARITY);
+    this->base_speed_slider->setValue(this->base_speed_amount->text().toInt() / BASE_SPEED_SLIDER_GRANULARITY);
 
     this->turbo_slider->blockSignals(false);
     this->slowmo_slider->blockSignals(false);
