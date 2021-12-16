@@ -87,7 +87,14 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     // If we need to wait for a frame, do it
     if(instance->turbo_mode_enabled) {
         // Burn the thread until we get the next frame (I never said I was a good coder)
+        auto next_expected_frame = instance->next_expected_frame;
+
+        // Unlock the mutex so other things can access this in the meantime without waiting
+        instance->mutex.unlock();
         while(clock::now() < instance->next_expected_frame) {}
+        instance->mutex.lock();
+
+        // Update when the next frame should happen
         instance->next_expected_frame = clock::now() + std::chrono::microseconds(static_cast<unsigned long>(1000000.0 / GB_get_usual_frame_rate(&instance->gameboy) / instance->turbo_mode_speed_ratio));
     }
     
