@@ -149,8 +149,9 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
     layout->addWidget(ok);
     connect(ok_button, &QPushButton::clicked, this, &EditSpeedControlSettingsDialog::perform_accept);
 
-
     this->setLayout(layout);
+
+    this->setFixedSize(this->sizeHint());
 }
 
 void EditSpeedControlSettingsDialog::perform_accept() {
