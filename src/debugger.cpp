@@ -246,6 +246,13 @@ void Debugger::refresh_view() {
     if(!this->isVisible()) {
         return;
     }
+
+    // Update debugger at 20 Hz
+    auto now = std::chrono::steady_clock::now();
+    if(now - this->last_update < std::chrono::milliseconds(1000 / 20)) {
+        return;
+    }
+    this->last_update = now;
     
     auto &instance = this->get_instance();
     bool bp_pause = instance.is_paused_from_breakpoint();

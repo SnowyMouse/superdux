@@ -9,6 +9,7 @@ extern "C" {
 
 #include <vector>
 #include <optional>
+#include <chrono>
 
 #include "game_window.hpp"
 
@@ -102,7 +103,8 @@ private:
     
     static void log_callback(GB_gameboy_s *, const char *, GB_log_attributes);
     void closeEvent(QCloseEvent *) override;
-    
+
+    std::chrono::steady_clock::time_point last_update = {};
     
 };
 
