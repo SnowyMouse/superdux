@@ -246,13 +246,6 @@ void Debugger::refresh_view() {
     if(!this->isVisible()) {
         return;
     }
-
-    // Update debugger at 20 Hz
-    auto now = std::chrono::steady_clock::now();
-    if(now - this->last_update < std::chrono::milliseconds(1000 / 20)) {
-        return;
-    }
-    this->last_update = now;
     
     auto &instance = this->get_instance();
     bool bp_pause = instance.is_paused_from_breakpoint();
@@ -261,11 +254,19 @@ void Debugger::refresh_view() {
     this->breakpoints_copy = instance.get_breakpoints();
     this->clear_breakpoints_button->setEnabled(this->breakpoints_copy.size() > 0);
     this->backtrace_copy = instance.get_backtrace();
-    
-    if(!bp_pause || this->known_breakpoint != bp_pause) {
+
+    // Update debugger at 20 Hz
+    auto now = std::chrono::steady_clock::now();
+    if(now - this->last_update < std::chrono::milliseconds(1000 / 20)) {
+        return;
+    }
+    this->last_update = now;
+
+    // If paused from breakpoint, update this information
+    if(bp_pause) {
         this->refresh_registers();
         this->refresh_flags();
-    
+
         int row = 0;
         this->backtrace->setRowCount(this->backtrace_copy.size());
         for(auto &l : this->backtrace_copy) {
@@ -280,7 +281,10 @@ void Debugger::refresh_view() {
             item->setData(Qt::UserRole, l.second);
             row++;
         }
-
+    }
+    
+    if(!bp_pause || this->known_breakpoint != bp_pause) {
+        // If breakpoint, show the window
         if(bp_pause) {
             this->show();
             this->activateWindow();
