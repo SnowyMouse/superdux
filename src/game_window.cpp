@@ -1676,11 +1676,21 @@ void GameWindow::update_emulation_speed() {
     // Are we rewinding?
     this->instance->set_rewind(total_multiplier < 0.0);
 
-    // Turboing?
-    this->instance->set_turbo_mode(abs_speed > 1.0, abs_speed);
+    // Speed modifier?
+    double speed_multiplier = std::min(abs_speed, 2.0);
 
-    // Slow motion?
-    this->instance->set_speed_multiplier(abs_speed < 1.0 ? abs_speed : 1.0);
+    // WORKAROUND: Engage turbo mode if speed modifier > 2.0 since we get some popping issues with the audio (todo: figure out if it's on SameBoy's end...?)
+    // where using turbo mode any time we're faster causes audio issues.
+    //
+    // This is a hacky workaround and should not be here. Eep!
+    if(abs_speed > speed_multiplier) {
+        this->instance->set_turbo_mode(true, 1.0 + (abs_speed - speed_multiplier) / speed_multiplier);
+    }
+    else {
+        this->instance->set_turbo_mode(false);
+    }
+
+    this->instance->set_speed_multiplier(speed_multiplier);
 }
 
 void GameWindow::reset_emulation_speed() {
