@@ -1622,26 +1622,29 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
         case InputDevice::Input_Turbo:
             if(this->turbo_enabled && input > 0.1) {
                 double max_increase = this->max_turbo - 1.0;
-                this->instance->set_turbo_mode(true, 1.0 + max_increase * ((input - 0.1) / 0.9));
+                this->turbo_multiplier = 1.0 + max_increase * ((input - 0.1) / 0.9);
             }
             else {
-                this->instance->set_turbo_mode(false);
+                this->turbo_multiplier = 1.0;
             }
+            this->update_emulation_speed();
             break;
         case InputDevice::Input_Slowmo:
             if(this->slowmo_enabled && input > 0.1) {
                 double max_decrease = (1.0 - this->max_slowmo);
-                this->instance->set_speed_multiplier(this->max_slowmo + max_decrease * (1.0 - (input - 0.1) / 0.9));
+                this->slowmo_multiplier = this->max_slowmo + max_decrease * (1.0 - (input - 0.1) / 0.9);
             }
             else {
-                this->instance->set_speed_multiplier(1.0);
+                this->slowmo_multiplier = 1.0;
             }
+            this->update_emulation_speed();
             break;
         case InputDevice::Input_Rewind:
             if(!this->rewind_enabled) {
                 boolean_input = false;
             }
-            this->instance->set_rewind(boolean_input);
+            this->rewind_multiplier = boolean_input ? -1.0 : 1.0;
+            this->update_emulation_speed();
             break;
         case InputDevice::Input_VolumeDown:
             if(boolean_input) {
@@ -1655,6 +1658,28 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             break;
         default: break;
     }
+}
+
+void GameWindow::update_emulation_speed() {
+    double total_multiplier = this->base_multiplier * this->rewind_multiplier * this->turbo_multiplier * this->slowmo_multiplier;
+    double abs_speed = std::fabs(total_multiplier);
+
+    // Are we rewinding?
+    this->instance->set_rewind(total_multiplier < 0.0);
+
+    // Turboing?
+    this->instance->set_turbo_mode(abs_speed > 1.0, abs_speed);
+
+    // Slow motion?
+    this->instance->set_speed_multiplier(abs_speed < 1.0 ? abs_speed : 1.0);
+}
+
+void GameWindow::reset_emulation_speed() {
+    this->rewind_multiplier = 1.0F;
+    this->base_multiplier = 1.0F;
+    this->slowmo_multiplier = 1.0F;
+    this->turbo_multiplier = 1.0F;
+    this->update_emulation_speed();
 }
 
 std::filesystem::path GameWindow::get_save_state_path(int index) const {

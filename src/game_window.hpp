@@ -227,7 +227,23 @@ private:
 
     // Can we make save states?
     bool save_states_allowed() noexcept;
+
+    // -1 = rewind
+    double rewind_multiplier = 1.0F;
     
+    // >1.0F = turbo
+    double turbo_multiplier = 1.0F;
+
+    // <1.0F = slow motion
+    double slowmo_multiplier = 1.0F;
+
+    // Base speed
+    double base_multiplier = 1.0F;
+
+    // Update the emulation speed
+    void update_emulation_speed();
+    void reset_emulation_speed();
+
 private slots:
     void action_set_scaling() noexcept;
     void action_set_scale_filter() noexcept;

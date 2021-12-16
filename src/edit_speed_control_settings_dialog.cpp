@@ -150,11 +150,8 @@ void EditSpeedControlSettingsDialog::perform_accept() {
     window->slowmo_enabled = this->enable_slowmo->isChecked();
     window->rewind_enabled = this->enable_rewind->isChecked();
 
-
     // Temporarily disable these if they're enabled
-    window->instance->set_speed_multiplier(1.0);
-    window->instance->set_turbo_mode(false);
-    window->instance->set_rewind(false);
+    window->reset_emulation_speed();
 
     this->accept();
 }
