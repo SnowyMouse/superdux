@@ -46,6 +46,7 @@
 #define SETTINGS_RUMBLE_MODE "rumble_mode"
 #define SETTINGS_STATUS_TEXT_HIDDEN "status_text_hidden"
 #define SETTINGS_REWIND_LENGTH "rewind_length"
+#define SETTINGS_REWIND_SPEED "rewind_speed"
 #define SETTINGS_MAX_TURBO "max_turbo"
 #define SETTINGS_MAX_SLOWMO "max_slowmo"
 
@@ -333,6 +334,7 @@ GameWindow::GameWindow() {
     LOAD_DOUBLE_SETTING_VALUE(this->rewind_length, SETTINGS_REWIND_LENGTH);
     LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
     LOAD_DOUBLE_SETTING_VALUE(this->max_turbo, SETTINGS_MAX_TURBO);
+    LOAD_DOUBLE_SETTING_VALUE(this->rewind_speed, SETTINGS_REWIND_SPEED);
 
     // Prevent invalid values
     this->max_slowmo = std::max(this->max_slowmo, 0.0);
@@ -1487,6 +1489,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_RUMBLE_MODE, this->rumble_mode);
     settings.setValue(SETTINGS_STATUS_TEXT_HIDDEN, this->status_text_hidden);
     settings.setValue(SETTINGS_REWIND_LENGTH, this->rewind_length);
+    settings.setValue(SETTINGS_REWIND_SPEED, this->rewind_speed);
     settings.setValue(SETTINGS_MAX_SLOWMO, this->max_slowmo);
     settings.setValue(SETTINGS_MAX_TURBO, this->max_turbo);
     settings.setValue(SETTINGS_REWIND_ENABLED, this->rewind_enabled);
@@ -1643,7 +1646,7 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
             if(!this->rewind_enabled) {
                 boolean_input = false;
             }
-            this->rewind_multiplier = boolean_input ? -1.0 : 1.0;
+            this->rewind_multiplier = boolean_input ? -rewind_speed : 1.0;
             this->update_emulation_speed();
             break;
         case InputDevice::Input_VolumeDown:

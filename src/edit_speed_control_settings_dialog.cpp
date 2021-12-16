@@ -26,6 +26,11 @@ static constexpr const std::uint32_t REWIND_SLIDER_MIN = 15;
 static constexpr const std::uint32_t REWIND_SLIDER_GRANULARITY = 5;
 static constexpr const std::uint32_t REWIND_SLIDER_TICK_INTERVAL = 15;
 
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_MAX = 800;
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_MIN = 0;
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_GRANULARITY = 25;
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_TICK_INTERVAL = 100;
+
 EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *window) : window(window) {
     this->setWindowTitle("Rewind and Speed Settings");
 
@@ -36,7 +41,7 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
     int label_width = 0;
     std::vector<QWidget *> labels;
 
-    auto add_control = [&layout, &dialog, &label_width, &labels](const char *name, const char *label, QCheckBox **enable_box, QLineEdit **line_amount, QSlider **slider_amount) {
+    auto add_control = [&layout, &dialog, &label_width, &labels](const char *name, QCheckBox **enable_box, std::vector<std::tuple<const char *, QLineEdit **, QSlider **>> amounts) {
         auto *vwidget = new QGroupBox(dialog);
         vwidget->setTitle(name);
         auto *vlayout = new QVBoxLayout(vwidget);
@@ -44,33 +49,38 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
         *enable_box = new QCheckBox("Enabled", vwidget);
         vlayout->addWidget(*enable_box);
 
-
         // Amount
-        auto *amt_widget = new QWidget(vwidget);
-        auto *amt_label = new QLabel(label, amt_widget);
-        label_width = std::max(label_width, amt_label->width());
-        labels.emplace_back(amt_label);
+        for(auto &i : amounts) {
+            auto [label, line_amount, slider_amount] = i;
 
-        auto *amt_layout = new QHBoxLayout(amt_widget);
-        amt_layout->setContentsMargins(0,0,0,0);
-        amt_layout->addWidget(amt_label);
+            auto *amt_widget = new QWidget(vwidget);
+            auto *amt_label = new QLabel(label, amt_widget);
+            label_width = std::max(label_width, amt_label->sizeHint().width());
+            labels.emplace_back(amt_label);
 
-        *slider_amount = new QSlider(Qt::Orientation::Horizontal, amt_widget);
-        (*slider_amount)->setTickPosition(QSlider::TickPosition::TicksBelow);
-        (*slider_amount)->setMinimumWidth(400);
-        amt_layout->addWidget(*slider_amount);
+            auto *amt_layout = new QHBoxLayout(amt_widget);
+            amt_layout->setContentsMargins(0,0,0,0);
+            amt_layout->addWidget(amt_label);
 
-        *line_amount = new QLineEdit(amt_widget);
-        amt_layout->addWidget(*line_amount);
+            *slider_amount = new QSlider(Qt::Orientation::Horizontal, amt_widget);
+            (*slider_amount)->setTickPosition(QSlider::TickPosition::TicksBelow);
+            (*slider_amount)->setMinimumWidth(400);
+            amt_layout->addWidget(*slider_amount);
 
-        vlayout->addWidget(amt_widget);
+            *line_amount = new QLineEdit(amt_widget);
+            amt_layout->addWidget(*line_amount);
+            vlayout->addWidget(amt_widget);
+        }
+
         vwidget->setLayout(vlayout);
         layout->addWidget(vwidget);
+
+        return vlayout;
     };
 
-    add_control("Turbo", "Turbo speed:", &this->enable_turbo, &this->turbo_amount, &this->turbo_slider);
-    add_control("Slowmo", "Slowmo speed:", &this->enable_slowmo, &this->slowmo_amount, &this->slowmo_slider);
-    add_control("Rewind", "Rewind seconds:", &this->enable_rewind, &this->rewind_amount, &this->rewind_slider);
+    add_control("Turbo", &this->enable_turbo, {{ "Turbo speed (%):", &this->turbo_amount, &this->turbo_slider }});
+    add_control("Slowmo", &this->enable_slowmo, {{ "Slowmo speed (%):", &this->slowmo_amount, &this->slowmo_slider }});
+    add_control("Rewind", &this->enable_rewind, {{ "Rewind buffer (sec):", &this->rewind_amount, &this->rewind_slider }, { "Rewind speed (%):", &this->rewind_speed_amount, &this->rewind_speed_slider } });
 
     this->enable_turbo->setChecked(window->turbo_enabled);
     this->enable_slowmo->setChecked(window->slowmo_enabled);
@@ -79,6 +89,10 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
     this->turbo_slider->setMaximum(TURBO_SLIDER_MAX / TURBO_SLIDER_GRANULARITY);
     this->turbo_slider->setTickInterval(TURBO_SLIDER_TICK_INTERVAL / TURBO_SLIDER_GRANULARITY);
     this->turbo_slider->setMinimum(TURBO_SLIDER_MIN / TURBO_SLIDER_GRANULARITY);
+
+    this->rewind_speed_slider->setMaximum(REWIND_SPEED_SLIDER_MAX / REWIND_SPEED_SLIDER_GRANULARITY);
+    this->rewind_speed_slider->setTickInterval(REWIND_SPEED_SLIDER_TICK_INTERVAL / REWIND_SPEED_SLIDER_GRANULARITY);
+    this->rewind_speed_slider->setMinimum(REWIND_SPEED_SLIDER_MIN / REWIND_SPEED_SLIDER_GRANULARITY);
 
     this->slowmo_slider->setMaximum(SLOWMO_SLIDER_MAX / SLOWMO_SLIDER_GRANULARITY);
     this->slowmo_slider->setTickInterval(SLOWMO_SLIDER_TICK_INTERVAL / SLOWMO_SLIDER_GRANULARITY);
@@ -91,10 +105,12 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
     connect(this->slowmo_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_slowmo_textbox);
     connect(this->rewind_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_rewind_textbox);
     connect(this->turbo_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_turbo_textbox);
+    connect(this->rewind_speed_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_rewind_speed_textbox);
 
     this->turbo_amount->setText(QString::number(window->max_turbo * 100));
     this->slowmo_amount->setText(QString::number(window->max_slowmo * 100));
     this->rewind_amount->setText(QString::number(window->rewind_length));
+    this->rewind_speed_amount->setText(QString::number(window->rewind_speed * 100));
 
     this->update_sliders();
 
@@ -125,6 +141,7 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
 void EditSpeedControlSettingsDialog::perform_accept() {
     bool rewind_ok = true, slowmo_ok = true, turbo_ok = true;
     double rewind_amount = this->rewind_amount->text().toDouble(&rewind_ok);
+    double rewind_speed_amount = this->rewind_speed_amount->text().toDouble(&rewind_ok) / 100.0;
     double slowmo_amount = this->slowmo_amount->text().toDouble(&slowmo_ok) / 100.0;
     double turbo_amount = this->turbo_amount->text().toDouble(&turbo_ok) / 100.0;
 
@@ -145,12 +162,13 @@ void EditSpeedControlSettingsDialog::perform_accept() {
     }
     window->max_slowmo = slowmo_amount;
     window->max_turbo = turbo_amount;
+    window->rewind_speed = rewind_speed_amount;
 
     window->turbo_enabled = this->enable_turbo->isChecked();
     window->slowmo_enabled = this->enable_slowmo->isChecked();
     window->rewind_enabled = this->enable_rewind->isChecked();
 
-    // Temporarily disable these if they're enabled
+    // Temporarily disable speed modifiers if enabled
     window->reset_emulation_speed();
 
     this->accept();
@@ -160,18 +178,24 @@ void EditSpeedControlSettingsDialog::update_sliders() {
     this->turbo_slider->blockSignals(true);
     this->slowmo_slider->blockSignals(true);
     this->rewind_slider->blockSignals(true);
+    this->rewind_speed_slider->blockSignals(true);
 
     this->turbo_slider->setValue(this->turbo_amount->text().toInt() / TURBO_SLIDER_GRANULARITY);
     this->slowmo_slider->setValue(this->slowmo_amount->text().toInt() / SLOWMO_SLIDER_GRANULARITY);
     this->rewind_slider->setValue(this->rewind_amount->text().toInt() / REWIND_SLIDER_GRANULARITY);
+    this->rewind_speed_slider->setValue(this->rewind_speed_amount->text().toInt() / REWIND_SPEED_SLIDER_GRANULARITY);
 
     this->turbo_slider->blockSignals(false);
     this->slowmo_slider->blockSignals(false);
     this->rewind_slider->blockSignals(false);
+    this->rewind_speed_slider->blockSignals(false);
 }
 
 void EditSpeedControlSettingsDialog::update_rewind_textbox(int v) {
     this->rewind_amount->setText(QString::number(v * REWIND_SLIDER_GRANULARITY));
+}
+void EditSpeedControlSettingsDialog::update_rewind_speed_textbox(int v) {
+    this->rewind_speed_amount->setText(QString::number(v * REWIND_SPEED_SLIDER_GRANULARITY));
 }
 void EditSpeedControlSettingsDialog::update_turbo_textbox(int v) {
     this->turbo_amount->setText(QString::number(v * TURBO_SLIDER_GRANULARITY));

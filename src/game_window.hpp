@@ -93,6 +93,7 @@ private:
     std::vector<QAction *> rtc_mode_options;
     GB_rtc_mode_t rtc_mode = GB_rtc_mode_t::GB_RTC_MODE_ACCURATE;
     double rewind_length = 30.0;
+    double rewind_speed = 1.0;
     double max_turbo = 4.0;
     double max_slowmo = 0.25;
 
@@ -228,7 +229,7 @@ private:
     // Can we make save states?
     bool save_states_allowed() noexcept;
 
-    // -1 = rewind
+    // -rewind_speed = rewind
     double rewind_multiplier = 1.0F;
     
     // >1.0F = turbo
