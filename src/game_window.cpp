@@ -47,6 +47,7 @@
 #define SETTINGS_STATUS_TEXT_HIDDEN "status_text_hidden"
 #define SETTINGS_REWIND_LENGTH "rewind_length"
 #define SETTINGS_REWIND_SPEED "rewind_speed"
+#define SETTINGS_BASE_SPEED "base_speed"
 #define SETTINGS_MAX_TURBO "max_turbo"
 #define SETTINGS_MAX_SLOWMO "max_slowmo"
 
@@ -335,6 +336,7 @@ GameWindow::GameWindow() {
     LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
     LOAD_DOUBLE_SETTING_VALUE(this->max_turbo, SETTINGS_MAX_TURBO);
     LOAD_DOUBLE_SETTING_VALUE(this->rewind_speed, SETTINGS_REWIND_SPEED);
+    LOAD_DOUBLE_SETTING_VALUE(this->base_multiplier, SETTINGS_BASE_SPEED);
 
     // Prevent invalid values
     this->max_slowmo = std::max(this->max_slowmo, 0.0);
@@ -763,6 +765,9 @@ GameWindow::GameWindow() {
     // Fire game_loop repeatedly
     this->game_thread_timer.callOnTimeout(this, &GameWindow::game_loop);
     this->game_thread_timer.start();
+
+    // Update the emulation speed
+    this->update_emulation_speed();
 }
 
 void GameWindow::action_set_volume() {
@@ -1492,6 +1497,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_REWIND_SPEED, this->rewind_speed);
     settings.setValue(SETTINGS_MAX_SLOWMO, this->max_slowmo);
     settings.setValue(SETTINGS_MAX_TURBO, this->max_turbo);
+    settings.setValue(SETTINGS_BASE_SPEED, this->base_multiplier);
     settings.setValue(SETTINGS_REWIND_ENABLED, this->rewind_enabled);
     settings.setValue(SETTINGS_SLOWMO_ENABLED, this->slowmo_enabled);
     settings.setValue(SETTINGS_TURBO_ENABLED, this->turbo_enabled);
@@ -1679,7 +1685,6 @@ void GameWindow::update_emulation_speed() {
 
 void GameWindow::reset_emulation_speed() {
     this->rewind_multiplier = 1.0F;
-    this->base_multiplier = 1.0F;
     this->slowmo_multiplier = 1.0F;
     this->turbo_multiplier = 1.0F;
     this->update_emulation_speed();

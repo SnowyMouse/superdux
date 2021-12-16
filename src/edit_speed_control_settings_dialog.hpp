@@ -18,8 +18,8 @@ private:
     GameWindow *window;
 
     QCheckBox *enable_rewind, *enable_turbo, *enable_slowmo;
-    QLineEdit *rewind_amount, *rewind_speed_amount, *turbo_amount, *slowmo_amount;
-    QSlider *rewind_slider, *rewind_speed_slider, *turbo_slider, *slowmo_slider;
+    QLineEdit *base_speed_amount, *rewind_amount, *rewind_speed_amount, *turbo_amount, *slowmo_amount;
+    QSlider *base_speed_slider, *rewind_slider, *rewind_speed_slider, *turbo_slider, *slowmo_slider;
 
     void update_sliders();
 
@@ -27,6 +27,7 @@ private:
     void update_rewind_speed_textbox(int);
     void update_turbo_textbox(int);
     void update_slowmo_textbox(int);
+    void update_base_speed_textbox(int);
 };
 
 #endif
