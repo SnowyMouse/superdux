@@ -848,7 +848,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         }
         catch(std::exception &e) {
             this->show_status_text("Error: Failed to read ROM");
-            print_debug_message("std::vector::resize(): Could not resize for %li bytes: %s\n", rom_path, l, e.what());
+            print_debug_message("std::vector::resize(): Could not resize for %li bytes: %s\n", l, e.what());
             std::fclose(f);
             return;
         }
@@ -1101,17 +1101,29 @@ void GameWindow::redraw_pixel_buffer() {
     
     // Show frame rate
     if(this->fps_text) {
-        float fps = this->instance->get_frame_rate();
-        if(this->last_fps != fps) {
+        auto fps = this->instance->get_frame_rate();
+        auto multiplier = this->base_multiplier * this->rewind_multiplier * this->slowmo_multiplier * this->turbo_multiplier;
+
+        if(this->last_fps != fps || this->last_speed != multiplier) {
+            char fps_str[64];
+            char mul_str[64] = {};
             char fps_text_str[64];
             if(fps == 0.0) {
-                std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: --");
+                std::snprintf(fps_str, sizeof(fps_str), "--");
             }
             else {
-                std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: %.01f", fps);
+                std::snprintf(fps_str, sizeof(fps_str), "%.01f", fps);
             }
+
+            if(multiplier != 1.0) {
+                std::snprintf(mul_str, sizeof(mul_str), "(%.01f%% speed)", multiplier * 100.0);
+            }
+
+            std::snprintf(fps_text_str, sizeof(fps_text_str), "FPS: %-6s %s", fps_str, mul_str);
+
             this->fps_text->setPlainText(fps_text_str);
             this->last_fps = fps;
+            this->last_speed = multiplier;
         }
     }
 }

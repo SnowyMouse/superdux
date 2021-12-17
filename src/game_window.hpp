@@ -130,7 +130,8 @@ private:
     
     // For showing FPS
     bool show_fps = false;
-    float last_fps = -1.0;
+    double last_fps = -1.0;
+    double last_speed = 1.0;
     
     void show_status_text(const char *text);
     QGraphicsTextItem *status_text = nullptr;
