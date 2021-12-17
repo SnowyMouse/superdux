@@ -705,9 +705,9 @@ GameWindow::GameWindow() {
     connect(debug_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(debug_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
     
-    auto *toggle_fps = debug_menu->addAction("Show FPS");
-    connect(toggle_fps, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
-    toggle_fps->setCheckable(true);
+    this->show_fps_button = debug_menu->addAction("Show FPS");
+    connect(this->show_fps_button, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
+    this->show_fps_button->setCheckable(true);
     debug_menu->addSeparator();
     
     // Here's the layout
@@ -746,7 +746,6 @@ GameWindow::GameWindow() {
     if(this->show_fps) {
         this->show_fps = false;
         this->action_toggle_showing_fps();
-        toggle_fps->setChecked(true);
     }
 
     // Audio
@@ -1305,6 +1304,7 @@ void GameWindow::make_shadow(QGraphicsTextItem *object) {
 
 void GameWindow::action_toggle_showing_fps() noexcept {
     this->show_fps = !this->show_fps;
+    this->show_fps_button->setChecked(this->show_fps);
     
     // If showing frame rate, create text objects and initialize the FPS counter
     if(this->show_fps) {
@@ -1675,6 +1675,11 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
         case InputDevice::Input_VolumeUp:
             if(boolean_input) {
                 this->increment_volume(5);
+            }
+            break;
+        case InputDevice::Input_ShowFPS:
+            if(boolean_input) {
+                this->action_toggle_showing_fps();
             }
             break;
         default: break;

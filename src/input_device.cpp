@@ -203,6 +203,7 @@ void InputDeviceKeyboard::load_sane_defaults() {
     this->settings[Input_Turbo] = {Qt::Key_Space};
     this->settings[Input_Slowmo] = {Qt::Key_C};
     this->settings[Input_Rewind] = {Qt::Key_Backspace};
+    this->settings[Input_ShowFPS] = {Qt::Key_F3};
 }
 
 void InputDeviceGamepad::load_sane_defaults() {

@@ -130,6 +130,7 @@ private:
     
     // For showing FPS
     bool show_fps = false;
+    QAction *show_fps_button;
     double last_fps = -1.0;
     double last_speed = 1.0;
     

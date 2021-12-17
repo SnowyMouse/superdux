@@ -34,7 +34,8 @@ public:
                           DO_THIS(Slowmo) \
                           DO_THIS(Rewind) \
                           DO_THIS(VolumeUp) \
-                          DO_THIS(VolumeDown)
+                          DO_THIS(VolumeDown) \
+                          DO_THIS(ShowFPS)
     
     enum InputType : unsigned int  {
         #define DO_THIS(type) Input_##type,
