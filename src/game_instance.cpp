@@ -97,6 +97,9 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
         // Update when the next frame should happen
         instance->next_expected_frame = clock::now() + std::chrono::microseconds(static_cast<unsigned long>(1000000.0 / GB_get_usual_frame_rate(&instance->gameboy) / instance->turbo_mode_speed_ratio));
     }
+
+    // Lock this
+    instance->vblank_mutex.lock();
     
     // Increment the work buffer index by 1, wrapping around to 0 when we've hit the number of buffers
     instance->previous_buffer_second = instance->previous_buffer;
@@ -117,6 +120,7 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     instance->vblank_hit = true;
 
     instance->should_rewind = instance->rewinding;
+    instance->vblank_mutex.unlock();
 }
 
 GameInstance::GameInstance(GB_model_t model, GB_border_mode_t border) {
@@ -259,7 +263,12 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     return continue_text;
 }
 
-float GameInstance::get_frame_rate() noexcept MAKE_GETTER(this->frame_rate)
+float GameInstance::get_frame_rate() noexcept {
+    this->vblank_mutex.lock();
+    auto r = this->frame_rate;
+    this->vblank_mutex.unlock();
+    return r;
+}
 
 void GameInstance::reset() noexcept {
     this->mutex.lock();
@@ -315,6 +324,7 @@ void GameInstance::start_game_loop(GameInstance *instance) noexcept {
             instance->skip_sgb_intro_if_needed();
 
             // Do stuff now
+            GB_set_key_mask(&instance->gameboy, static_cast<GB_key_mask_t>(static_cast<std::uint16_t>(instance->button_bitfield)));
             GB_run(&instance->gameboy);
             
             // Wait until the end of GB_run to calculate frame rate
@@ -410,7 +420,8 @@ std::vector<std::uint16_t> GameInstance::get_breakpoints_without_mutex() {
 std::vector<std::uint16_t> GameInstance::get_breakpoints() MAKE_GETTER(this->get_breakpoints_without_mutex())
 
 bool GameInstance::read_pixel_buffer(std::uint32_t *destination, std::size_t destination_length) noexcept {
-    this->mutex.lock();
+    this->vblank_mutex.lock();
+
     auto required_length = this->pixel_buffer[0].size();
     bool success = required_length == destination_length;
 
@@ -418,7 +429,9 @@ bool GameInstance::read_pixel_buffer(std::uint32_t *destination, std::size_t des
         std::size_t bytes = required_length * sizeof(*this->pixel_buffer[0].data());
         switch(this->pixel_buffer_mode) {
             case PixelBufferMode::PixelBufferSingle:
+                this->mutex.lock();
                 std::memcpy(destination, this->pixel_buffer[this->work_buffer].data(), bytes);
+                this->mutex.unlock();
                 break;
             case PixelBufferMode::PixelBufferDouble:
                 std::memcpy(destination, this->pixel_buffer[this->previous_buffer].data(), bytes);
@@ -435,7 +448,7 @@ bool GameInstance::read_pixel_buffer(std::uint32_t *destination, std::size_t des
     }
 
     // Done
-    this->mutex.unlock();
+    this->vblank_mutex.unlock();
     
     // Done
     return success;
@@ -464,22 +477,34 @@ void GameInstance::end_game_loop() noexcept {
     this->mutex.unlock();
 }
 
-void GameInstance::set_button_state(GB_key_t button, bool pressed) MAKE_SETTER(GB_set_key_state(&this->gameboy, button, pressed))
+void GameInstance::set_button_state(GB_key_t button, bool pressed) {
+    if(pressed) {
+        this->button_bitfield |= (1 << button);
+    }
+    else {
+        this->button_bitfield &= ~(1 << button);
+    }
+}
 
 void GameInstance::clear_all_button_states() MAKE_SETTER(this->clear_all_button_states_no_mutex());
 
 void GameInstance::clear_all_button_states_no_mutex() noexcept {
+    this->button_bitfield = 0;
     GB_set_key_mask(&this->gameboy, static_cast<GB_key_mask_t>(0));
 }
 
 void GameInstance::get_dimensions(std::uint32_t &width, std::uint32_t &height) noexcept {
-    this->mutex.lock();
-    height = GB_get_screen_height(&this->gameboy);
-    width = GB_get_screen_width(&this->gameboy);
-    this->mutex.unlock();
+    this->vblank_mutex.lock();
+    height = this->pb_height;
+    width = this->pb_width;
+    this->vblank_mutex.unlock();
 }
 
 void GameInstance::update_pixel_buffer_size() {
+    this->vblank_mutex.lock();
+    this->pb_width = GB_get_screen_width(&this->gameboy);
+    this->pb_height = GB_get_screen_height(&this->gameboy);
+
     for(auto &i : this->pixel_buffer) {
         i = std::vector<std::uint32_t>(this->get_pixel_buffer_size_without_mutex(), 0xFF000000);
         this->work_buffer = 0;
@@ -487,21 +512,22 @@ void GameInstance::update_pixel_buffer_size() {
         this->previous_buffer_second = 0;
         this->assign_work_buffer();
     }
+    this->vblank_mutex.unlock();
 }
 
 std::vector<std::int16_t> GameInstance::get_sample_buffer() noexcept {
-    this->mutex.lock();
+    this->vblank_mutex.lock();
     auto ret = std::move(this->sample_buffer);
     this->sample_buffer.clear();
-    this->mutex.unlock();
+    this->vblank_mutex.unlock();
     return ret;
 }
 
 void GameInstance::transfer_sample_buffer(std::vector<std::int16_t> &destination) noexcept {
-    this->mutex.lock();
+    this->vblank_mutex.lock();
     destination.insert(destination.end(), this->sample_buffer.begin(), this->sample_buffer.end());
     this->sample_buffer.clear();
-    this->mutex.unlock();
+    this->vblank_mutex.unlock();
 }
 
 void GameInstance::on_sample(GB_gameboy_s *gameboy, GB_sample_t *sample) {
@@ -609,9 +635,10 @@ void GameInstance::set_speed_multiplier(double speed_multiplier) noexcept {
 bool GameInstance::is_audio_enabled() noexcept MAKE_GETTER(this->audio_enabled)
 
 std::size_t GameInstance::get_pixel_buffer_size() noexcept {
-    std::uint32_t height, width;
-    this->get_dimensions(width, height);
-    return height*width;
+    this->vblank_mutex.lock();
+    auto r = this->pb_height*this->pb_width;
+    this->vblank_mutex.unlock();
+    return r;
 }
 
 void GameInstance::on_log(GB_gameboy_s *gameboy, const char *log, GB_log_attributes) noexcept {
@@ -836,9 +863,6 @@ void GameInstance::set_volume(int volume) noexcept {
 bool GameInstance::is_mono_forced() noexcept MAKE_GETTER(this->force_mono)
 void GameInstance::set_mono_forced(bool mono) noexcept MAKE_SETTER(this->force_mono = mono)
 
-bool GameInstance::is_paused_manually() noexcept MAKE_GETTER(this->manual_paused)
-void GameInstance::set_paused_manually(bool paused) noexcept MAKE_SETTER(this->manual_paused = paused)
-
 GameInstance::PixelBufferMode GameInstance::get_pixel_buffering_mode() noexcept MAKE_GETTER(this->pixel_buffer_mode)
 void GameInstance::set_pixel_buffering_mode(PixelBufferMode mode) noexcept MAKE_SETTER(this->pixel_buffer_mode = mode)
 
@@ -1007,14 +1031,9 @@ void GameInstance::on_rumble(GB_gameboy_s *gb, double rumble) noexcept {
     reinterpret_cast<GameInstance *>(GB_get_user_data(gb))->rumble = rumble;
 }
 
-double GameInstance::get_rumble() noexcept MAKE_GETTER(this->rumble)
 void GameInstance::set_rumble_mode(GB_rumble_mode_t mode) noexcept MAKE_SETTER(GB_set_rumble_mode(&this->gameboy, mode))
 
 void GameInstance::set_rewind(bool rewinding) noexcept MAKE_SETTER(this->rewinding = rewinding)
-
-bool GameInstance::is_paused_from_rewind() noexcept MAKE_GETTER(this->rewind_paused)
-
-bool GameInstance::is_paused_from_zero_speed() noexcept MAKE_GETTER(this->pause_zero_speed);
 
 void GameInstance::set_rewind_length(double seconds) noexcept MAKE_SETTER(GB_set_rewind_length(&this->gameboy, seconds))
 
@@ -1418,22 +1437,24 @@ void GameInstance::print_image(GB_gameboy_t *gb, std::uint32_t *image, std::uint
     auto *instance = reinterpret_cast<GameInstance *>(GB_get_user_data(gb));
 
     // Add the printed data
+    instance->printer_mutex.lock();
     std::vector<std::uint32_t> printer_data(print_width * print_height, 0xFFFFFFFF);
     std::memcpy(printer_data.data() + print_width * top_margin, image, GameInstance::GB_PRINTER_WIDTH * height * sizeof(*image));
     instance->printer_data.emplace_back(std::move(printer_data), print_height);
+    instance->printer_mutex.unlock();
 }
 
 std::optional<std::vector<std::uint32_t>> GameInstance::pop_printed_image(std::size_t &height) {
-    this->mutex.lock();
+    this->printer_mutex.lock();
 
     if(this->printer_data.empty()) {
-        this->mutex.unlock();
+        this->printer_mutex.unlock();
         return std::nullopt;
     }
     else {
         auto [p_data, p_height] = std::move(*this->printer_data.begin());
         this->printer_data.erase(this->printer_data.begin());
-        this->mutex.unlock();
+        this->printer_mutex.unlock();
         height = p_height;
         return p_data;
     }

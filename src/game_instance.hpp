@@ -266,14 +266,14 @@ public: // all public functions assume the mutex is not locked
      * 
      * @param paused paused manually
      */
-    void set_paused_manually(bool paused) noexcept;
+    void set_paused_manually(bool paused) noexcept { this->manual_paused = paused; }
     
     /**
      * Get whether or not the instance is paused manually
      * 
      * @return paused from breakpoint
      */
-    bool is_paused_manually() noexcept;
+    bool is_paused_manually() { return this->manual_paused; }
     
     /**
      * Get whether or not the instance is paused due to a breakpoint
@@ -287,14 +287,14 @@ public: // all public functions assume the mutex is not locked
      *
      * @return paused from rewind
      */
-    bool is_paused_from_rewind() noexcept;
+    bool is_paused_from_rewind() noexcept { return this->rewind_paused; }
 
     /**
      * Get whether or not the instance is paused because of speed multiplier being 0
      *
      * @return paused from zero speed
      */
-    bool is_paused_from_zero_speed() noexcept;
+    bool is_paused_from_zero_speed() noexcept { return this->pause_zero_speed; }
     
     /**
      * Get the current frame rate
@@ -508,7 +508,7 @@ public: // all public functions assume the mutex is not locked
      *
      * @return rumble
      */
-    double get_rumble() noexcept;
+    double get_rumble() noexcept { return this->rumble; }
 
     /**
      * Set the rumble mode
@@ -730,6 +730,13 @@ public: // all public functions assume the mutex is not locked
 private: // all private functions assume the mutex is locked by the caller
     // Save/symbols
     void load_save_and_symbols(const std::optional<std::filesystem::path> &sram_path, const std::optional<std::filesystem::path> &symbol_path);
+
+    // Pixel buffer width/height
+    std::uint16_t pb_width;
+    std::uint16_t pb_height;
+
+    // Button bitfield
+    std::atomic<std::uint16_t> button_bitfield;
     
     // Gameboy instance
     GB_gameboy_s gameboy = {};
@@ -771,7 +778,7 @@ private: // all private functions assume the mutex is locked by the caller
     std::atomic_bool rom_loaded = false;
     
     // Paused
-    bool manual_paused = false;
+    std::atomic_bool manual_paused = false;
 
     // Paused from breakpoint
     std::atomic_bool bp_paused = false;
@@ -780,7 +787,7 @@ private: // all private functions assume the mutex is locked by the caller
     std::atomic_bool loop_running = false;
 
     // Pause due to zero speed
-    bool pause_zero_speed = false;
+    std::atomic_bool pause_zero_speed = false;
     
     // Loop is finishing
     bool loop_finishing = false;
@@ -835,6 +842,12 @@ private: // all private functions assume the mutex is locked by the caller
     
     // Mutex - thread safety
     std::mutex mutex;
+
+    // Vblank mutex - thread safety, but faster since only older information needs to be read
+    std::mutex vblank_mutex;
+
+    // Printer mutex - thread safety for the printer data
+    std::mutex printer_mutex;
     
     // Execute the given command without locking the mutex. Command must be already allocated with malloc()
     std::string execute_command_without_mutex(char *command);
@@ -871,10 +884,10 @@ private: // all private functions assume the mutex is locked by the caller
     std::vector<std::uint16_t> get_breakpoints_without_mutex();
 
     // Rumble
-    double rumble = 0.0;
+    std::atomic<double> rumble = 0.0;
     static void on_rumble(GB_gameboy_s *gb, double rumble) noexcept;
     bool should_rewind = false;
-    bool rewind_paused = false;
+    std::atomic_bool rewind_paused = false;
 
     // Rapid buttons
     std::vector<GB_key_t> rapid_buttons;
