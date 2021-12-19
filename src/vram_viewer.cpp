@@ -479,10 +479,10 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
     // Add the palette to the row
     int palette_row_count = 0;
     auto *vram_viewer = this;
-    auto add_palette_widget = [&gb_palette_view_frame, &gb_palette_view_frame_layout, &initialize_palette, &table_font, &palette_row_count, &vram_viewer](std::size_t i, GB_palette_type_t type, PaletteViewData &view_data, const char *title) {
+    auto add_palette_widget = [&gb_palette_view_frame, &gb_palette_view_frame_layout, &initialize_palette, &table_font, &palette_row_count, &vram_viewer](std::size_t i, GB_palette_type_t type, PaletteViewData &view_data, const char *title, bool border_on_bottom) {
         // Label
         char text[256];
-        std::snprintf(text, sizeof(text), "%s %zu", title, i);
+        std::snprintf(text, sizeof(text), "%s #%zu", title, i);
         view_data.name_label = new QLabel(text, gb_palette_view_frame);
         gb_palette_view_frame_layout->addWidget(view_data.name_label, palette_row_count, 0);
 
@@ -490,15 +490,26 @@ VRAMViewer::VRAMViewer(GameWindow *window) : QMainWindow(window), window(window)
         initialize_palette(view_data, gb_palette_view_frame, true, type, i)->setContentsMargins(0, (i == 0 && type == GB_palette_type_t::GB_PALETTE_BACKGROUND) ? 0 : 5, 0, 5); // have 5 px spacing on bottom and top (0 px spacing on top if first BG palette)
         gb_palette_view_frame_layout->addWidget(view_data.widget, palette_row_count, 2);
 
+        if(border_on_bottom) {
+            palette_row_count++;
+
+            auto *f = new QFrame(gb_palette_view_frame);
+            f->setFrameShape(QFrame::Shape::HLine);
+            f->setMaximumHeight(2);
+
+            gb_palette_view_frame_layout->addWidget(f, palette_row_count, 0, 1, 3);
+        }
+
         palette_row_count++;
     };
 
     // Initialize the palettes here
     for(std::size_t i = 0; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
-        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_BACKGROUND, this->gb_palette_background[i], "Background");
+        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_BACKGROUND, this->gb_palette_background[i], "Background", true);
     }
+
     for(std::size_t i = 0; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
-        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_OAM, this->gb_palette_oam[i], "OAM (Sprite)");
+        add_palette_widget(i, GB_palette_type_t::GB_PALETTE_OAM, this->gb_palette_oam[i], "OAM (Sprite)", i + 1 != sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]));
     }
 
     gb_palette_view_frame_layout->addWidget(this->mouse_over_palette_label = new QLabel("", gb_palette_view_frame), palette_row_count++, 0, 1, 3);
@@ -843,6 +854,19 @@ void VRAMViewer::show_info_for_tile(const std::optional<std::uint16_t> &tile, bo
 }
 
 void VRAMViewer::redraw_palette() noexcept {
+    // Do we "disable" the CGB-only colors?
+    if(this->cgb_colors != this->was_cgb_colors) {
+        for(std::size_t i = 1; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
+            this->gb_palette_background[i].widget->setEnabled(this->cgb_colors);
+            this->gb_palette_background[i].name_label->setEnabled(this->cgb_colors);
+        }
+        for(std::size_t i = 2; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
+            this->gb_palette_oam[i].widget->setEnabled(this->cgb_colors);
+            this->gb_palette_oam[i].name_label->setEnabled(this->cgb_colors);
+        }
+    }
+
+    // If this view isn't visible, we don't need to do anything further
     if(this->gb_palette_view_frame->isHidden()) {
         return;
     }
@@ -858,18 +882,6 @@ void VRAMViewer::redraw_palette() noexcept {
     for(std::size_t i = 0; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
         instance.get_raw_palette(GB_palette_type_t::GB_PALETTE_OAM, i, buffer);
         this->update_palette(this->gb_palette_oam[i], GB_palette_type_t::GB_PALETTE_OAM, i, buffer);
-    }
-
-    // Do we "disable" the CGB-only colors?
-    if(this->cgb_colors != this->was_cgb_colors) {
-        for(std::size_t i = 1; i < sizeof(this->gb_palette_background) / sizeof(this->gb_palette_background[0]); i++) {
-            this->gb_palette_background[i].widget->setEnabled(this->cgb_colors);
-            this->gb_palette_background[i].name_label->setEnabled(this->cgb_colors);
-        }
-        for(std::size_t i = 2; i < sizeof(this->gb_palette_oam) / sizeof(this->gb_palette_oam[0]); i++) {
-            this->gb_palette_oam[i].widget->setEnabled(this->cgb_colors);
-            this->gb_palette_oam[i].name_label->setEnabled(this->cgb_colors);
-        }
     }
 
     // if we're mousing over a palette, do this

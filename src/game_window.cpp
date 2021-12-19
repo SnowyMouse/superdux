@@ -365,7 +365,7 @@ GameWindow::GameWindow() {
     auto *file_menu = bar->addMenu("File");
     connect(file_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(file_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
-    
+
     this->open_roms_action = file_menu->addAction("Open ROM...");
     this->open_roms_action->setShortcut(QKeySequence::Open);
     this->open_roms_action->setIcon(GET_ICON("document-open"));
