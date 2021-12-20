@@ -801,9 +801,20 @@ void GameWindow::show_new_volume_text() {
 }
 
 void GameWindow::load_rom(const char *rom_path) noexcept {
-    if(!std::filesystem::exists(rom_path)) {
-        this->show_status_text("Error: ROM not found");
-        print_debug_message("Could not find %s\n", rom_path);
+    auto path = std::filesystem::path(rom_path);
+
+    std::error_code ec;
+    if(!std::filesystem::exists(path, ec)) {
+        if(ec) {
+            char err[256];
+            std::snprintf(err, sizeof(err), "Error: Cannot open ROM (%s)", ec.message().c_str());
+            print_debug_message(err);
+            this->show_status_text(err);
+        }
+        else {
+            this->show_status_text("Error: ROM not found");
+            print_debug_message("Could not find %s\n", rom_path);
+        }
         return;
     }
     
@@ -818,7 +829,6 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->update_recent_roms_list();
     
     // Make path
-    auto path = std::filesystem::path(rom_path);
     this->save_path = std::filesystem::path(path).replace_extension(".sav");
     auto sym_path = std::filesystem::path(path).replace_extension(".sym");
     
@@ -1014,14 +1024,53 @@ void GameWindow::action_clear_all_roms() noexcept {
 
 void GameWindow::action_clear_missing_roms() noexcept {
     auto recent_roms_copy = this->recent_roms;
-    this->recent_roms.clear();
+    decltype(this->recent_roms) new_recent_roms;
 
+    bool retain_inaccessible_roms = false;
     for(auto &i : recent_roms_copy) {
-        if(std::filesystem::exists(i.toStdString())) {
-            this->recent_roms.append(i);
+        bool should_retain;
+
+        // Check if it exists
+        std::error_code ec;
+        if(std::filesystem::exists(i.toStdString(), ec)) {
+            should_retain = true;
+        }
+        else if(ec) {
+            // Did the user hit "No to all"?
+            if(retain_inaccessible_roms) {
+                should_retain = true;
+            }
+
+            // If not, ask
+            else {
+                char msg[512];
+                std::snprintf(msg, sizeof(msg), "Failed to query if %s exists due to OS error %i:\n\n%s\n\nThe file may or may not still exist, but the underlying location could not be accessed.\n\nDo you want to remove this as well?", i.toUtf8().data(), ec.value(), ec.message().c_str());
+
+                auto r = QMessageBox(QMessageBox::Icon::Question, "Unable to verify if a ROM exists", msg, QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No | QMessageBox::StandardButton::NoToAll).exec();
+
+                switch(r) {
+                    case QMessageBox::StandardButton::NoToAll:
+                        retain_inaccessible_roms = true;
+                        // fallthrough
+                    case QMessageBox::StandardButton::No:
+                        should_retain = true;
+                        break;
+
+                    // User hit yes
+                    default:
+                    case QMessageBox::StandardButton::Yes:
+                        should_retain = false;
+                        break;
+                }
+            }
+        }
+
+        if(should_retain) {
+            new_recent_roms.append(i);
         }
     }
 
+    this->recent_roms = std::move(new_recent_roms);
     this->update_recent_roms_list();
 }
 
