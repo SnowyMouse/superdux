@@ -292,6 +292,7 @@ void EditAdvancedGameBoyModelDialog::perform_accept() {
 
 static void find_boot_rom(QLineEdit *le) {
     QFileDialog qfd;
+    qfd.setFileMode(QFileDialog::FileMode::ExistingFile);
     if(qfd.exec() == QDialog::DialogCode::Accepted) {
         le->setText(qfd.selectedFiles().at(0));
     }
