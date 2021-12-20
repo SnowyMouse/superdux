@@ -71,6 +71,8 @@ target_include_directories(superdux-shared-br
 option(BUILD_QT5_VERSION "Build the Qt5 version" ${Qt5_FOUND})
 option(BUILD_QT6_VERSION "Build the Qt6 version" ${Qt6_FOUND})
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_Alignas=alignas") # workaround
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)

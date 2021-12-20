@@ -149,7 +149,7 @@ const uint32_t *get_gb_palette(struct GB_gameboy_s *gb, GB_palette_type_t palett
             palette = gb->background_palettes_rgb;
             break;
         case GB_PALETTE_OAM:
-            palette = gb->sprite_palettes_rgb;
+            palette = gb->object_palettes_rgb;
             break;
         default:
         case GB_PALETTE_NONE:
