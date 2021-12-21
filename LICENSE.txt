@@ -5,14 +5,20 @@ Software Foundation.
 
 See COPYING for more info.
 
+SuperDUX is not licensed under ANY earlier or later revision of the GNU General
+Public License or ANY other license at all EXCEPT at the discretion of Snowy.
+
 --
 
 Attributions
 
 SameBoy (c) Lior Alphon
 SameBoy is licensed under the MIT license.
+
 See https://github.com/LIJI32/SameBoy/blob/master/LICENSE for more info.
 
 Qt (c) The Qt Company
-Qt is licensed under version 3 of the GNU LGPL or version 3 of the GNU GPL.
+Qt is licensed under version 2 of the GNU LGPL (or later) or version 2 of the
+GNU GPL (or later).
+
 See https://www.qt.io/licensing/open-source-lgpl-obligations for more info.
