@@ -1295,7 +1295,7 @@ GameInstance::ObjectAttributeInfo GameInstance::get_object_attribute_info_withou
 
     std::size_t size;
     const auto *tileset = reinterpret_cast<std::uint8_t *>(GB_get_direct_access(&this->gameboy, GB_direct_access_t::GB_DIRECT_ACCESS_VRAM, &size, nullptr));
-    assert(size > 0x2000);
+    assert(cgb_mode ? size > 0x2000 : size >= 0x2000);
     const std::uint8_t *tileset_banks[2] = {tileset, tileset + 0x2000};
 
     ObjectAttributeInfo oam;
