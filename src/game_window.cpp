@@ -58,17 +58,17 @@
 #define SETTINGS_SLOWMO_ENABLED "slowmo_enabled"
 #define SETTINGS_REWIND_ENABLED "rewind_enabled"
 
-#define SETTINGS_GB_BOOT_ROM "gb_boot_rom"
-#define SETTINGS_GBC_BOOT_ROM "gbc_boot_rom"
-#define SETTINGS_GBA_BOOT_ROM "gba_boot_rom"
-#define SETTINGS_SGB_BOOT_ROM "sgb_boot_rom"
-#define SETTINGS_SGB2_BOOT_ROM "sgb2_boot_rom"
+#define SETTINGS_GB_BOOT_ROM "gb_external_boot_rom"
+#define SETTINGS_GBC_BOOT_ROM "gbc_external_boot_rom"
+#define SETTINGS_GBA_BOOT_ROM "gba_external_boot_rom"
+#define SETTINGS_SGB_BOOT_ROM "sgb_external_boot_rom"
+#define SETTINGS_SGB2_BOOT_ROM "sgb2_external_boot_rom"
 
-#define SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM "gb_allow_custom_boot_rom"
-#define SETTINGS_GBC_ALLOW_CUSTOM_BOOT_ROM "gbc_allow_custom_boot_rom"
-#define SETTINGS_GBA_ALLOW_CUSTOM_BOOT_ROM "gba_allow_custom_boot_rom"
-#define SETTINGS_SGB_ALLOW_CUSTOM_BOOT_ROM "sgb_allow_custom_boot_rom"
-#define SETTINGS_SGB2_ALLOW_CUSTOM_BOOT_ROM "sgb2_allow_custom_boot_rom"
+#define SETTINGS_GB_ALLOW_EXTERNAL_BOOT_ROM "gb_use_external_boot_rom"
+#define SETTINGS_GBC_ALLOW_EXTERNAL_BOOT_ROM "gbc_use_external_boot_rom"
+#define SETTINGS_GBA_ALLOW_EXTERNAL_BOOT_ROM "gba_use_external_boot_rom"
+#define SETTINGS_SGB_ALLOW_EXTERNAL_BOOT_ROM "sgb_use_external_boot_rom"
+#define SETTINGS_SGB2_ALLOW_EXTERNAL_BOOT_ROM "sgb2_use_external_boot_rom"
 
 #define SETTINGS_GB_REVISION "gb_model_revision"
 #define SETTINGS_GBC_REVISION "gbc_model_revision"
@@ -211,15 +211,15 @@ const std::optional<std::filesystem::path> &GameWindow::boot_rom_for_type(GameBo
 
     switch(type) {
         case GameBoyType::GameBoyGB:
-            return this->gb_allow_custom_boot_rom ? this->gb_boot_rom_path : null_path;
+            return this->gb_allow_external_boot_rom ? this->gb_boot_rom_path : null_path;
         case GameBoyType::GameBoyGBC:
-            return this->gbc_allow_custom_boot_rom ? this->gbc_boot_rom_path : null_path;
+            return this->gbc_allow_external_boot_rom ? this->gbc_boot_rom_path : null_path;
         case GameBoyType::GameBoyGBA:
-            return this->gba_allow_custom_boot_rom ? this->gba_boot_rom_path : null_path;
+            return this->gba_allow_external_boot_rom ? this->gba_boot_rom_path : null_path;
         case GameBoyType::GameBoySGB:
-            return this->sgb_allow_custom_boot_rom ? this->sgb_boot_rom_path : null_path;
+            return this->sgb_allow_external_boot_rom ? this->sgb_boot_rom_path : null_path;
         case GameBoyType::GameBoySGB2:
-            return this->sgb2_allow_custom_boot_rom ? this->sgb2_boot_rom_path : null_path;
+            return this->sgb2_allow_external_boot_rom ? this->sgb2_boot_rom_path : null_path;
         default:
             std::terminate();
     }
@@ -317,11 +317,11 @@ GameWindow::GameWindow() {
     LOAD_BOOL_SETTING_VALUE(this->turbo_enabled, SETTINGS_TURBO_ENABLED);
     LOAD_BOOL_SETTING_VALUE(this->slowmo_enabled, SETTINGS_SLOWMO_ENABLED);
     LOAD_BOOL_SETTING_VALUE(this->rewind_enabled, SETTINGS_REWIND_ENABLED);
-    LOAD_BOOL_SETTING_VALUE(this->gb_allow_custom_boot_rom, SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->gbc_allow_custom_boot_rom, SETTINGS_GBC_ALLOW_CUSTOM_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->gba_allow_custom_boot_rom, SETTINGS_GBA_ALLOW_CUSTOM_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->sgb_allow_custom_boot_rom, SETTINGS_SGB_ALLOW_CUSTOM_BOOT_ROM);
-    LOAD_BOOL_SETTING_VALUE(this->sgb2_allow_custom_boot_rom, SETTINGS_SGB2_ALLOW_CUSTOM_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->gb_allow_external_boot_rom, SETTINGS_GB_ALLOW_EXTERNAL_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->gbc_allow_external_boot_rom, SETTINGS_GBC_ALLOW_EXTERNAL_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->gba_allow_external_boot_rom, SETTINGS_GBA_ALLOW_EXTERNAL_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->sgb_allow_external_boot_rom, SETTINGS_SGB_ALLOW_EXTERNAL_BOOT_ROM);
+    LOAD_BOOL_SETTING_VALUE(this->sgb2_allow_external_boot_rom, SETTINGS_SGB2_ALLOW_EXTERNAL_BOOT_ROM);
 
     LOAD_BOOL_SETTING_VALUE(this->integrity_check_corrupt, SETTINGS_INTEGRITY_CHECK_CORRUPT);
     LOAD_BOOL_SETTING_VALUE(this->integrity_check_compatible, SETTINGS_INTEGRITY_CHECK_COMPATIBLE);
@@ -808,7 +808,7 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         if(ec) {
             char err[256];
             std::snprintf(err, sizeof(err), "Error: Cannot open ROM (%s)", ec.message().c_str());
-            print_debug_message(err);
+            print_debug_message("%s\n", err);
             this->show_status_text(err);
         }
         else {
@@ -1572,11 +1572,11 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_SGB_BOOT_ROM, this->sgb_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
     settings.setValue(SETTINGS_SGB2_BOOT_ROM, this->sgb2_boot_rom_path.value_or(std::filesystem::path()).string().c_str());
 
-    settings.setValue(SETTINGS_GB_ALLOW_CUSTOM_BOOT_ROM, this->gb_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_GBC_ALLOW_CUSTOM_BOOT_ROM, this->gbc_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_GBA_ALLOW_CUSTOM_BOOT_ROM, this->gba_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_SGB_ALLOW_CUSTOM_BOOT_ROM, this->sgb_allow_custom_boot_rom);
-    settings.setValue(SETTINGS_SGB2_ALLOW_CUSTOM_BOOT_ROM, this->sgb2_allow_custom_boot_rom);
+    settings.setValue(SETTINGS_GB_ALLOW_EXTERNAL_BOOT_ROM, this->gb_allow_external_boot_rom);
+    settings.setValue(SETTINGS_GBC_ALLOW_EXTERNAL_BOOT_ROM, this->gbc_allow_external_boot_rom);
+    settings.setValue(SETTINGS_GBA_ALLOW_EXTERNAL_BOOT_ROM, this->gba_allow_external_boot_rom);
+    settings.setValue(SETTINGS_SGB_ALLOW_EXTERNAL_BOOT_ROM, this->sgb_allow_external_boot_rom);
+    settings.setValue(SETTINGS_SGB2_ALLOW_EXTERNAL_BOOT_ROM, this->sgb2_allow_external_boot_rom);
 
     settings.setValue(SETTINGS_GB_REVISION, this->gb_rev);
     settings.setValue(SETTINGS_GBC_REVISION, this->gbc_rev);
