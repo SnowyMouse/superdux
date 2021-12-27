@@ -293,7 +293,7 @@ GameWindow::GameWindow() {
     #define LOAD_INT_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toInt())
     #define LOAD_UINT_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toUInt())
     #define LOAD_BOOL_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toBool())
-    #define LOAD_DOUBLE_SETTING_VALUE(var, setting) var = static_cast<decltype(var)>(settings.value(setting, var).toDouble())
+    #define LOAD_DOUBLE_SETTING_VALUE_MIN(var, setting, min) var = std::max(static_cast<decltype(var)>(settings.value(setting, var).toDouble()), min)
 
     LOAD_INT_SETTING_VALUE(this->gb_rev, SETTINGS_GB_REVISION);
     LOAD_INT_SETTING_VALUE(this->gbc_rev, SETTINGS_GBC_REVISION);
@@ -332,11 +332,11 @@ GameWindow::GameWindow() {
     LOAD_BOOL_SETTING_VALUE(this->gbc_border, SETTINGS_GBC_BORDER);
     LOAD_BOOL_SETTING_VALUE(this->gba_border, SETTINGS_GBA_BORDER);
 
-    LOAD_DOUBLE_SETTING_VALUE(this->rewind_length, SETTINGS_REWIND_LENGTH);
-    LOAD_DOUBLE_SETTING_VALUE(this->max_slowmo, SETTINGS_MAX_SLOWMO);
-    LOAD_DOUBLE_SETTING_VALUE(this->max_turbo, SETTINGS_MAX_TURBO);
-    LOAD_DOUBLE_SETTING_VALUE(this->rewind_speed, SETTINGS_REWIND_SPEED);
-    LOAD_DOUBLE_SETTING_VALUE(this->base_multiplier, SETTINGS_BASE_SPEED);
+    LOAD_DOUBLE_SETTING_VALUE_MIN(this->rewind_length, SETTINGS_REWIND_LENGTH, 0.0);
+    LOAD_DOUBLE_SETTING_VALUE_MIN(this->max_slowmo, SETTINGS_MAX_SLOWMO, 0.0);
+    LOAD_DOUBLE_SETTING_VALUE_MIN(this->max_turbo, SETTINGS_MAX_TURBO, 0.0);
+    LOAD_DOUBLE_SETTING_VALUE_MIN(this->rewind_speed, SETTINGS_REWIND_SPEED, 0.0);
+    LOAD_DOUBLE_SETTING_VALUE_MIN(this->base_multiplier, SETTINGS_BASE_SPEED, 0.0);
 
     // Prevent invalid values
     this->max_slowmo = std::max(this->max_slowmo, 0.0);
