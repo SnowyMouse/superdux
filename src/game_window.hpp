@@ -96,6 +96,7 @@ private:
     double rewind_speed = 1.0;
     double max_turbo = 4.0;
     double max_slowmo = 0.25;
+    double max_cpu_multiplier = 40.0;
 
     // Set whether or not these are enabled
     bool turbo_enabled = false;

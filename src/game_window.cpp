@@ -50,6 +50,7 @@
 #define SETTINGS_BASE_SPEED "base_speed"
 #define SETTINGS_MAX_TURBO "max_turbo"
 #define SETTINGS_MAX_SLOWMO "max_slowmo"
+#define SETTINGS_MAX_CPU_MULTIPLIER "max_cpu_multiplier"
 
 #define SETTINGS_INTEGRITY_CHECK_CORRUPT "integrity_check_corrupt"
 #define SETTINGS_INTEGRITY_CHECK_COMPATIBLE "integrity_check_compatible"
@@ -337,6 +338,7 @@ GameWindow::GameWindow() {
     LOAD_DOUBLE_SETTING_VALUE_MIN(this->max_turbo, SETTINGS_MAX_TURBO, 0.0);
     LOAD_DOUBLE_SETTING_VALUE_MIN(this->rewind_speed, SETTINGS_REWIND_SPEED, 0.0);
     LOAD_DOUBLE_SETTING_VALUE_MIN(this->base_multiplier, SETTINGS_BASE_SPEED, 0.0);
+    LOAD_DOUBLE_SETTING_VALUE_MIN(this->max_cpu_multiplier, SETTINGS_MAX_CPU_MULTIPLIER, 1.0);
 
     // Prevent invalid values
     this->max_slowmo = std::max(this->max_slowmo, 0.0);
@@ -1559,6 +1561,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     settings.setValue(SETTINGS_MAX_SLOWMO, this->max_slowmo);
     settings.setValue(SETTINGS_MAX_TURBO, this->max_turbo);
     settings.setValue(SETTINGS_BASE_SPEED, this->base_multiplier);
+    settings.setValue(SETTINGS_MAX_CPU_MULTIPLIER, this->max_cpu_multiplier);
     settings.setValue(SETTINGS_REWIND_ENABLED, this->rewind_enabled);
     settings.setValue(SETTINGS_SLOWMO_ENABLED, this->slowmo_enabled);
     settings.setValue(SETTINGS_TURBO_ENABLED, this->turbo_enabled);
@@ -1742,8 +1745,17 @@ void GameWindow::update_emulation_speed() {
     // Are we rewinding?
     this->instance->set_rewind(total_multiplier < 0.0);
 
-    // Ship it
-    this->instance->set_speed_multiplier(abs_speed);
+    // Do we exceed the max CPU speed? If so, engage turbo
+    double cpu_speed = std::min(abs_speed, this->max_cpu_multiplier);
+    if(cpu_speed != abs_speed) {
+        this->instance->set_turbo_mode(true, 1.0 + (abs_speed - cpu_speed) / cpu_speed);
+    }
+    else {
+        this->instance->set_turbo_mode(false);
+    }
+
+    // Set the multiplier
+    this->instance->set_speed_multiplier(cpu_speed);
 }
 
 void GameWindow::reset_emulation_speed() {

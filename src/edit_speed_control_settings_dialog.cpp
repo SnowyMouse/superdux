@@ -36,6 +36,11 @@ static constexpr const std::uint32_t REWIND_SPEED_SLIDER_MIN = BASE_SPEED_SLIDER
 static constexpr const std::uint32_t REWIND_SPEED_SLIDER_GRANULARITY = BASE_SPEED_SLIDER_GRANULARITY;
 static constexpr const std::uint32_t REWIND_SPEED_SLIDER_TICK_INTERVAL = BASE_SPEED_SLIDER_TICK_INTERVAL;
 
+static constexpr const std::uint32_t MAX_CPU_MULTIPLIER_SLIDER_MAX = 4000;
+static constexpr const std::uint32_t MAX_CPU_MULTIPLIER_SLIDER_MIN = 100;
+static constexpr const std::uint32_t MAX_CPU_MULTIPLIER_SLIDER_GRANULARITY = 100;
+static constexpr const std::uint32_t MAX_CPU_MULTIPLIER_SLIDER_TICK_INTERVAL = 300;
+
 EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *window) : window(window) {
     this->setWindowTitle("Rewind and Speed Settings");
 
@@ -96,6 +101,12 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
                      "Set the base speed of the emulator. Without any speed modifier, this is the speed the emulator will attempt to run at.\n\n"
                      "For Game Boy, Game Boy Color, Game Boy Advance, and Super Game Boy 2, 100% speed is approximately 59.73 FPS.\n\n"
                      "For original Super Game Boy, 100% speed is approximately 61.17 FPS on NTSC or 60.61 FPS on PAL."
+                   },
+                   { "Max CPU multiplier (%):",
+                     &this->max_cpu_multiplier_amount,
+                     &this->max_cpu_multiplier_slider,
+                     "Set the maximum CPU multiplier. If the game speed exceeds this due to any speed modifier, timekeeping will be disabled.\n\n"
+                     "Only lower this if you experience audio gaps when running the emulator at more than 100% speed (usually due to attempting to running the emulator at a speed your computer cannot handle)."
                    }
                });
 
@@ -152,17 +163,24 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
     this->rewind_slider->setTickInterval(REWIND_SLIDER_TICK_INTERVAL / REWIND_SLIDER_GRANULARITY);
     this->rewind_slider->setMinimum(REWIND_SLIDER_MIN / REWIND_SLIDER_GRANULARITY);
 
+    this->max_cpu_multiplier_slider->setMaximum(MAX_CPU_MULTIPLIER_SLIDER_MAX / MAX_CPU_MULTIPLIER_SLIDER_GRANULARITY);
+    this->max_cpu_multiplier_slider->setTickInterval(MAX_CPU_MULTIPLIER_SLIDER_TICK_INTERVAL / MAX_CPU_MULTIPLIER_SLIDER_GRANULARITY);
+    this->max_cpu_multiplier_slider->setMinimum(MAX_CPU_MULTIPLIER_SLIDER_MIN / MAX_CPU_MULTIPLIER_SLIDER_GRANULARITY);
+
+    // Sliders should update the textbox. Use individual functions for each value since we don't want to constrain everything to what is available on a slider.
     connect(this->slowmo_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_slowmo_textbox);
     connect(this->rewind_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_rewind_textbox);
     connect(this->turbo_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_turbo_textbox);
     connect(this->rewind_speed_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_rewind_speed_textbox);
     connect(this->base_speed_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_base_speed_textbox);
+    connect(this->max_cpu_multiplier_slider, &QSlider::valueChanged, this, &EditSpeedControlSettingsDialog::update_max_cpu_multiplier_textbox);
 
     this->turbo_amount->setText(QString::number(window->max_turbo * 100));
     this->slowmo_amount->setText(QString::number(window->max_slowmo * 100));
     this->rewind_amount->setText(QString::number(window->rewind_length));
     this->rewind_speed_amount->setText(QString::number(window->rewind_speed * 100));
     this->base_speed_amount->setText(QString::number(window->base_multiplier * 100));
+    this->max_cpu_multiplier_amount->setText(QString::number(window->max_cpu_multiplier * 100));
 
     // Make sure the sliders match
     this->update_sliders(QString());
@@ -199,12 +217,13 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
 }
 
 void EditSpeedControlSettingsDialog::perform_accept() {
-    bool rewind_ok = true, rewind_speed_ok = true, base_speed_ok = true, slowmo_ok = true, turbo_ok = true;
+    bool rewind_ok = true, rewind_speed_ok = true, base_speed_ok = true, slowmo_ok = true, turbo_ok = true, max_cpu_multiplier_ok = true;
     double rewind_amount = this->rewind_amount->text().toDouble(&rewind_ok);
     double rewind_speed_amount = this->rewind_speed_amount->text().toDouble(&rewind_speed_ok) / 100.0;
     double slowmo_amount = this->slowmo_amount->text().toDouble(&slowmo_ok) / 100.0;
     double turbo_amount = this->turbo_amount->text().toDouble(&turbo_ok) / 100.0;
     double base_speed_amount = this->base_speed_amount->text().toDouble(&base_speed_ok) / 100.0;
+    double max_cpu_multiplier_amount = this->max_cpu_multiplier_amount->text().toDouble(&max_cpu_multiplier_ok) / 100.0;
 
     // Check if out of range before committing any changes
     #define COMPLAIN_IF_INVALID(b, name) if(b) { \
@@ -217,6 +236,7 @@ void EditSpeedControlSettingsDialog::perform_accept() {
     COMPLAIN_IF_INVALID(!turbo_ok || slowmo_amount < 0, "Turbo Speed")
     COMPLAIN_IF_INVALID(!base_speed_ok || base_speed_amount < 0, "Base Speed")
     COMPLAIN_IF_INVALID(!rewind_speed_ok || rewind_speed_amount < 0, "Rewind Speed")
+    COMPLAIN_IF_INVALID(!max_cpu_multiplier_ok || max_cpu_multiplier_amount <= 0, "Max CPU Multiplier")
 
     // Change things
     if(window->rewind_length != rewind_amount) { // perform this check since the rewind gets reset when set_rewind_length is called
@@ -227,6 +247,7 @@ void EditSpeedControlSettingsDialog::perform_accept() {
     window->max_turbo = turbo_amount;
     window->rewind_speed = rewind_speed_amount;
     window->base_multiplier = base_speed_amount;
+    window->max_cpu_multiplier = max_cpu_multiplier_amount;
 
     window->turbo_enabled = this->enable_turbo->isChecked();
     window->slowmo_enabled = this->enable_slowmo->isChecked();
@@ -244,18 +265,21 @@ void EditSpeedControlSettingsDialog::update_sliders(const QString &) {
     this->rewind_slider->blockSignals(true);
     this->rewind_speed_slider->blockSignals(true);
     this->base_speed_slider->blockSignals(true);
+    this->max_cpu_multiplier_slider->blockSignals(true);
 
     this->turbo_slider->setValue(this->turbo_amount->text().toInt() / TURBO_SLIDER_GRANULARITY);
     this->slowmo_slider->setValue(this->slowmo_amount->text().toInt() / SLOWMO_SLIDER_GRANULARITY);
     this->rewind_slider->setValue(this->rewind_amount->text().toInt() / REWIND_SLIDER_GRANULARITY);
     this->rewind_speed_slider->setValue(this->rewind_speed_amount->text().toInt() / REWIND_SPEED_SLIDER_GRANULARITY);
     this->base_speed_slider->setValue(this->base_speed_amount->text().toInt() / BASE_SPEED_SLIDER_GRANULARITY);
+    this->max_cpu_multiplier_slider->setValue(this->max_cpu_multiplier_amount->text().toInt() / MAX_CPU_MULTIPLIER_SLIDER_GRANULARITY);
 
     this->turbo_slider->blockSignals(false);
     this->slowmo_slider->blockSignals(false);
     this->rewind_slider->blockSignals(false);
     this->rewind_speed_slider->blockSignals(false);
     this->base_speed_slider->blockSignals(false);
+    this->max_cpu_multiplier_slider->blockSignals(false);
 }
 
 void EditSpeedControlSettingsDialog::update_rewind_textbox(int v) {
@@ -272,4 +296,7 @@ void EditSpeedControlSettingsDialog::update_slowmo_textbox(int v) {
 }
 void EditSpeedControlSettingsDialog::update_base_speed_textbox(int v) {
     this->base_speed_amount->setText(QString::number(v * BASE_SPEED_SLIDER_GRANULARITY));
+}
+void EditSpeedControlSettingsDialog::update_max_cpu_multiplier_textbox(int v) {
+    this->max_cpu_multiplier_amount->setText(QString::number(v * MAX_CPU_MULTIPLIER_SLIDER_GRANULARITY));
 }
