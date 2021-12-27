@@ -164,7 +164,7 @@ void EditSpeedControlSettingsDialog::perform_accept() {
 
     // Check if out of range before committing any changes
     #define COMPLAIN_IF_INVALID(b, name) if(b) { \
-        QMessageBox(QMessageBox::Icon::Critical, "Invalid " name, "Input was non-numerical or out of range (less than 0).\n\nPlease check your input and try again.", QMessageBox::Cancel); \
+        QMessageBox(QMessageBox::Icon::Critical, "Invalid " name, "Input was non-numerical or otherwise invalid.\n\nPlease check your input and try again.", QMessageBox::Cancel).exec(); \
         return; \
     }
 
