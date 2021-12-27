@@ -26,15 +26,15 @@ static constexpr const std::uint32_t REWIND_SLIDER_MIN = 15;
 static constexpr const std::uint32_t REWIND_SLIDER_GRANULARITY = 5;
 static constexpr const std::uint32_t REWIND_SLIDER_TICK_INTERVAL = 15;
 
-static constexpr const std::uint32_t REWIND_SPEED_SLIDER_MAX = 800;
-static constexpr const std::uint32_t REWIND_SPEED_SLIDER_MIN = 0;
-static constexpr const std::uint32_t REWIND_SPEED_SLIDER_GRANULARITY = 25;
-static constexpr const std::uint32_t REWIND_SPEED_SLIDER_TICK_INTERVAL = 100;
-
 static constexpr const std::uint32_t BASE_SPEED_SLIDER_MAX = 800;
 static constexpr const std::uint32_t BASE_SPEED_SLIDER_MIN = 0;
 static constexpr const std::uint32_t BASE_SPEED_SLIDER_GRANULARITY = 25;
 static constexpr const std::uint32_t BASE_SPEED_SLIDER_TICK_INTERVAL = 100;
+
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_MAX = BASE_SPEED_SLIDER_MAX;
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_MIN = BASE_SPEED_SLIDER_MIN;
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_GRANULARITY = BASE_SPEED_SLIDER_GRANULARITY;
+static constexpr const std::uint32_t REWIND_SPEED_SLIDER_TICK_INTERVAL = BASE_SPEED_SLIDER_TICK_INTERVAL;
 
 EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *window) : window(window) {
     this->setWindowTitle("Rewind and Speed Settings");
