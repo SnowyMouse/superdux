@@ -66,9 +66,13 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
         for(auto &i : amounts) {
             auto [label, line_amount, slider_amount, description] = i;
 
+            auto tooltipafy = [](QWidget *widget, const char *description) {
+                widget->setToolTip(description);
+                widget->setToolTipDuration(INT_MAX);
+            };
+
             auto *amt_widget = new QWidget(vwidget);
             auto *amt_label = new QLabel(label, amt_widget);
-            amt_label->setToolTip(description);
             label_width = std::max(label_width, amt_label->sizeHint().width());
             labels.emplace_back(amt_label);
 
@@ -77,15 +81,17 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
             amt_layout->addWidget(amt_label);
 
             *slider_amount = new QSlider(Qt::Orientation::Horizontal, amt_widget);
-            (*slider_amount)->setToolTip(description);
             (*slider_amount)->setTickPosition(QSlider::TickPosition::TicksBelow);
             (*slider_amount)->setMinimumWidth(400);
             amt_layout->addWidget(*slider_amount);
 
             *line_amount = new QLineEdit(amt_widget);
-            (*line_amount)->setToolTip(description);
             amt_layout->addWidget(*line_amount);
             vlayout->addWidget(amt_widget);
+
+            tooltipafy(amt_label, description);
+            tooltipafy(*slider_amount, description);
+            tooltipafy(*line_amount, description);
         }
 
         vwidget->setLayout(vlayout);
@@ -98,15 +104,22 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
                    { "Base speed (%):",
                      &this->base_speed_amount,
                      &this->base_speed_slider,
-                     "Set the base speed of the emulator. Without any speed modifier, this is the speed the emulator will attempt to run at.\n\n"
-                     "For Game Boy, Game Boy Color, Game Boy Advance, and Super Game Boy 2, 100% speed is approximately 59.73 FPS.\n\n"
+                     "Set the base speed of the emulator. Without any speed modifier, this is the speed the emulator will attempt to run at.\n"
+                     "\n"
+                     "For Game Boy, Game Boy Color, Game Boy Advance, and Super Game Boy 2, 100% speed is approximately 59.73 FPS.\n"
+                     "\n"
                      "For original Super Game Boy, 100% speed is approximately 61.17 FPS on NTSC or 60.61 FPS on PAL."
                    },
                    { "Max CPU multiplier (%):",
                      &this->max_cpu_multiplier_amount,
                      &this->max_cpu_multiplier_slider,
-                     "Set the maximum CPU multiplier. If the game speed exceeds this due to any speed modifier, timekeeping will be disabled.\n\n"
-                     "Only lower this if you experience audio gaps when running the emulator at more than 100% speed (usually due to attempting to running the emulator at a speed your computer cannot handle)."
+                     "Set the maximum CPU multiplier. If the current speed exceeds this due to any speed modifier, the CPU speed (and thus audio\n"
+                     "speed) will not increase beyond this value, instead disabling timekeeping while throttling the frame rate.\n"
+                     "\n"
+                     "NOTE: Lowering this can control the audio pitch increase from running the game above 100% speed, and it can reduce\n"
+                     "audio gaps when running the emulator at a speed your computer cannot handle.\n"
+                     "\n"
+                     "However, values that are too low will cause audio samples to be truncated."
                    }
                });
 
@@ -114,7 +127,10 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
                     { "Turbo speed (%):",
                       &this->turbo_amount,
                       &this->turbo_slider,
-                      "Set the maximum speed when the turbo button/trigger is held down all the way."
+                      "Set the speed when the turbo button is held down.\n"
+                      "\n"
+                      "If using an analog trigger, this is the speed when the trigger is held all the way down, where partially depressing the\n"
+                      "trigger will result in an interpolated speed value, instead."
                     }
                 });
 
@@ -122,7 +138,10 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
                     { "Slowmo speed (%):",
                       &this->slowmo_amount,
                       &this->slowmo_slider,
-                      "Set the minimum speed when the slowmo button/trigger is held down all the way."
+                      "Set the speed when the slowmo button is held down.\n"
+                      "\n"
+                      "If using an analog trigger, this is the speed when the trigger is held all the way down, where partially depressing the\n"
+                      "trigger will result in an interpolated speed value, instead."
                     }
                 });
 
@@ -130,7 +149,8 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
                     { "Rewind buffer (sec):",
                       &this->rewind_amount,
                       &this->rewind_slider,
-                      "Set the maximum rewind buffer length."
+                      "Set the maximum rewind buffer length in seconds. If the emulator attempts to rewind beyond this buffer length, the\n"
+                      "emulator will automatically pause."
                     },
                     { "Rewind speed (%):",
                       &this->rewind_speed_amount,
