@@ -164,7 +164,14 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
     this->rewind_speed_amount->setText(QString::number(window->rewind_speed * 100));
     this->base_speed_amount->setText(QString::number(window->base_multiplier * 100));
 
-    this->update_sliders();
+    // Make sure the sliders match
+    this->update_sliders(QString());
+    connect(this->slowmo_amount, &QLineEdit::textEdited, this, &EditSpeedControlSettingsDialog::update_sliders);
+    connect(this->rewind_amount, &QLineEdit::textEdited, this, &EditSpeedControlSettingsDialog::update_sliders);
+    connect(this->turbo_amount, &QLineEdit::textEdited, this, &EditSpeedControlSettingsDialog::update_sliders);
+    connect(this->rewind_speed_amount, &QLineEdit::textEdited, this, &EditSpeedControlSettingsDialog::update_sliders);
+    connect(this->base_speed_amount, &QLineEdit::textEdited, this, &EditSpeedControlSettingsDialog::update_sliders);
+    connect(this->max_cpu_multiplier_amount, &QLineEdit::textEdited, this, &EditSpeedControlSettingsDialog::update_sliders);
 
     (*enable_rewind).setChecked(window->rewind_enabled);
     (*enable_slowmo).setChecked(window->slowmo_enabled);
@@ -231,7 +238,7 @@ void EditSpeedControlSettingsDialog::perform_accept() {
     this->accept();
 }
 
-void EditSpeedControlSettingsDialog::update_sliders() {
+void EditSpeedControlSettingsDialog::update_sliders(const QString &) {
     this->turbo_slider->blockSignals(true);
     this->slowmo_slider->blockSignals(true);
     this->rewind_slider->blockSignals(true);

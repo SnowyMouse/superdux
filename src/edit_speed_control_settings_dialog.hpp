@@ -21,7 +21,7 @@ private:
     QLineEdit *base_speed_amount, *rewind_amount, *rewind_speed_amount, *turbo_amount, *slowmo_amount;
     QSlider *base_speed_slider, *rewind_slider, *rewind_speed_slider, *turbo_slider, *slowmo_slider;
 
-    void update_sliders();
+    void update_sliders(const QString &);
 
     void update_rewind_textbox(int);
     void update_rewind_speed_textbox(int);
