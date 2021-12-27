@@ -46,7 +46,7 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
     int label_width = 0;
     std::vector<QWidget *> labels;
 
-    auto add_control = [&layout, &dialog, &label_width, &labels](const char *name, QCheckBox **enable_box, std::vector<std::tuple<const char *, QLineEdit **, QSlider **>> amounts) {
+    auto add_control = [&layout, &dialog, &label_width, &labels](const char *name, QCheckBox **enable_box, std::vector<std::tuple<const char *, QLineEdit **, QSlider **, const char *>> amounts) {
         auto *vwidget = new QGroupBox(dialog);
         vwidget->setTitle(name);
         auto *vlayout = new QVBoxLayout(vwidget);
@@ -59,10 +59,11 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
 
         // Amount
         for(auto &i : amounts) {
-            auto [label, line_amount, slider_amount] = i;
+            auto [label, line_amount, slider_amount, description] = i;
 
             auto *amt_widget = new QWidget(vwidget);
             auto *amt_label = new QLabel(label, amt_widget);
+            amt_label->setToolTip(description);
             label_width = std::max(label_width, amt_label->sizeHint().width());
             labels.emplace_back(amt_label);
 
@@ -71,11 +72,13 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
             amt_layout->addWidget(amt_label);
 
             *slider_amount = new QSlider(Qt::Orientation::Horizontal, amt_widget);
+            (*slider_amount)->setToolTip(description);
             (*slider_amount)->setTickPosition(QSlider::TickPosition::TicksBelow);
             (*slider_amount)->setMinimumWidth(400);
             amt_layout->addWidget(*slider_amount);
 
             *line_amount = new QLineEdit(amt_widget);
+            (*line_amount)->setToolTip(description);
             amt_layout->addWidget(*line_amount);
             vlayout->addWidget(amt_widget);
         }
@@ -86,10 +89,44 @@ EditSpeedControlSettingsDialog::EditSpeedControlSettingsDialog(GameWindow *windo
         return vlayout;
     };
 
-    add_control("Throttle", nullptr, {{ "Base speed (%):", &this->base_speed_amount, &this->base_speed_slider }});
-    add_control("Turbo", &this->enable_turbo, {{ "Turbo speed (%):", &this->turbo_amount, &this->turbo_slider }});
-    add_control("Slowmo", &this->enable_slowmo, {{ "Slowmo speed (%):", &this->slowmo_amount, &this->slowmo_slider }});
-    add_control("Rewind", &this->enable_rewind, {{ "Rewind buffer (sec):", &this->rewind_amount, &this->rewind_slider }, { "Rewind speed (%):", &this->rewind_speed_amount, &this->rewind_speed_slider } });
+    add_control("Throttle", nullptr, {
+                   { "Base speed (%):",
+                     &this->base_speed_amount,
+                     &this->base_speed_slider,
+                     "Set the base speed of the emulator. Without any speed modifier, this is the speed the emulator will attempt to run at.\n\n"
+                     "For Game Boy, Game Boy Color, Game Boy Advance, and Super Game Boy 2, 100% speed is approximately 59.73 FPS.\n\n"
+                     "For original Super Game Boy, 100% speed is approximately 61.17 FPS on NTSC or 60.61 FPS on PAL."
+                   }
+               });
+
+    add_control("Turbo", &this->enable_turbo, {
+                    { "Turbo speed (%):",
+                      &this->turbo_amount,
+                      &this->turbo_slider,
+                      "Set the maximum speed when the turbo button/trigger is held down all the way."
+                    }
+                });
+
+    add_control("Slowmo", &this->enable_slowmo, {
+                    { "Slowmo speed (%):",
+                      &this->slowmo_amount,
+                      &this->slowmo_slider,
+                      "Set the minimum speed when the slowmo button/trigger is held down all the way."
+                    }
+                });
+
+    add_control("Rewind", &this->enable_rewind, {
+                    { "Rewind buffer (sec):",
+                      &this->rewind_amount,
+                      &this->rewind_slider,
+                      "Set the maximum rewind buffer length."
+                    },
+                    { "Rewind speed (%):",
+                      &this->rewind_speed_amount,
+                      &this->rewind_speed_slider,
+                      "Set the speed multiplier when rewind is engaged."
+                    }
+                });
 
     this->enable_turbo->setChecked(window->turbo_enabled);
     this->enable_slowmo->setChecked(window->slowmo_enabled);
