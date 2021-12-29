@@ -687,6 +687,7 @@ GameWindow::GameWindow() {
     
     // Reset
     this->reset_rom_action = emulation_menu->addAction("Reset");
+    this->reset_rom_action->setShortcut(static_cast<int>(Qt::CTRL) | Qt::Key::Key_R);
     connect(this->reset_rom_action, &QAction::triggered, this, &GameWindow::action_reset);
     this->reset_rom_action->setIcon(GET_ICON("view-refresh"));
     this->reset_rom_action->setEnabled(false);
