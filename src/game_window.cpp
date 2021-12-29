@@ -819,7 +819,8 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
         }
         return;
     }
-    
+
+    this->instance->remove_all_breakpoints();
     this->save_if_loaded();
     this->reset_rom_action->setEnabled(true);
     this->exit_without_saving->setEnabled(true);
