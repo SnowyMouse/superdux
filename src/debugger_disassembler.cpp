@@ -74,7 +74,7 @@ void DebuggerDisassembler::follow_address() {
 }
 
 void DebuggerDisassembler::set_address_to_current_breakpoint() {
-    this->current_address = this->debugger->get_instance().get_register_value(sm83_register_t::SM83_REG_PC);
+    this->current_address = this->debugger->get_instance().get_register_value(GameInstance::SM83Register::SM83_REG_PC);
 }
 
 void DebuggerDisassembler::add_breakpoint() {

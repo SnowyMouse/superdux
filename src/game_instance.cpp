@@ -1,5 +1,6 @@
 #include "game_instance.hpp"
 #include "built_in_boot_rom.h"
+#include "gb_proxy.h"
 
 #include <chrono>
 #include <cstring>
@@ -25,6 +26,111 @@ static char *malloc_string(const char *string) {
     char *str = reinterpret_cast<char *>(calloc(string_length + 1, sizeof(*str)));
     std::strncpy(str, string, string_length);
     return str;
+}
+
+static inline uint8_t *get_8_bit_gb_register_address(struct GB_gameboy_s *gb, GameInstance::SM83Register r) {
+    auto *gbr = GB_get_registers(gb);
+
+    switch(r) {
+        case GameInstance::SM83Register::SM83_REG_A:
+            return &gbr->a;
+        case GameInstance::SM83Register::SM83_REG_B:
+            return &gbr->b;
+        case GameInstance::SM83Register::SM83_REG_C:
+            return &gbr->c;
+        case GameInstance::SM83Register::SM83_REG_D:
+            return &gbr->d;
+        case GameInstance::SM83Register::SM83_REG_E:
+            return &gbr->e;
+        case GameInstance::SM83Register::SM83_REG_F:
+            return &gbr->f;
+        case GameInstance::SM83Register::SM83_REG_H:
+            return &gbr->h;
+        case GameInstance::SM83Register::SM83_REG_L:
+            return &gbr->l;
+        default:
+            return NULL;
+    }
+}
+static inline uint16_t *get_16_bit_gb_register_address(struct GB_gameboy_s *gb, GameInstance::SM83Register r) {
+    auto *gbr = GB_get_registers(gb);
+
+    switch(r) {
+        case GameInstance::SM83Register::SM83_REG_HL:
+            return &gbr->hl;
+        case GameInstance::SM83Register::SM83_REG_PC:
+            return &gbr->pc;
+        case GameInstance::SM83Register::SM83_REG_SP:
+            return &gbr->sp;
+        case GameInstance::SM83Register::SM83_REG_BC:
+            return &gbr->bc;
+        case GameInstance::SM83Register::SM83_REG_AF:
+            return &gbr->af;
+        case GameInstance::SM83Register::SM83_REG_DE:
+            return &gbr->de;
+        default:
+            return NULL;
+    }
+}
+
+static inline std::uint8_t get_8_bit_gb_register(const struct GB_gameboy_s *gb, GameInstance::SM83Register r) {
+    return *get_8_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
+}
+static inline std::uint16_t get_16_bit_gb_register(const struct GB_gameboy_s *gb, GameInstance::SM83Register r) {
+    return *get_16_bit_gb_register_address((struct GB_gameboy_s *)gb, r);
+}
+
+static inline void set_8_bit_gb_register(struct GB_gameboy_s *gb, GameInstance::SM83Register r, std::uint8_t v) {
+    *get_8_bit_gb_register_address(gb, r) = v;
+}
+static inline void set_16_bit_gb_register(struct GB_gameboy_s *gb, GameInstance::SM83Register r, std::uint16_t v) {
+    *get_16_bit_gb_register_address(gb, r) = v;
+}
+
+static inline std::uint16_t get_gb_register(const struct GB_gameboy_s *gb, GameInstance::SM83Register r) {
+    switch(r) {
+        case GameInstance::SM83Register::SM83_REG_A:
+        case GameInstance::SM83Register::SM83_REG_B:
+        case GameInstance::SM83Register::SM83_REG_C:
+        case GameInstance::SM83Register::SM83_REG_D:
+        case GameInstance::SM83Register::SM83_REG_E:
+        case GameInstance::SM83Register::SM83_REG_F:
+        case GameInstance::SM83Register::SM83_REG_H:
+        case GameInstance::SM83Register::SM83_REG_L:
+            return get_8_bit_gb_register(gb, r);
+        case GameInstance::SM83Register::SM83_REG_HL:
+        case GameInstance::SM83Register::SM83_REG_PC:
+        case GameInstance::SM83Register::SM83_REG_SP:
+        case GameInstance::SM83Register::SM83_REG_AF:
+        case GameInstance::SM83Register::SM83_REG_BC:
+        case GameInstance::SM83Register::SM83_REG_DE:
+            return get_16_bit_gb_register(gb, r);
+        default:
+            abort();
+    }
+}
+
+static void set_gb_register(struct GB_gameboy_s *gb, GameInstance::SM83Register r, std::uint16_t v) {
+    switch(r) {
+        case GameInstance::SM83Register::SM83_REG_A:
+        case GameInstance::SM83Register::SM83_REG_B:
+        case GameInstance::SM83Register::SM83_REG_C:
+        case GameInstance::SM83Register::SM83_REG_D:
+        case GameInstance::SM83Register::SM83_REG_E:
+        case GameInstance::SM83Register::SM83_REG_F:
+        case GameInstance::SM83Register::SM83_REG_H:
+        case GameInstance::SM83Register::SM83_REG_L:
+            return set_8_bit_gb_register(gb, r, v);
+        case GameInstance::SM83Register::SM83_REG_HL:
+        case GameInstance::SM83Register::SM83_REG_PC:
+        case GameInstance::SM83Register::SM83_REG_SP:
+        case GameInstance::SM83Register::SM83_REG_AF:
+        case GameInstance::SM83Register::SM83_REG_BC:
+        case GameInstance::SM83Register::SM83_REG_DE:
+            return set_16_bit_gb_register(gb, r, v);
+        default:
+            abort();
+    }
 }
 
 void GameInstance::load_boot_rom(GB_gameboy_t *gb, GB_boot_rom_t type) noexcept {
@@ -141,7 +247,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
         bnt = (--instance->current_break_and_trace_remaining) > 0;
 
         bool hit_breakpoint = false;
-        auto pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
+        auto pc = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_PC);
         for(auto i : instance->get_breakpoints_without_mutex()) {
             if(i == pc) {
                 hit_breakpoint = true;
@@ -164,7 +270,7 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     // If that didn't satisfy it, maybe we have something set here?
     if(!bnt) {
         for(auto b = instance->break_and_trace_breakpoints.begin(); b != instance->break_and_trace_breakpoints.end(); b++) {
-            auto pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
+            auto pc = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_PC);
 
             auto &[bp_address, break_count, step_over, break_when_done] = *b;
             if(pc == bp_address) {
@@ -188,16 +294,16 @@ char *GameInstance::on_input_requested(GB_gameboy_s *gameboy) {
     // If we are, continue after we record the current state
     if(bnt) {
         auto &b = instance->break_and_trace_result[instance->break_and_trace_result.size() - 1].emplace_back();
-        b.a = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_A);
-        b.b = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_B);
-        b.c = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_C);
-        b.d = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_D);
-        b.e = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_E);
-        b.f = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_F);
-        b.h = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_H);
-        b.l = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_L);
-        b.sp = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_SP);
-        b.pc = get_gb_register(&instance->gameboy, sm83_register_t::SM83_REG_PC);
+        b.a = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_A);
+        b.b = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_B);
+        b.c = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_C);
+        b.d = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_D);
+        b.e = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_E);
+        b.f = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_F);
+        b.h = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_H);
+        b.l = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_L);
+        b.sp = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_SP);
+        b.pc = get_gb_register(&instance->gameboy, SM83Register::SM83_REG_PC);
         b.carry = b.f & GB_CARRY_FLAG;
         b.half_carry = b.f & GB_HALF_CARRY_FLAG;
         b.subtract = b.f & GB_SUBTRACT_FLAG;
@@ -387,7 +493,7 @@ std::vector<std::pair<std::string, std::uint16_t>> GameInstance::get_backtrace()
         backtrace[bt_count - b].second = get_gb_backtrace_address(&this->gameboy, b);
     }
     if(bt_count > 0) {
-        backtrace[0].second = get_gb_register(&this->gameboy, sm83_register_t::SM83_REG_PC);
+        backtrace[0].second = get_gb_register(&this->gameboy, SM83Register::SM83_REG_PC);
     }
 
     this->mutex.unlock();
@@ -675,8 +781,8 @@ void GameInstance::unbreak(const char *command) {
     }
 }
 
-std::uint16_t GameInstance::get_register_value(sm83_register_t reg) noexcept MAKE_GETTER(get_gb_register(&this->gameboy, reg))
-void GameInstance::set_register_value(sm83_register_t reg, std::uint16_t value) noexcept MAKE_SETTER(set_gb_register(&this->gameboy, reg, value))
+std::uint16_t GameInstance::get_register_value(SM83Register reg) noexcept MAKE_GETTER(get_gb_register(&this->gameboy, reg))
+void GameInstance::set_register_value(SM83Register reg, std::uint16_t value) noexcept MAKE_SETTER(set_gb_register(&this->gameboy, reg, value))
 
 std::optional<std::uint16_t> GameInstance::evaluate_expression(const char *expression) noexcept {
     std::uint16_t result_maybe;

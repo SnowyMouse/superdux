@@ -198,13 +198,13 @@ void Debugger::set_known_breakpoint(bool known_breakpoint) {
         this->finish_fn_button->setEnabled(known_breakpoint);
         
         if(known_breakpoint) {
-            this->disassembler->go_to(this->get_instance().get_register_value(sm83_register_t::SM83_REG_PC));
+            this->disassembler->go_to(this->get_instance().get_register_value(GameInstance::SM83Register::SM83_REG_PC));
         }
     }
 }
 
 void Debugger::refresh_flags() {
-    auto f = this->get_instance().get_register_value(sm83_register_t::SM83_REG_F);
+    auto f = this->get_instance().get_register_value(GameInstance::SM83Register::SM83_REG_F);
 
     #define PROCESS_FLAG_FIELD(field, flag) {\
         this->field->blockSignals(true); \
@@ -225,7 +225,7 @@ void Debugger::refresh_registers() {
 
     #define PROCESS_REGISTER_FIELD(name, field, fmt) {\
         char str[8]; \
-        std::snprintf(str, sizeof(str), fmt, instance.get_register_value(sm83_register_t::SM83_REG_##name)); \
+        std::snprintf(str, sizeof(str), fmt, instance.get_register_value(GameInstance::SM83Register::SM83_REG_##name)); \
         this->field->blockSignals(true); \
         this->field->setText(str); \
         this->field->blockSignals(false); \
@@ -390,7 +390,7 @@ void Debugger::action_update_registers() noexcept {
     #define PROCESS_REGISTER_FIELD(name, field) {\
         auto value = instance.evaluate_expression(this->field->text().toUtf8().data());\
         if(value.has_value()) {\
-            instance.set_register_value(sm83_register_t::SM83_REG_##name, *value);\
+            instance.set_register_value(GameInstance::SM83Register::SM83_REG_##name, *value);\
         }\
     }
 
@@ -435,7 +435,7 @@ void Debugger::format_table(QTableWidget *widget) {
 
 void Debugger::action_register_flag_state_changed(int) noexcept {
     auto &instance = this->get_instance();
-    std::uint8_t f = instance.get_register_value(sm83_register_t::SM83_REG_F);
+    std::uint8_t f = instance.get_register_value(GameInstance::SM83Register::SM83_REG_F);
     f = f & ~(GB_CARRY_FLAG | GB_HALF_CARRY_FLAG | GB_ZERO_FLAG | GB_SUBTRACT_FLAG);
 
     #define SET_FLAG_IF_CHECKED(variable, flag) if(this->variable->isChecked()) { f = f | flag; }
@@ -446,7 +446,7 @@ void Debugger::action_register_flag_state_changed(int) noexcept {
     SET_FLAG_IF_CHECKED(flag_subtract, GB_SUBTRACT_FLAG);
 
     #undef SET_FLAG_IF_CHECKED
-    instance.set_register_value(sm83_register_t::SM83_REG_F, f);
+    instance.set_register_value(GameInstance::SM83Register::SM83_REG_F, f);
 
     this->refresh_registers();
 }

@@ -5,7 +5,6 @@ extern "C" {
 #include <Core/gb.h>
 }
 
-#include "gb_proxy.h"
 #include <string>
 #include <vector>
 #include <mutex>
@@ -17,8 +16,6 @@ extern "C" {
 
 class GameInstance {
 public: // all public functions assume the mutex is not locked
-    using clock = std::chrono::steady_clock;
-    
     GameInstance(GB_model_t model, GB_border_mode_t border);
     ~GameInstance();
 
@@ -32,6 +29,32 @@ public: // all public functions assume the mutex is not locked
         /** Use interframe blending. Calls to read_pixel_buffer() will give you an average of the last two completed buffers. */
         PixelBufferDoubleBlend
     };
+
+    using clock = std::chrono::steady_clock;
+
+    typedef enum {
+        // 8-bit registers
+        SM83_REG_A,
+        SM83_REG_B,
+        SM83_REG_C,
+        SM83_REG_D,
+        SM83_REG_E,
+        SM83_REG_F, // there is technically no 'accessible' F register, but here's a way to access it separately anyway
+        SM83_REG_H,
+        SM83_REG_L,
+
+        // 16-bit combined registers
+        SM83_REG_AF,
+        SM83_REG_BC,
+        SM83_REG_DE,
+        SM83_REG_HL,
+
+        // Stack pointer
+        SM83_REG_SP,
+
+        // PC (current instruction pointer)
+        SM83_REG_PC,
+    } SM83Register;
     
     /**
      * Execute the game loop. This function will not return until end_game_loop is run().
@@ -195,7 +218,7 @@ public: // all public functions assume the mutex is not locked
      * @param  reg register to probe
      * @return     register value
      */
-    std::uint16_t get_register_value(sm83_register_t reg) noexcept;
+    std::uint16_t get_register_value(SM83Register reg) noexcept;
     
     /**
      * Set the current value of the given register
@@ -203,7 +226,7 @@ public: // all public functions assume the mutex is not locked
      * @param reg   register to probe
      * @param value value to set it to
      */
-    void set_register_value(sm83_register_t reg, std::uint16_t value) noexcept;
+    void set_register_value(SM83Register reg, std::uint16_t value) noexcept;
     
     /**
      * Get the current sample buffer and clear it
