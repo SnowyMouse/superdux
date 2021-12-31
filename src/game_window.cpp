@@ -1068,6 +1068,9 @@ void GameWindow::action_clear_missing_roms() noexcept {
                 }
             }
         }
+        else {
+            should_retain = false;
+        }
 
         if(should_retain) {
             new_recent_roms.append(i);
