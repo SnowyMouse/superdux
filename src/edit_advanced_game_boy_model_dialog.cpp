@@ -152,6 +152,8 @@ EditAdvancedGameBoyModelDialog::EditAdvancedGameBoyModelDialog(GameWindow *windo
             }, this->window->gb_rev, &EditAdvancedGameBoyModelDialog::find_gb_boot_rom, &this->gb_allow_external_boot_rom, window->gb_allow_external_boot_rom, &this->gb_border_cb, window->gb_border);
 
     add_tab("Game Boy Color", &this->gbc_boot_rom_le, this->window->gbc_boot_rom_path, &this->gbc_rev, {
+                {"CGB-0", GB_model_t::GB_MODEL_CGB_0},
+                {"CGB-A", GB_model_t::GB_MODEL_CGB_A},
                 {"CGB-B", GB_model_t::GB_MODEL_CGB_B},
                 {"CGB-C", GB_model_t::GB_MODEL_CGB_C},
                 {"CGB-D", GB_model_t::GB_MODEL_CGB_D},
