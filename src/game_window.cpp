@@ -1387,7 +1387,7 @@ void GameWindow::action_toggle_pause() noexcept {
 void GameWindow::action_open_rom() noexcept {
     QFileDialog qfd;
     qfd.setWindowTitle("Select a Game Boy ROM");
-    qfd.setNameFilters(QStringList { "Any Game Boy Game (*.gb *.gbc *.sgb *.isx)", "Game Boy ROM (*.gb)", "Game Boy Color ROM (*.gbc)", "Super Game Boy Enhanced ROM (*.sgb)", "ISX Binary (*.isx)" });
+    qfd.setNameFilters(QStringList { "Any Game Boy Game (*.gb *.gbc *.sgb *.bin *.isx)", "Game Boy ROM (*.gb)", "Game Boy Color ROM (*.gbc)", "Super Game Boy Enhanced ROM (*.sgb)", "BIN File (*.bin)", "ISX Binary (*.isx)" });
     
     if(qfd.exec() == QDialog::DialogCode::Accepted) {
         this->load_rom(qfd.selectedFiles().at(0).toUtf8().data());
