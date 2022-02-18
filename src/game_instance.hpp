@@ -759,7 +759,7 @@ private: // all private functions assume the mutex is locked by the caller
     std::uint16_t pb_height;
 
     // Button bitfield
-    std::atomic<std::uint16_t> button_bitfield;
+    std::atomic<GB_key_mask_t> button_bitfield = static_cast<decltype(button_bitfield.load())>(0);
     
     // Gameboy instance
     GB_gameboy_s gameboy = {};
@@ -913,7 +913,7 @@ private: // all private functions assume the mutex is locked by the caller
     std::atomic_bool rewind_paused = false;
 
     // Rapid buttons
-    std::vector<GB_key_t> rapid_buttons;
+    std::atomic<GB_key_mask_t> rapid_button_bitfield = static_cast<decltype(button_bitfield.load())>(0);
     bool rapid_button_state = false;
     std::uint8_t rapid_button_frames = 0;
     std::uint8_t rapid_button_switch_frames = 4;

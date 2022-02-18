@@ -20,6 +20,17 @@
     this->mutex.unlock(); \
 }
 
+// Set a button bitfield
+static GB_key_mask_t set_button_bitmask(GB_key_mask_t mask, GB_key_t button, bool pressed) {
+    auto bit = 1 << button;
+    if(pressed) {
+        return static_cast<decltype(mask)>(mask | bit);
+    }
+    else {
+        return static_cast<decltype(mask)>(mask & ~bit);
+    }
+}
+
 // Copy the string into a buffer allocated with malloc() since GB_gameboy_s deallocates it with free()
 static char *malloc_string(const char *string) {
     auto string_length = std::strlen(string);
@@ -203,9 +214,6 @@ void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
     instance->rapid_button_frames = (instance->rapid_button_frames + 1) % instance->rapid_button_switch_frames;
     if(instance->rapid_button_frames == 0) { // we hit the nth frame, so switch
         instance->rapid_button_state = !instance->rapid_button_state;
-        for(auto i : instance->rapid_buttons) {
-            GB_set_key_state(&instance->gameboy, i, instance->rapid_button_state);
-        }
     }
     
     // Set this since we hit vblank
@@ -416,7 +424,12 @@ void GameInstance::start_game_loop(GameInstance *instance) noexcept {
             instance->skip_sgb_intro_if_needed();
 
             // Do stuff now
-            GB_set_key_mask(&instance->gameboy, static_cast<GB_key_mask_t>(static_cast<std::uint16_t>(instance->button_bitfield)));
+            auto button_bitfield = instance->button_bitfield.load();
+            if(instance->rapid_button_state) {
+                button_bitfield = static_cast<decltype(button_bitfield)>(button_bitfield | instance->rapid_button_bitfield);
+            }
+
+            GB_set_key_mask(&instance->gameboy, button_bitfield);
             GB_run(&instance->gameboy);
             
             // Wait until the end of GB_run to calculate frame rate
@@ -584,18 +597,14 @@ void GameInstance::end_game_loop() noexcept {
 }
 
 void GameInstance::set_button_state(GB_key_t button, bool pressed) {
-    if(pressed) {
-        this->button_bitfield |= (1 << button);
-    }
-    else {
-        this->button_bitfield &= ~(1 << button);
-    }
+    this->button_bitfield = set_button_bitmask(this->button_bitfield, button, pressed);
 }
 
 void GameInstance::clear_all_button_states() MAKE_SETTER(this->clear_all_button_states_no_mutex());
 
 void GameInstance::clear_all_button_states_no_mutex() noexcept {
-    this->button_bitfield = 0;
+    this->button_bitfield = static_cast<decltype(button_bitfield.load())>(0);
+    this->rapid_button_bitfield = static_cast<decltype(button_bitfield.load())>(0);
     GB_set_key_mask(&this->gameboy, static_cast<GB_key_mask_t>(0));
 }
 
@@ -1114,23 +1123,7 @@ bool GameInstance::load_save_state(const std::filesystem::path &path) noexcept {
 bool GameInstance::load_save_state(const std::vector<std::uint8_t> &state) noexcept MAKE_GETTER(GB_load_state_from_buffer(&this->gameboy, state.data(), state.size()) == 0)
 
 void GameInstance::set_rapid_button_state(GB_key_t button, bool pressed) {
-    this->mutex.lock();
-    std::size_t rb_len = this->rapid_buttons.size();
-    bool found = false;
-    for(std::size_t q = 0; q < rb_len; q++) {
-        if(this->rapid_buttons[q] == button) {
-            found = true;
-            if(!pressed) {
-                this->rapid_buttons.erase(this->rapid_buttons.begin() + q);
-            }
-            break;
-        }
-    }
-    if(!found && pressed) {
-        this->rapid_buttons.emplace_back(button);
-    }
-    GB_set_key_state(&this->gameboy, button, pressed ? this->rapid_button_state : false); // unset if we're releasing the button. otherwise set to current rapid button state
-    this->mutex.unlock();
+    this->rapid_button_bitfield = set_button_bitmask(this->rapid_button_bitfield, button, pressed);
 }
 
 void GameInstance::on_rumble(GB_gameboy_s *gb, double rumble) noexcept {
