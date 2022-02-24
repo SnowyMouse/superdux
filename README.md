@@ -49,7 +49,8 @@ Build requirements:
 * CMake
 * Python
 * C11 and C++20 compiler
-* Qt5 and/or Qt6 (executable will be placed in qt5/ or qt6/)
+* Qt6
+    * You may build for Qt5 with -DBUILD_QT5_VERSION, but this is unsupported
 * [SDL] version 2.0.16 or later
 * [SameBoy]\*
     * [RGBDS]  (for building SameBoy's boot ROMs)

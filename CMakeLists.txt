@@ -11,18 +11,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(SDL2 REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
+option(BUILD_QT5_VERSION "Build for Qt5 (deprecated)")
+
 # Add capitalization for Windows builds
 if(WIN32)
     set(SUPERDUX_EXE_NAME "SuperDUX")
-
-# Linux should not have capitalization as capital letters are a massive pain to type in bash
+# Linux and anything else should not have capitalization as capital letters are a massive pain to type in bash
 else()
     set(SUPERDUX_EXE_NAME "superdux")
 endif()
 
-# We only support Qt5 if not on Windows as it's unnecessary for Windows to have Qt 5 (todo: remove Qt5 support when KDE drops it)
-if(NOT WIN32)
-    find_package(Qt5 COMPONENTS Widgets)
+# By default we do Qt6
+if(NOT ${BUILD_QT5_VERSION})
+    find_package(Qt6 COMPONENTS Widgets REQUIRED)
+    set(qt_widgets Qt6::Widgets)
+
+# Qt5?
+else()
+    message(WARNING "Qt5 support will be dropped in a future version. Do not report bugs.")
+    find_package(Qt5 COMPONENTS Widgets REQUIRED)
+    set(qt_widgets Qt5::Widgets)
 endif()
 
 if(WIN32)
@@ -31,11 +39,13 @@ if(WIN32)
     set(GETLINE_IF_NEEDED "src/getline.cpp")
 endif()
 
-find_package(Qt6 COMPONENTS Widgets)
-
 include("sameboy.cmake")
 
-set(SUPERDUX_FILES
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+add_executable(superdux
     src/superdux.qrc
     src/superdux.rc
     src/debugger.cpp
@@ -51,74 +61,22 @@ set(SUPERDUX_FILES
     src/vram_viewer.cpp
     src/settings.cpp
 
-    ${GETLINE_IF_NEEDED}
-)
-
-# These are shared regardless of Qt version
-add_library(superdux-shared-br STATIC
     src/built_in_boot_rom.c
     src/gb_proxy.c
     src/game_instance.cpp
     ${BOOT_ROMS_HEADER}
-)
-target_link_libraries(superdux-shared-br sameboy-core)
 
-target_include_directories(superdux-shared-br
+    ${GETLINE_IF_NEEDED}
+)
+target_include_directories(superdux
     PRIVATE "${SAMEBOY_SOURCE_DIR}"
     PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
 )
-
-option(BUILD_QT5_VERSION "Build the Qt5 version" ${Qt5_FOUND})
-option(BUILD_QT6_VERSION "Build the Qt6 version" ${Qt6_FOUND})
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
-# And lastly our executable
-macro(make_superdux target_name qt_widgets)
-    add_executable(${target_name}
-        ${SUPERDUX_FILES}
-    )
-
-    target_include_directories(${target_name}
-        PRIVATE "${SAMEBOY_SOURCE_DIR}"
-        PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
-    )
-
-    target_compile_definitions(${target_name}
-        PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
-    )
-
-    target_link_libraries(${target_name} superdux-shared-br ${SDL2_LIBRARIES} pthread ${qt_widgets})
-endmacro()
-
-if(${BUILD_QT5_VERSION})
-    if(WIN32)
-        message(FATAL_ERROR "Qt 5 on Windows is not supported for this project")
-    endif()
-
-    make_superdux(superdux-qt5 Qt5::Widgets)
-    set_target_properties(superdux-qt5
-        PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt5"
-        OUTPUT_NAME "${SUPERDUX_EXE_NAME}"
-    )
-    set(INSTALL_TARGET "superdux-qt5")
-endif()
-if(${BUILD_QT6_VERSION})
-    make_superdux(superdux-qt6 Qt6::Widgets)
-    set_target_properties(superdux-qt6
-        PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/qt6"
-        OUTPUT_NAME "${SUPERDUX_EXE_NAME}"
-    )
-    set(INSTALL_TARGET "superdux-qt6")
-endif()
-
-if((NOT ${BUILD_QT5_VERSION}) AND (NOT ${BUILD_QT6_VERSION}))
-    message(fatal_error "Must build either Qt5 or Qt6 version")
-endif()
+target_compile_definitions(superdux
+    PRIVATE SAMEBOY_SOURCE_HASH="${SAMEBOY_SOURCE_HASH}"
+)
+target_link_libraries(superdux sameboy-core ${SDL2_LIBRARIES} pthread ${qt_widgets})
+set_target_properties(superdux PROPERTIES OUTPUT_NAME "${SUPERDUX_EXE_NAME}")
 
 # Install the version built for the latest Qt version specified
 install(

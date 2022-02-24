@@ -13,7 +13,7 @@ foreach(CF ${CORE_FILES})
 endforeach()
 string(SHA256 SAMEBOY_SOURCE_HASH "${CF_HASHES}")
 
-add_library(sameboy-core STATIC
+add_library(sameboy-core OBJECT
     ${CORE_FILES}
 )
 
