@@ -80,6 +80,6 @@ set_target_properties(superdux PROPERTIES OUTPUT_NAME "${SUPERDUX_EXE_NAME}")
 
 # Install the version built for the latest Qt version specified
 install(
-    TARGETS ${INSTALL_TARGET}
+    TARGETS superdux
     RUNTIME DESTINATION bin
 )
