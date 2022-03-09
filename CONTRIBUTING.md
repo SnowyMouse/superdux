@@ -12,7 +12,7 @@ Here are a few guidelines for doing this:
 
 * Ensure you are on the latest version.
 
-Please note that Super SameBoy is *not* a fork of SameBoy. Please do not report
+Please note that SuperDUX is *not* a fork of SameBoy. Please do not report
 SameBoy issues here.
 
 To check if an issue is SameBoy-related, it is recommended to compile and test
