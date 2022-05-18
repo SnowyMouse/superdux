@@ -12,7 +12,7 @@ Public License or ANY other license at all EXCEPT at the discretion of Snowy.
 
 Attributions
 
-SameBoy (c) Lior Alphon
+SameBoy (c) Lior Halphon
 SameBoy is licensed under the MIT license.
 
 See https://github.com/LIJI32/SameBoy/blob/master/LICENSE for more info.
