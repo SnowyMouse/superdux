@@ -198,7 +198,7 @@ static std::uint32_t rgb_encode(GB_gameboy_t *, uint8_t r, uint8_t g, uint8_t b)
     return 0xFF000000 | (r << 16) | (g << 8) | (b << 0);
 }
 
-void GameInstance::on_vblank(GB_gameboy_s *gameboy) noexcept {
+void GameInstance::on_vblank(GB_gameboy_s *gameboy, GB_vblank_type_t) noexcept {
     auto *instance = resolve_instance(gameboy);
 
     // Lock this

@@ -831,7 +831,7 @@ private: // all private functions assume the mutex is locked by the caller
     void assign_work_buffer() noexcept;
     
     // Handle vblank
-    static void on_vblank(GB_gameboy_s *gameboy) noexcept;
+    static void on_vblank(GB_gameboy_s *gameboy, GB_vblank_type_t) noexcept;
     
     // Log
     static void on_log(GB_gameboy_s *gameboy, const char *text, GB_log_attributes attributes) noexcept;
