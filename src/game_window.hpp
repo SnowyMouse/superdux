@@ -33,11 +33,11 @@ class VRAMViewer;
 
 class GameWindow : public QMainWindow {
     Q_OBJECT
-    
+
     friend Debugger;
     friend EditAdvancedGameBoyModelDialog;
     friend EditSpeedControlSettingsDialog;
-    
+
 public:
     enum ScalingFilter {
         SCALING_FILTER_NEAREST = 0,
@@ -45,28 +45,28 @@ public:
     };
 
     GameWindow();
-    
+
     void load_rom(const char *rom_path) noexcept;
 
     std::vector<std::shared_ptr<InputDevice>> get_all_devices();
 
     void disconnect_serial();
-    
+
     ~GameWindow();
-    
+
     GameInstance &get_instance() noexcept {
         return *this->instance;
     }
-    
+
 private:
     using clock = std::chrono::steady_clock;
-    
+
     std::unique_ptr<GameInstance> instance;
     std::thread instance_thread;
 
     // Game thread timer
     QTimer game_thread_timer;
-    
+
     // Gameboy itself
     QAction *open_roms_action;
     QAction *save_sram_now;
@@ -75,7 +75,7 @@ private:
 
     bool integrity_check_corrupt = true;
     bool integrity_check_compatible = true;
-    
+
     // Audio settings
     unsigned int sample_count = 1024; // using 1024 as the default instead of 0 is deliberate - SDL sometimes defaults to 4096 which has terrible audio delay
     unsigned int sample_rate = 0;
@@ -86,7 +86,7 @@ private:
     // Printer
     QAction *show_printer;
     Printer *printer_window;
-    
+
     // Emulation
     QAction *pause_action;
     void game_loop();
@@ -106,11 +106,11 @@ private:
     // Rumble
     std::vector<QAction *> rumble_mode_options;
     GB_rumble_mode_t rumble_mode = GB_rumble_mode_t::GB_RUMBLE_CARTRIDGE_ONLY;
-    
+
     // Pause if menu is open?
     bool menu_open = false;
     bool pause_on_menu = false;
-    
+
     // Video
     int scaling = 2;
     std::vector<QAction *> scaling_options;
@@ -124,24 +124,24 @@ private:
     QGraphicsView *pixel_buffer_view;
     QGraphicsScene *pixel_buffer_scene = nullptr;
     QGraphicsTextItem *fps_text = nullptr;
-    GB_color_correction_mode_t color_correction_mode = GB_color_correction_mode_t::GB_COLOR_CORRECTION_EMULATE_HARDWARE;
+    GB_color_correction_mode_t color_correction_mode = GB_color_correction_mode_t::GB_COLOR_CORRECTION_MODERN_ACCURATE;
     std::vector<QAction *> color_correction_mode_options;
     void set_pixel_view_scaling(int scaling);
     void redraw_pixel_buffer();
-    
+
     // For showing FPS
     bool show_fps = false;
     QAction *show_fps_button;
     double last_fps = -1.0;
     double last_speed = 1.0;
-    
+
     void show_status_text(const char *text);
     QGraphicsTextItem *status_text = nullptr;
     clock::time_point status_text_deletion;
     bool status_text_hidden = false;
     std::vector<QAction *> volume_options;
     void show_new_volume_text();
-    
+
     // Input
     bool disable_input = false; // used when configuring settings
     void keyPressEvent(QKeyEvent *) override;
@@ -187,16 +187,16 @@ private:
     bool load_save_state(const std::filesystem::path &path);
     std::filesystem::path get_save_state_path(int index) const;
     QMenu *save_state_menu;
-    
+
     void reload_devices();
     InputDeviceGamepad *last_used_input_device = nullptr;
-    
+
     // Save path
     std::filesystem::path save_path;
     bool exit_without_save = false;
     QAction *exit_without_saving;
     bool save_if_loaded() noexcept;
-    
+
     // Debugging
     QAction *show_debugger;
     Debugger *debugger_window;
@@ -204,29 +204,29 @@ private:
     // VRAM viewing
     QAction *show_vram_viewer;
     VRAMViewer *vram_viewer_window;
-    
+
     // Recent ROMs
     QStringList recent_roms;
     QMenu *recent_roms_menu;
-    
+
     // Reset button
     QAction *reset_rom_action;
-    
+
     // Make a shadow
     void make_shadow(QGraphicsTextItem *object);
-    
+
     // Handle input
     void handle_device_input(InputDevice::InputType type, double input);
-    
+
     // Used for preventing loading different ROMs while debugging
     void set_loading_other_roms_enabled(bool enabled) noexcept;
 
     void handle_joypad_event(const SDL_ControllerButtonEvent &event) noexcept;
     void handle_joypad_event(const SDL_ControllerAxisEvent &event) noexcept;
-    
+
     void update_recent_roms_list();
     void closeEvent(QCloseEvent *) override;
-    
+
     void increment_volume(int amount);
 
     // Can we make save states?
@@ -234,7 +234,7 @@ private:
 
     // -rewind_speed = rewind
     double rewind_multiplier = 1.0F;
-    
+
     // >1.0F = turbo
     double turbo_multiplier = 1.0F;
 
@@ -275,15 +275,15 @@ private slots:
 
     void action_revert_save_state();
     void action_unrevert_save_state();
-    
+
     void action_toggle_audio() noexcept;
     void action_set_volume();
     void action_add_volume();
     void action_set_channel_count() noexcept;
-    
+
     void action_showing_menu() noexcept;
     void action_hiding_menu() noexcept;
-    
+
     void action_set_model() noexcept;
     void action_save_sram() noexcept;
     void action_quit_without_saving() noexcept;

@@ -153,7 +153,7 @@ public:
     void keyPressEvent(QKeyEvent *event) override {
         event->ignore();
     }
-    
+
     // Make sure the extension is valid
     template<typename T> static std::optional<std::filesystem::path> validate_event(T *event) {
         auto *d = event->mimeData();
@@ -169,7 +169,7 @@ public:
         }
         return std::nullopt;
     }
-    
+
     // Handle drag-and-drop
     void dragEnterEvent(QDragEnterEvent *event) override {
         if(validate_event(event).has_value()) {
@@ -187,7 +187,7 @@ public:
             this->window->load_rom(path->string().c_str());
         }
     }
-    
+
     GameWindow *window;
 };
 
@@ -348,22 +348,22 @@ GameWindow::GameWindow() {
     #undef LOAD_INT_SETTING_VALUE
     #undef LOAD_UINT_SETTING_VALUE
     #undef LOAD_BOOL_SETTING_VALUE
-    
+
     // Instantiate the gameboy
     this->instance = std::make_unique<GameInstance>(this->model_for_type(this->gb_type), this->use_border_for_type(this->gb_type) ? GB_border_mode_t::GB_BORDER_ALWAYS : GB_border_mode_t::GB_BORDER_NEVER);
     this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_pixel_buffering_mode(static_cast<GameInstance::PixelBufferMode>(settings.value(SETTINGS_BUFFER_MODE, instance->get_pixel_buffering_mode()).toInt()));
     this->instance->set_rewind_length(this->rewind_length);
-    
+
     // Set window title and enable drag-n-dropping files
     this->setAcceptDrops(true);
     this->setWindowTitle("SuperDUX");
-    
+
     // Start setting up the menu bar
     QMenuBar *bar = new QMenuBar(this);
     this->setMenuBar(bar);
-    
+
     // File menu
     auto *file_menu = bar->addMenu("File");
     connect(file_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
@@ -373,7 +373,7 @@ GameWindow::GameWindow() {
     this->open_roms_action->setShortcut(QKeySequence::Open);
     this->open_roms_action->setIcon(GET_ICON("document-open"));
     connect(this->open_roms_action, &QAction::triggered, this, &GameWindow::action_open_rom);
-    
+
     this->recent_roms_menu = file_menu->addMenu("Recent ROMs");
     this->update_recent_roms_list();
 
@@ -450,24 +450,24 @@ GameWindow::GameWindow() {
     this->save_sram_now->setShortcut(QKeySequence::Save);
     this->save_sram_now->setIcon(GET_ICON("document-save"));
     connect(this->save_sram_now, &QAction::triggered, this, &GameWindow::action_save_sram);
-    
+
     file_menu->addSeparator();
-    
+
     this->exit_without_saving = file_menu->addAction("Quit Without Saving");
     this->exit_without_saving->setIcon(GET_ICON("application-exit"));
     connect(this->exit_without_saving, &QAction::triggered, this, &GameWindow::action_quit_without_saving);
     this->exit_without_saving->setEnabled(false);
-    
+
     auto *quit = file_menu->addAction("Quit");
     quit->setShortcut(QKeySequence::Quit);
     quit->setIcon(GET_ICON("application-exit"));
     connect(quit, &QAction::triggered, this, &GameWindow::close);
-    
+
     // Settings menu
     auto *edit_menu = bar->addMenu("Settings");
     connect(edit_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(edit_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
-    
+
     this->gameboy_model_menu = edit_menu->addMenu("Game Boy Model");
     std::pair<const char *, GameBoyType> models[] = {
         {"Game Boy", GameBoyType::GameBoyGB},
@@ -522,23 +522,23 @@ GameWindow::GameWindow() {
     }
 
     edit_menu->addSeparator();
-    
+
     // Volume list (increase/decrease and set volumes from 0 to 100)
     auto *volume = edit_menu->addMenu("Volume");
-    
+
     auto *mute = volume->addAction("Mute");
     connect(mute, &QAction::triggered, this, &GameWindow::action_toggle_audio);
     mute->setIcon(GET_ICON("audio-volume-muted"));
     mute->setCheckable(true);
     bool muted = settings.value(SETTINGS_MUTE, false).toBool();
     mute->setChecked(muted);
-    
+
     auto *raise_volume = volume->addAction("Increase Volume");
     raise_volume->setIcon(GET_ICON("audio-volume-high"));
     raise_volume->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::Key_Up));
     raise_volume->setData(10);
     connect(raise_volume, &QAction::triggered, this, &GameWindow::action_add_volume);
-    
+
     auto *reduce_volume = volume->addAction("Decrease Volume");
     reduce_volume->setIcon(GET_ICON("audio-volume-low"));
     reduce_volume->setShortcut(static_cast<int>(Qt::CTRL) + static_cast<int>(Qt::Key_Down));
@@ -547,7 +547,7 @@ GameWindow::GameWindow() {
 
     this->instance->set_mono_forced(settings.value(SETTINGS_MONO, this->instance->is_mono_forced()).toBool());
     this->instance->set_volume(settings.value(SETTINGS_VOLUME, this->instance->get_volume()).toInt());
-    
+
     volume->addSeparator();
     for(int i = 100; i >= 0; i-=10) {
         char text[5];
@@ -559,7 +559,7 @@ GameWindow::GameWindow() {
         action->setChecked(i == this->instance->get_volume());
         this->volume_options.emplace_back(action);
     }
-    
+
     // Channel count
     auto *channel_count = edit_menu->addMenu("Channel Count");
     auto *stereo = channel_count->addAction("Stereo");
@@ -567,7 +567,7 @@ GameWindow::GameWindow() {
     stereo->setCheckable(true);
     stereo->setChecked(!this->instance->is_mono_forced());
     connect(stereo, &QAction::triggered, this, &GameWindow::action_set_channel_count);
-    
+
     auto *mono = channel_count->addAction("Mono");
     mono->setData(1);
     mono->setCheckable(true);
@@ -591,7 +591,7 @@ GameWindow::GameWindow() {
         action->setChecked(i.second == this->highpass_filter_mode);
         this->highpass_filter_mode_options.emplace_back(action);
     }
-    
+
     edit_menu->addSeparator();
 
     // Scaling
@@ -628,10 +628,13 @@ GameWindow::GameWindow() {
     std::pair<const char *, GB_color_correction_mode_t> color_correction_modes[] = {
         {"Disabled", GB_color_correction_mode_t::GB_COLOR_CORRECTION_DISABLED},
         {"Correct Curves", GB_color_correction_mode_t::GB_COLOR_CORRECTION_CORRECT_CURVES},
-        {"Emulate Hardware", GB_color_correction_mode_t::GB_COLOR_CORRECTION_EMULATE_HARDWARE},
+        {"Modern (Accurate)", GB_color_correction_mode_t::GB_COLOR_CORRECTION_MODERN_ACCURATE},
+        {"Modern (Balanced)", GB_color_correction_mode_t::GB_COLOR_CORRECTION_MODERN_BALANCED},
+        {"Modern (Boost Contrast)", GB_color_correction_mode_t::GB_COLOR_CORRECTION_MODERN_BOOST_CONTRAST},
         {"Reduce Contrast", GB_color_correction_mode_t::GB_COLOR_CORRECTION_REDUCE_CONTRAST},
         {"Low Contrast", GB_color_correction_mode_t::GB_COLOR_CORRECTION_LOW_CONTRAST},
     };
+
     for(auto &i : color_correction_modes) {
         auto *action = color_correction_mode->addAction(i.first);
         action->setData(i.second);
@@ -656,7 +659,7 @@ GameWindow::GameWindow() {
         action->setChecked(i.second == this->instance->get_pixel_buffering_mode());
         this->pixel_buffer_options.emplace_back(action);
     }
-    
+
     edit_menu->addSeparator();
 
     // Status text?
@@ -672,8 +675,8 @@ GameWindow::GameWindow() {
     // Add controls options
     auto *speed_control = edit_menu->addAction("Configure Rewind and Speed...");
     connect(speed_control, &QAction::triggered, this, &GameWindow::action_edit_speed_control);
-    
-    
+
+
     // Emulation menu
     auto *emulation_menu = bar->addMenu("Emulation");
     connect(emulation_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
@@ -685,7 +688,7 @@ GameWindow::GameWindow() {
     this->pause_action->setIcon(GET_ICON("media-playback-pause"));
     this->pause_action->setCheckable(true);
     this->pause_action->setChecked(false);
-    
+
     // Reset
     this->reset_rom_action = emulation_menu->addAction("Reset");
     this->reset_rom_action->setShortcut(static_cast<int>(Qt::CTRL) | Qt::Key::Key_R);
@@ -703,24 +706,24 @@ GameWindow::GameWindow() {
     this->show_printer->setEnabled(false);
 
     emulation_menu->addSeparator();
-    
+
     // Debug menu
     auto *debug_menu = bar->addMenu("Debug");
     connect(debug_menu, &QMenu::aboutToShow, this, &GameWindow::action_showing_menu);
     connect(debug_menu, &QMenu::aboutToHide, this, &GameWindow::action_hiding_menu);
-    
+
     this->show_fps_button = debug_menu->addAction("Show FPS");
     connect(this->show_fps_button, &QAction::triggered, this, &GameWindow::action_toggle_showing_fps);
     this->show_fps_button->setCheckable(true);
     debug_menu->addSeparator();
-    
+
     // Here's the layout
     auto *central_widget = new QWidget(this);
     auto *layout = new QHBoxLayout(central_widget);
     layout->setContentsMargins(0,0,0,0);
     central_widget->setLayout(layout);
     this->setCentralWidget(central_widget);
-    
+
     // Set our pixel buffer parameters
     this->pixel_buffer_view = new GamePixelBufferView(central_widget, this);
     this->pixel_buffer_view->setFrameStyle(0);
@@ -728,7 +731,7 @@ GameWindow::GameWindow() {
     this->pixel_buffer_view->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
     this->pixel_buffer_view->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
     layout->addWidget(this->pixel_buffer_view);
-    
+
     // Create the debugger now that everything else is set up
     this->debugger_window = new Debugger(this);
     this->show_debugger = debug_menu->addAction("Show Debugger");
@@ -776,7 +779,7 @@ GameWindow::GameWindow() {
 void GameWindow::action_set_volume() {
     // Uses the user data from the sender to get volume
     auto *action = qobject_cast<QAction *>(sender());
-    int volume = action->data().toInt(); 
+    int volume = action->data().toInt();
     this->instance->set_volume(volume);
     this->show_new_volume_text();
 }
@@ -796,9 +799,9 @@ void GameWindow::show_new_volume_text() {
     char volume_text[256];
     int new_volume = this->instance->get_volume();
     std::snprintf(volume_text, sizeof(volume_text), "Volume: %i%%", new_volume);
-    
+
     this->show_status_text(volume_text);
-    
+
     for(auto *i : this->volume_options) {
         i->setChecked(new_volume == i->data().toInt());
     }
@@ -832,11 +835,11 @@ void GameWindow::load_rom(const char *rom_path) noexcept {
     this->recent_roms.push_front(rom_path);
     this->recent_roms = this->recent_roms.mid(0, 10);
     this->update_recent_roms_list();
-    
+
     // Make path
     this->save_path = std::filesystem::path(path).replace_extension(".sav");
     auto sym_path = std::filesystem::path(path).replace_extension(".sym");
-    
+
     // Success?
     int r = 0;
 
@@ -1136,13 +1139,13 @@ void GameWindow::redraw_pixel_buffer() {
     // Handle status text fade
     if(this->status_text) {
         auto now = clock::now();
-        
+
         // Delete status text if time expired
         if(now > this->status_text_deletion) {
             delete this->status_text;
             this->status_text = nullptr;
         }
-        
+
         // Otherwise fade out in last 500 ms
         else {
             auto ms_left = std::chrono::duration_cast<std::chrono::milliseconds>(this->status_text_deletion - now).count();
@@ -1154,7 +1157,7 @@ void GameWindow::redraw_pixel_buffer() {
             }
         }
     }
-    
+
     // Show frame rate
     if(this->fps_text) {
         auto fps = this->instance->get_frame_rate();
@@ -1199,9 +1202,9 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     this->pixel_buffer_pixmap_item = new_pixmap;
     this->pixel_buffer_scene = new_scene;
     this->pixel_buffer_view->setScene(this->pixel_buffer_scene);
-    
+
     this->scaling = scaling;
-    
+
     std::uint32_t width, height;
     this->instance->get_dimensions(width, height);
 
@@ -1224,7 +1227,7 @@ void GameWindow::set_pixel_view_scaling(int scaling) {
     this->make_shadow(this->fps_text);
     this->make_shadow(this->status_text);
     this->redraw_pixel_buffer();
-    
+
     // Go through all scaling options. Uncheck/check whatever applies.
     for(auto *option : this->scaling_options) {
         option->setChecked(option->data().toInt() == scaling);
@@ -1350,7 +1353,7 @@ void GameWindow::make_shadow(QGraphicsTextItem *object) {
     if(object == nullptr) {
         return;
     }
-    
+
     auto *effect = new QGraphicsDropShadowEffect(object);
     effect->setColor(QColor::fromRgb(0,0,0));
     effect->setXOffset(std::max(this->scaling / 2, 1));
@@ -1362,12 +1365,12 @@ void GameWindow::make_shadow(QGraphicsTextItem *object) {
 void GameWindow::action_toggle_showing_fps() noexcept {
     this->show_fps = !this->show_fps;
     this->show_fps_button->setChecked(this->show_fps);
-    
+
     // If showing frame rate, create text objects and initialize the FPS counter
     if(this->show_fps) {
         auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
         font.setPixelSize(9);
-        
+
         this->fps_text = this->pixel_buffer_scene->addText("", font);
         fps_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
         fps_text->setPos(0, 0);
@@ -1388,7 +1391,7 @@ void GameWindow::action_open_rom() noexcept {
     QFileDialog qfd;
     qfd.setWindowTitle("Select a Game Boy ROM");
     qfd.setNameFilters(QStringList { "Any Game Boy Game (*.gb *.gbc *.sgb *.bin *.isx)", "Game Boy ROM (*.gb)", "Game Boy Color ROM (*.gbc)", "Super Game Boy Enhanced ROM (*.sgb)", "BIN File (*.bin)", "ISX Binary (*.isx)" });
-    
+
     if(qfd.exec() == QDialog::DialogCode::Accepted) {
         this->load_rom(qfd.selectedFiles().at(0).toUtf8().data());
     }
@@ -1408,7 +1411,7 @@ void GameWindow::action_toggle_audio() noexcept {
     muted = !muted;
 
     this->instance->set_audio_enabled(!muted);
-    
+
     if(muted) {
         this->show_status_text("Muted");
     }
@@ -1425,15 +1428,15 @@ void GameWindow::show_status_text(const char *text) {
     if(this->status_text) {
         delete this->status_text;
     }
-    
+
     auto font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     font.setPixelSize(9);
-    
+
     this->status_text = this->pixel_buffer_scene->addText(text, font);
     status_text->setDefaultTextColor(QColor::fromRgb(255,255,0));
     status_text->setPos(0, 12);
     this->make_shadow(this->status_text);
-    
+
     this->status_text_deletion = clock::now() + std::chrono::seconds(3);
 }
 
@@ -1445,7 +1448,7 @@ void GameWindow::handle_keyboard_key(QKeyEvent *event, bool press) {
         }
     }
     this->last_used_input_device = nullptr;
-    
+
     event->ignore();
 }
 
@@ -1486,7 +1489,7 @@ bool GameWindow::save_if_loaded() noexcept {
         return false;
     }
 }
-    
+
 void GameWindow::action_save_sram() noexcept {
     // Initiate saving the SRAM
     auto filename = this->save_path.filename().string();
@@ -1507,18 +1510,18 @@ void GameWindow::action_set_model() noexcept {
     this->instance->set_boot_rom_path(this->boot_rom_for_type(this->gb_type));
     this->instance->set_use_fast_boot_rom(this->use_fast_boot_rom_for_type(this->gb_type));
     this->instance->set_model(this->model_for_type(this->gb_type), this->use_border_for_type(this->gb_type) ? GB_border_mode_t::GB_BORDER_ALWAYS : GB_border_mode_t::GB_BORDER_NEVER);
-    
+
     for(auto &i : this->gb_model_actions) {
         i->setChecked(i->data().toInt() == this->gb_type);
     }
-    
+
     this->set_pixel_view_scaling(this->scaling);
 }
 
 void GameWindow::action_quit_without_saving() noexcept {
     QMessageBox qmb(QMessageBox::Icon::Question, "Are You Sure?", "This will close the emulator without saving your SRAM.\n\nAny save data that has not been saved to disk will be lost.", QMessageBox::Cancel | QMessageBox::Ok);
     qmb.setDefaultButton(QMessageBox::Cancel);
-    
+
     if(qmb.exec() == QMessageBox::Ok) {
         this->exit_without_save = true;
         this->close();
@@ -1544,7 +1547,7 @@ void GameWindow::closeEvent(QCloseEvent *) {
     if(!this->exit_without_save) {
         this->save_if_loaded();
     }
-    
+
     auto settings = get_superdux_settings();
     settings.setValue(SETTINGS_VOLUME, this->instance->get_volume());
     settings.setValue(SETTINGS_SCALE, this->scaling);
@@ -1646,9 +1649,9 @@ void GameWindow::handle_device_input(InputDevice::InputType type, double input) 
     if(this->disable_input) {
         return;
     }
-    
+
     bool boolean_input = input >= 0.5;
-    
+
     switch(type) {
         case InputDevice::Input_A:
             this->instance->set_button_state(GB_key_t::GB_KEY_A, boolean_input);
