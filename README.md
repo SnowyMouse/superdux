@@ -1,5 +1,7 @@
 # SuperDUX
 
+**NOTE: Development on this project has been suspended until further notice. Sorry!**
+
 ![duck with onion](icon/superdux_shadow.png)
 
 SuperDUX is a Qt-based interface of [SameBoy], a free and accurate Game Boy and
